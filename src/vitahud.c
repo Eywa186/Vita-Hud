@@ -14,11 +14,9 @@
 #define POS_COUNT        4
 
 #define SIZE_MICRO   0
-#define SIZE_MINI    1
-#define SIZE_SMALL   2
-#define SIZE_NORMAL  3
-#define SIZE_LARGE   4
-#define SIZE_COUNT   5
+#define SIZE_NORMAL  1
+#define SIZE_LARGE   2
+#define SIZE_COUNT   3
 
 #define COLOR_WHITE    0
 #define COLOR_GREEN    1
@@ -41,6 +39,18 @@
 #define BG_TEAL    5
 #define BG_COUNT   6
 
+#define LANG_EN 0
+#define LANG_ES 1
+#define LANG_FR 2
+#define LANG_DE 3
+#define LANG_IT 4
+#define LANG_PT 5
+#define LANG_NL 6
+#define LANG_ID 7
+#define LANG_TR 8
+#define LANG_PL 9
+#define LANG_COUNT 10
+
 #define TOGGLE_SELECT 0
 #define TOGGLE_UP     1
 #define TOGGLE_DOWN   2
@@ -57,8 +67,9 @@
 #define ITEM_BATTERY    6
 #define ITEM_TIME       7
 #define ITEM_TIMEMODE   8
-#define ITEM_TOGGLE     9
-#define ITEM_COUNT      10
+#define ITEM_LANGUAGE   9
+#define ITEM_TOGGLE     10
+#define ITEM_COUNT      11
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -68,6 +79,7 @@ static int hud_position = POS_BOTTOM_RIGHT;
 static int hud_size = SIZE_NORMAL;
 static int hud_color = COLOR_WHITE;
 static int menu_bg_color = BG_BLACK;
+static int hud_language = LANG_EN;
 
 static int show_fps = 1;
 static int show_battery = 1;
@@ -191,6 +203,8 @@ static void build_battery_text(char *out, int battery) {
 static void build_time_text(char *out) {
     SceDateTime time;
     int pos = 0;
+    int hour;
+    int is_pm = 0;
 
     sceRtcGetCurrentClockLocalTime(&time);
 
@@ -207,8 +221,7 @@ static void build_time_text(char *out) {
         return;
     }
 
-    int hour = time.hour;
-    int is_pm = 0;
+    hour = time.hour;
 
     if (hour >= 12) {
         is_pm = 1;
@@ -240,25 +253,25 @@ static unsigned int get_text_color(void) {
             return 0xFF00FF00;
 
         case COLOR_YELLOW:
-            return 0xFFFFFF00;
+            return 0xFF00FFFF;
 
         case COLOR_RED:
-            return 0xFFFF0000;
+            return 0xFF0000FF;
 
         case COLOR_CYAN:
-            return 0xFF00FFFF;
+            return 0xFFFFFF00;
 
         case COLOR_MAGENTA:
             return 0xFFFF00FF;
 
         case COLOR_ORANGE:
-            return 0xFFFF8000;
+            return 0xFF0080FF;
 
         case COLOR_BLUE:
-            return 0xFF4DA6FF;
+            return 0xFFFF0000;
 
         case COLOR_PINK:
-            return 0xFFFF80C0;
+            return 0xFFFF80FF;
 
         case COLOR_LIME:
             return 0xFF80FF00;
@@ -278,16 +291,16 @@ static unsigned int get_menu_bg(void) {
             return 0xCC404040;
 
         case BG_NAVY:
-            return 0xCC102040;
+            return 0xCC401020;
 
         case BG_GREEN:
-            return 0xCC103020;
+            return 0xCC203010;
 
         case BG_PURPLE:
-            return 0xCC301040;
+            return 0xCC401030;
 
         case BG_TEAL:
-            return 0xCC103838;
+            return 0xCC383810;
 
         case BG_BLACK:
         default:
@@ -301,10 +314,10 @@ static unsigned int get_battery_color(int battery) {
     }
 
     if (battery >= 21) {
-        return 0xFFFFFF00;
+        return 0xFF00FFFF;
     }
 
-    return 0xFFFF0000;
+    return 0xFF0000FF;
 }
 
 static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
@@ -315,29 +328,17 @@ static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
             *gap_big = 2;
             break;
 
-        case SIZE_MINI:
+        case SIZE_NORMAL:
             *scale = 2;
             *gap_small = 2;
             *gap_big = 5;
             break;
 
-        case SIZE_SMALL:
+        case SIZE_LARGE:
+        default:
             *scale = 3;
             *gap_small = 2;
             *gap_big = 7;
-            break;
-
-        case SIZE_NORMAL:
-            *scale = 4;
-            *gap_small = 3;
-            *gap_big = 9;
-            break;
-
-        case SIZE_LARGE:
-        default:
-            *scale = 5;
-            *gap_small = 3;
-            *gap_big = 11;
             break;
     }
 }
@@ -554,12 +555,6 @@ static const char *size_name(void) {
         case SIZE_MICRO:
             return "MICRO";
 
-        case SIZE_MINI:
-            return "MINI";
-
-        case SIZE_SMALL:
-            return "SMALL";
-
         case SIZE_NORMAL:
             return "NORMAL";
 
@@ -634,6 +629,41 @@ static const char *time_mode_name(void) {
     return use_24h_time ? "24H" : "12H";
 }
 
+static const char *language_name(void) {
+    switch (hud_language) {
+        case LANG_ES:
+            return "ESPANOL";
+
+        case LANG_FR:
+            return "FRANCAIS";
+
+        case LANG_DE:
+            return "DEUTSCH";
+
+        case LANG_IT:
+            return "ITALIANO";
+
+        case LANG_PT:
+            return "PORTUGUES";
+
+        case LANG_NL:
+            return "NEDERLANDS";
+
+        case LANG_ID:
+            return "INDONESIA";
+
+        case LANG_TR:
+            return "TURKCE";
+
+        case LANG_PL:
+            return "POLSKI";
+
+        case LANG_EN:
+        default:
+            return "ENGLISH";
+    }
+}
+
 static const char *toggle_name(void) {
     switch (toggle_combo_mode) {
         case TOGGLE_UP:
@@ -654,41 +684,243 @@ static const char *toggle_name(void) {
     }
 }
 
-static const char *menu_label(int item) {
-    switch (item) {
-        case ITEM_HUD:
-            return "HUD";
+static const char *tr_menu_title(void) {
+    switch (hud_language) {
+        case LANG_ES:
+            return "MENU VITAHUD";
 
-        case ITEM_POSITION:
-            return "POSITION";
+        case LANG_FR:
+            return "MENU VITAHUD";
 
-        case ITEM_SIZE:
-            return "SIZE";
+        case LANG_DE:
+            return "VITAHUD MENU";
 
-        case ITEM_TEXTCOLOR:
-            return "TEXT COLOR";
+        case LANG_IT:
+            return "MENU VITAHUD";
 
-        case ITEM_MENUBG:
-            return "MENU BG";
+        case LANG_PT:
+            return "MENU VITAHUD";
 
-        case ITEM_FPS:
-            return "FPS";
+        case LANG_NL:
+            return "VITAHUD MENU";
 
-        case ITEM_BATTERY:
-            return "BATTERY";
+        case LANG_ID:
+            return "MENU VITAHUD";
 
-        case ITEM_TIME:
-            return "TIME";
+        case LANG_TR:
+            return "VITAHUD MENU";
 
-        case ITEM_TIMEMODE:
-            return "TIME MODE";
+        case LANG_PL:
+            return "MENU VITAHUD";
 
-        case ITEM_TOGGLE:
-            return "HUD TOGGLE";
-
+        case LANG_EN:
         default:
-            return "";
+            return "VITAHUD MENU";
     }
+}
+
+static const char *tr_footer(void) {
+    switch (hud_language) {
+        case LANG_ES:
+            return "ARRIBA/ABAJO MOVER  IZQ/DER CAMBIAR  O CERRAR";
+
+        case LANG_FR:
+            return "HAUT/BAS BOUGER  GAUCHE/DROITE CHANGER  O FERMER";
+
+        case LANG_DE:
+            return "HOCH/RUNTER WAHLEN  LINKS/RECHTS ANDERN  O ZU";
+
+        case LANG_IT:
+            return "SU/GIU MUOVI  SINISTRA/DESTRA CAMBIA  O CHIUDI";
+
+        case LANG_PT:
+            return "CIMA/BAIXO MOVER  ESQ/DIR MUDAR  O FECHAR";
+
+        case LANG_NL:
+            return "OMHOOG/OMLAAG KIES  LINKS/RECHTS WIJZIG  O SLUIT";
+
+        case LANG_ID:
+            return "ATAS/BAWAH PILIH  KIRI/KANAN UBAH  O TUTUP";
+
+        case LANG_TR:
+            return "YUKARI/ASAGI SEC  SOL/SAG DEGISTIR  O KAPAT";
+
+        case LANG_PL:
+            return "GORA/DOL WYBOR  LEWO/PRAWO ZMIEN  O ZAMKNIJ";
+
+        case LANG_EN:
+        default:
+            return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
+    }
+}
+
+static const char *tr_label(int item) {
+    switch (hud_language) {
+        case LANG_ES:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSICION";
+                case ITEM_SIZE: return "TAMANO";
+                case ITEM_TEXTCOLOR: return "COLOR TEXTO";
+                case ITEM_MENUBG: return "FONDO MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATERIA";
+                case ITEM_TIME: return "HORA";
+                case ITEM_TIMEMODE: return "FORMATO HORA";
+                case ITEM_LANGUAGE: return "IDIOMA";
+                case ITEM_TOGGLE: return "COMBO HUD";
+                default: return "";
+            }
+
+        case LANG_FR:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSITION";
+                case ITEM_SIZE: return "TAILLE";
+                case ITEM_TEXTCOLOR: return "COULEUR TEXTE";
+                case ITEM_MENUBG: return "FOND MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATTERIE";
+                case ITEM_TIME: return "HEURE";
+                case ITEM_TIMEMODE: return "FORMAT HEURE";
+                case ITEM_LANGUAGE: return "LANGUE";
+                case ITEM_TOGGLE: return "COMBO HUD";
+                default: return "";
+            }
+
+        case LANG_DE:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSITION";
+                case ITEM_SIZE: return "GROESSE";
+                case ITEM_TEXTCOLOR: return "TEXT FARBE";
+                case ITEM_MENUBG: return "MENU BG";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATTERIE";
+                case ITEM_TIME: return "ZEIT";
+                case ITEM_TIMEMODE: return "ZEIT FORMAT";
+                case ITEM_LANGUAGE: return "SPRACHE";
+                case ITEM_TOGGLE: return "HUD COMBO";
+                default: return "";
+            }
+
+        case LANG_IT:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSIZIONE";
+                case ITEM_SIZE: return "DIMENSIONE";
+                case ITEM_TEXTCOLOR: return "COLORE TESTO";
+                case ITEM_MENUBG: return "SFONDO MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATTERIA";
+                case ITEM_TIME: return "ORA";
+                case ITEM_TIMEMODE: return "FORMATO ORA";
+                case ITEM_LANGUAGE: return "LINGUA";
+                case ITEM_TOGGLE: return "COMBO HUD";
+                default: return "";
+            }
+
+        case LANG_PT:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSICAO";
+                case ITEM_SIZE: return "TAMANHO";
+                case ITEM_TEXTCOLOR: return "COR TEXTO";
+                case ITEM_MENUBG: return "FUNDO MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATERIA";
+                case ITEM_TIME: return "HORA";
+                case ITEM_TIMEMODE: return "FORMATO HORA";
+                case ITEM_LANGUAGE: return "IDIOMA";
+                case ITEM_TOGGLE: return "COMBO HUD";
+                default: return "";
+            }
+
+        case LANG_NL:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSITIE";
+                case ITEM_SIZE: return "GROOTTE";
+                case ITEM_TEXTCOLOR: return "TEKST KLEUR";
+                case ITEM_MENUBG: return "MENU BG";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATTERIJ";
+                case ITEM_TIME: return "TIJD";
+                case ITEM_TIMEMODE: return "TIJD MODE";
+                case ITEM_LANGUAGE: return "TAAL";
+                case ITEM_TOGGLE: return "HUD COMBO";
+                default: return "";
+            }
+
+        case LANG_ID:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSISI";
+                case ITEM_SIZE: return "UKURAN";
+                case ITEM_TEXTCOLOR: return "WARNA TEKS";
+                case ITEM_MENUBG: return "LATAR MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATERAI";
+                case ITEM_TIME: return "WAKTU";
+                case ITEM_TIMEMODE: return "MODE WAKTU";
+                case ITEM_LANGUAGE: return "BAHASA";
+                case ITEM_TOGGLE: return "COMBO HUD";
+                default: return "";
+            }
+
+        case LANG_TR:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "KONUM";
+                case ITEM_SIZE: return "BOYUT";
+                case ITEM_TEXTCOLOR: return "YAZI RENK";
+                case ITEM_MENUBG: return "MENU ARKA";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATARYA";
+                case ITEM_TIME: return "SAAT";
+                case ITEM_TIMEMODE: return "SAAT MODU";
+                case ITEM_LANGUAGE: return "DIL";
+                case ITEM_TOGGLE: return "HUD COMBO";
+                default: return "";
+            }
+
+        case LANG_PL:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POZYCJA";
+                case ITEM_SIZE: return "ROZMIAR";
+                case ITEM_TEXTCOLOR: return "KOLOR TEKST";
+                case ITEM_MENUBG: return "TLO MENU";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATERIA";
+                case ITEM_TIME: return "CZAS";
+                case ITEM_TIMEMODE: return "TRYB CZASU";
+                case ITEM_LANGUAGE: return "JEZYK";
+                case ITEM_TOGGLE: return "HUD COMBO";
+                default: return "";
+            }
+
+        case LANG_EN:
+        default:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_POSITION: return "POSITION";
+                case ITEM_SIZE: return "SIZE";
+                case ITEM_TEXTCOLOR: return "TEXT COLOR";
+                case ITEM_MENUBG: return "MENU BG";
+                case ITEM_FPS: return "FPS";
+                case ITEM_BATTERY: return "BATTERY";
+                case ITEM_TIME: return "TIME";
+                case ITEM_TIMEMODE: return "TIME MODE";
+                case ITEM_LANGUAGE: return "LANGUAGE";
+                case ITEM_TOGGLE: return "HUD TOGGLE";
+                default: return "";
+            }
+    }
+}
+
+static const char *menu_label(int item) {
+    return tr_label(item);
 }
 
 static const char *menu_value(int item) {
@@ -719,6 +951,9 @@ static const char *menu_value(int item) {
 
         case ITEM_TIMEMODE:
             return time_mode_name();
+
+        case ITEM_LANGUAGE:
+            return language_name();
 
         case ITEM_TOGGLE:
             return toggle_name();
@@ -790,6 +1025,16 @@ static void menu_change(int dir) {
             use_24h_time = !use_24h_time;
             break;
 
+        case ITEM_LANGUAGE:
+            hud_language += dir;
+            if (hud_language < 0) {
+                hud_language = LANG_COUNT - 1;
+            }
+            if (hud_language >= LANG_COUNT) {
+                hud_language = 0;
+            }
+            break;
+
         case ITEM_TOGGLE:
             toggle_combo_mode += dir;
             if (toggle_combo_mode < 0) {
@@ -814,7 +1059,7 @@ static void draw_menu_line(
     const char *label,
     const char *value
 ) {
-    unsigned int line_color = selected ? 0xFFFFFF00 : 0xFFFFFFFF;
+    unsigned int line_color = selected ? 0xFF00FFFF : 0xFFFFFFFF;
 
     if (selected) {
         draw_text_shadow(pixels, pitch, x, y, ">", line_color, 1);
@@ -827,8 +1072,8 @@ static void draw_menu_line(
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int x = 28;
     int y = 52;
-    int w = 390;
-    int h = 182;
+    int w = 410;
+    int h = 196;
     int line_y;
     int i;
 
@@ -844,7 +1089,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
     draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
 
-    draw_text_shadow(pixels, pitch, x, y, "VITAHUD MENU", 0xFF00FFFF, 1);
+    draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), 0xFF00FFFF, 1);
 
     line_y = y + 16;
 
@@ -866,8 +1111,8 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         pixels,
         pitch,
         x,
-        y + 154,
-        "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE",
+        y + 168,
+        tr_footer(),
         0xFFFFFFFF,
         1
     );
@@ -989,11 +1234,6 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     clock_icon_w = show_time ? (7 * icon_scale) : 0;
     clock_icon_h = 7 * icon_scale;
-
-    /*
-     * HUD order:
-     * FPS 59  [BATTERY ICON]50%  [CLOCK ICON]TIME
-     */
 
     if (show_fps) {
         total_w += fps_w;
