@@ -30,6 +30,7 @@ target_link_libraries(vitahud
   SceAppMgr_stub
 )
 
+
 vita_create_self(vitahud.suprx vitahud
   CONFIG exports.yml
   UNSAFE
