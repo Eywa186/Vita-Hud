@@ -843,10 +843,6 @@ static void build_app_id_text(char *out) {
 static void build_ram_text(char *out) {
     int pos = 0;
 
-    /*
-     * RAM live call rolled back.
-     * The previous RAM syscall can kill the HUD thread on some games/menus.
-     */
     pos = append_text(out, pos, "RAM OFF");
     out[pos] = ' ';
 }
@@ -854,10 +850,6 @@ static void build_ram_text(char *out) {
 static void build_ip_text(char *out) {
     int pos = 0;
 
-    /*
-     * IP live call rolled back for recovery.
-     * We will test IP separately after the menu is confirmed stable again.
-     */
     pos = append_text(out, pos, "IP OFF");
     out[pos] = ' ';
 }
@@ -1692,31 +1684,61 @@ static void draw_menu_line(
     int pitch,
     int x,
     int y,
+    int w,
     int selected,
     const char *label,
     const char *value
 ) {
-    unsigned int line_color = selected ? color_value(menu_select_color, 0xFF00FFFF) : color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int sel_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int border_col = color_value(menu_border_color, 0xFFFFFFFF);
+    unsigned int row_bg = menu_bg_color == BG_TRANSPARENT ? 0xFF101010 : get_menu_bg();
+    unsigned int row_sel_bg = 0xFF101010;
+    int label_x = x + 10;
+    int value_w = text_width(value, 1);
+    int value_x = x + w - 14 - value_w;
 
-    if (selected) {
-        draw_text_shadow(pixels, pitch, x, y, ">", line_color, 1);
+    if (value_x < x + 190) {
+        value_x = x + 190;
     }
 
-    draw_text_shadow(pixels, pitch, x + 14, y, label, line_color, 1);
-    draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
+    if (selected) {
+        draw_rect(pixels, pitch, x + 2, y - 1, w - 4, 11, row_sel_bg);
+        draw_rect(pixels, pitch, x + 2, y - 1, w - 4, 1, border_col);
+        draw_rect(pixels, pitch, x + 2, y + 9, w - 4, 1, border_col);
+        draw_rect(pixels, pitch, x + 2, y - 1, 1, 11, border_col);
+        draw_rect(pixels, pitch, x + w - 3, y - 1, 1, 11, border_col);
+
+        draw_text_shadow(pixels, pitch, label_x, y, label, sel_col, 1);
+        draw_text_shadow(pixels, pitch, value_x, y, value, sel_col, 1);
+    } else {
+        draw_text_shadow(pixels, pitch, label_x, y, label, text_col, 1);
+        draw_text_shadow(pixels, pitch, value_x, y, value, text_col, 1);
+
+        draw_rect(pixels, pitch, x + 6, y + 10, w - 12, 1, row_bg == 0x00000000 ? 0xFF202020 : 0xFF202020);
+    }
 }
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    int x = 28;
-    int y = 44;
-    int w = 430;
-    int h = 248;
+    int x = 26;
+    int y = 36;
+    int w = 442;
+    int h = 268;
+    int inner_x;
+    int inner_y;
+    int inner_w;
+    int inner_h;
     int line_y;
     int i;
     int visible = 15;
 
     unsigned int bg = get_menu_bg();
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
+    unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int header_bg = 0xFF121212;
+    unsigned int footer_bg = 0xFF0C0C0C;
+    unsigned int panel_bg = menu_bg_color == BG_TRANSPARENT ? 0xFF080808 : bg;
 
     if (screen_w <= 480 || screen_h <= 272) {
         x = 10;
@@ -1746,26 +1768,33 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         menu_scroll = 0;
     }
 
-    if (menu_bg_color != BG_TRANSPARENT) {
-        draw_rect(pixels, pitch, x - 8, y - 8, w, h, bg);
-    }
+    draw_rect(pixels, pitch, x - 10, y - 10, w + 4, h + 4, 0xFF000000);
+    draw_rect(pixels, pitch, x - 8, y - 8, w, h, panel_bg);
 
     draw_rect(pixels, pitch, x - 8, y - 8, w, 1, border);
-    draw_rect(pixels, pitch, x - 8, y + h - 1, w, 1, border);
+    draw_rect(pixels, pitch, x - 8, y + h - 9, w, 1, border);
     draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
     draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
 
-    draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), color_value(menu_select_color, 0xFF00FFFF), 1);
+    inner_x = x - 4;
+    inner_y = y - 4;
+    inner_w = w - 8;
+    inner_h = h - 8;
+
+    draw_rect(pixels, pitch, inner_x, inner_y, inner_w, 16, header_bg);
+    draw_rect(pixels, pitch, inner_x, inner_y + 16, inner_w, 1, border);
+
+    draw_text_shadow(pixels, pitch, x + 2, y, tr_menu_title(), title_col, 1);
 
     if (menu_scroll > 0) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + 1, "^", color_value(menu_select_color, 0xFF00FFFF), 1);
+        draw_text_shadow(pixels, pitch, x + (w / 2) - 6, y + 2, "^", title_col, 1);
     }
 
     if (menu_scroll + visible < ITEM_COUNT) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + h - 36, "V", color_value(menu_select_color, 0xFF00FFFF), 1);
+        draw_text_shadow(pixels, pitch, x + (w / 2) - 6, y + h - 36, "V", title_col, 1);
     }
 
-    line_y = y + 16;
+    line_y = y + 22;
 
     for (i = menu_scroll; i < ITEM_COUNT && i < menu_scroll + visible; i++) {
         draw_menu_line(
@@ -1773,6 +1802,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
             pitch,
             x,
             line_y,
+            w - 24,
             menu_index == i,
             menu_label(i),
             menu_value(i)
@@ -1781,13 +1811,16 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         line_y += 12;
     }
 
+    draw_rect(pixels, pitch, inner_x, y + h - 34, inner_w, 1, border);
+    draw_rect(pixels, pitch, inner_x, y + h - 33, inner_w, 15, footer_bg);
+
     draw_text_shadow(
         pixels,
         pitch,
-        x,
+        x + 2,
         y + h - 22,
         tr_footer(),
-        color_value(menu_text_color, 0xFFFFFFFF),
+        text_col,
         1
     );
 }
