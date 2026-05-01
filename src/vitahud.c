@@ -4,7 +4,6 @@
 #include <psp2/power.h>
 #include <psp2/rtc.h>
 #include <psp2/display.h>
-#include <psp2/net/netctl.h>
 
 #define MENU_COMBO (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_START)
 
@@ -12,82 +11,25 @@
 #define POS_BOTTOM_LEFT  1
 #define POS_TOP_RIGHT    2
 #define POS_TOP_LEFT     3
-#define POS_COUNT        4
 
-#define SIZE_MICRO   0
-#define SIZE_MINI    1
-#define SIZE_SMALL   2
-#define SIZE_NORMAL  3
-#define SIZE_LARGE   4
-#define SIZE_XLARGE  5
-#define SIZE_COUNT   6
+#define SIZE_MINI   0
+#define SIZE_NORMAL 1
+#define SIZE_LARGE  2
 
-#define COLOR_WHITE    0
-#define COLOR_GREEN    1
-#define COLOR_YELLOW   2
-#define COLOR_RED      3
-#define COLOR_CYAN     4
-#define COLOR_MAGENTA  5
-#define COLOR_ORANGE   6
-#define COLOR_BLUE     7
-#define COLOR_PINK     8
-#define COLOR_LIME     9
-#define COLOR_SILVER   10
-#define COLOR_COUNT    11
-
-#define MENU_BG_BLACK   0
-#define MENU_BG_GRAY    1
-#define MENU_BG_NAVY    2
-#define MENU_BG_GREEN   3
-#define MENU_BG_RED     4
-#define MENU_BG_PURPLE  5
-#define MENU_BG_TEAL    6
-#define MENU_BG_WHITE   7
-#define MENU_BG_COUNT   8
+#define COLOR_WHITE   0
+#define COLOR_GREEN   1
+#define COLOR_YELLOW  2
+#define COLOR_RED     3
+#define COLOR_CYAN    4
+#define COLOR_MAGENTA 5
+#define COLOR_ORANGE  6
 
 #define LANG_EN 0
 #define LANG_ES 1
-#define LANG_FR 2
-#define LANG_DE 3
-#define LANG_IT 4
-#define LANG_PT 5
-#define LANG_COUNT 6
 
 #define TOGGLE_SELECT 0
 #define TOGGLE_UP     1
 #define TOGGLE_DOWN   2
-#define TOGGLE_LEFT   3
-#define TOGGLE_RIGHT  4
-#define TOGGLE_COUNT  5
-
-#define MENU_ITEM_HUD        0
-#define MENU_ITEM_POSITION   1
-#define MENU_ITEM_SIZE       2
-#define MENU_ITEM_TEXTCOLOR  3
-#define MENU_ITEM_MENUBG     4
-#define MENU_ITEM_FPS        5
-#define MENU_ITEM_BATTERY    6
-#define MENU_ITEM_TIME       7
-#define MENU_ITEM_IP         8
-#define MENU_ITEM_TIMEMODE   9
-#define MENU_ITEM_LANGUAGE   10
-#define MENU_ITEM_TOGGLE     11
-#define MENU_ITEMS_COUNT     12
-
-#define TXT_TITLE       0
-#define TXT_HUD         1
-#define TXT_POSITION    2
-#define TXT_SIZE        3
-#define TXT_TEXTCOLOR   4
-#define TXT_MENUBG      5
-#define TXT_FPS         6
-#define TXT_BATTERY     7
-#define TXT_TIME        8
-#define TXT_IP          9
-#define TXT_TIMEMODE    10
-#define TXT_LANGUAGE    11
-#define TXT_TOGGLE      12
-#define TXT_FOOTER      13
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -96,14 +38,9 @@ static int menu_index = 0;
 static int hud_position = POS_BOTTOM_RIGHT;
 static int hud_size = SIZE_NORMAL;
 static int hud_color = COLOR_WHITE;
-static int menu_bg_color = MENU_BG_BLACK;
-
 static int show_fps = 1;
 static int show_battery = 1;
 static int show_time = 1;
-static int show_ip = 0;
-static int use_24h_time = 0;
-
 static int hud_language = LANG_EN;
 static int toggle_combo_mode = TOGGLE_SELECT;
 
@@ -118,6 +55,36 @@ static SceUInt64 last_tick = 0;
 static void put_2digits(char *out, int value) {
     out[0] = '0' + ((value / 10) % 10);
     out[1] = '0' + (value % 10);
+}
+
+static unsigned int get_toggle_combo(void) {
+    if (toggle_combo_mode == TOGGLE_UP) {
+        return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_UP;
+    }
+
+    if (toggle_combo_mode == TOGGLE_DOWN) {
+        return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_DOWN;
+    }
+
+    return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT;
+}
+
+static void update_fps(void) {
+    SceRtcTick tick;
+    sceRtcGetCurrentTick(&tick);
+
+    if (last_tick == 0) {
+        last_tick = tick.tick;
+        return;
+    }
+
+    frame_count++;
+
+    if (tick.tick - last_tick >= 1000000) {
+        fps_value = frame_count;
+        frame_count = 0;
+        last_tick = tick.tick;
+    }
 }
 
 static int append_text(char *out, int pos, const char *text) {
@@ -154,40 +121,6 @@ static int append_battery_number(char *out, int pos, int value) {
     return pos;
 }
 
-static unsigned int get_toggle_combo(void) {
-    switch (toggle_combo_mode) {
-        case TOGGLE_UP:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_UP;
-        case TOGGLE_DOWN:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_DOWN;
-        case TOGGLE_LEFT:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_LEFT;
-        case TOGGLE_RIGHT:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_RIGHT;
-        case TOGGLE_SELECT:
-        default:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT;
-    }
-}
-
-static void update_fps(void) {
-    SceRtcTick tick;
-    sceRtcGetCurrentTick(&tick);
-
-    if (last_tick == 0) {
-        last_tick = tick.tick;
-        return;
-    }
-
-    frame_count++;
-
-    if (tick.tick - last_tick >= 1000000) {
-        fps_value = frame_count;
-        frame_count = 0;
-        last_tick = tick.tick;
-    }
-}
-
 static void build_fps_text(char *out) {
     int pos = 0;
     pos = append_text(out, pos, "FPS ");
@@ -206,18 +139,6 @@ static void build_time_text(char *out) {
     SceDateTime time;
     sceRtcGetCurrentClockLocalTime(&time);
 
-    int pos = 0;
-
-    if (use_24h_time) {
-        put_2digits(&out[pos], time.hour);
-        pos += 2;
-        out[pos++] = ':';
-        put_2digits(&out[pos], time.minute);
-        pos += 2;
-        out[pos] = '\0';
-        return;
-    }
-
     int hour = time.hour;
     int is_pm = 0;
 
@@ -231,243 +152,23 @@ static void build_time_text(char *out) {
         hour = 12;
     }
 
+    int pos = 0;
+
     put_2digits(&out[pos], hour);
     pos += 2;
+
     out[pos++] = ':';
+
     put_2digits(&out[pos], time.minute);
     pos += 2;
+
     out[pos++] = ' ';
     out[pos++] = is_pm ? 'P' : 'A';
     out[pos++] = 'M';
     out[pos] = '\0';
 }
 
-static void build_ip_text(char *out) {
-    SceNetCtlInfo info;
-    int pos = 0;
-
-    pos = append_text(out, pos, "IP ");
-
-    if (sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info) < 0 || info.ip_address[0] == '\0') {
-        pos = append_text(out, pos, "N/A");
-        out[pos] = '\0';
-        return;
-    }
-
-    {
-        const char *src = info.ip_address;
-        while (*src) {
-            out[pos++] = *src++;
-        }
-    }
-
-    out[pos] = '\0';
-}
-
-static const char *onoff_name(int value) {
-    return value ? "ON" : "OFF";
-}
-
-static const char *position_name(void) {
-    switch (hud_position) {
-        case POS_BOTTOM_LEFT:  return "BOTTOM LEFT";
-        case POS_TOP_RIGHT:    return "TOP RIGHT";
-        case POS_TOP_LEFT:     return "TOP LEFT";
-        case POS_BOTTOM_RIGHT:
-        default:               return "BOTTOM RIGHT";
-    }
-}
-
-static const char *size_name(void) {
-    switch (hud_size) {
-        case SIZE_MICRO:  return "MICRO";
-        case SIZE_MINI:   return "MINI";
-        case SIZE_SMALL:  return "SMALL";
-        case SIZE_NORMAL: return "NORMAL";
-        case SIZE_LARGE:  return "LARGE";
-        case SIZE_XLARGE: return "XLARGE";
-        default:          return "NORMAL";
-    }
-}
-
-static const char *color_name(void) {
-    switch (hud_color) {
-        case COLOR_GREEN:   return "GREEN";
-        case COLOR_YELLOW:  return "YELLOW";
-        case COLOR_RED:     return "RED";
-        case COLOR_CYAN:    return "CYAN";
-        case COLOR_MAGENTA: return "MAGENTA";
-        case COLOR_ORANGE:  return "ORANGE";
-        case COLOR_BLUE:    return "BLUE";
-        case COLOR_PINK:    return "PINK";
-        case COLOR_LIME:    return "LIME";
-        case COLOR_SILVER:  return "SILVER";
-        case COLOR_WHITE:
-        default:            return "WHITE";
-    }
-}
-
-static const char *menu_bg_name(void) {
-    switch (menu_bg_color) {
-        case MENU_BG_GRAY:   return "GRAY";
-        case MENU_BG_NAVY:   return "NAVY";
-        case MENU_BG_GREEN:  return "GREEN";
-        case MENU_BG_RED:    return "RED";
-        case MENU_BG_PURPLE: return "PURPLE";
-        case MENU_BG_TEAL:   return "TEAL";
-        case MENU_BG_WHITE:  return "WHITE";
-        case MENU_BG_BLACK:
-        default:             return "BLACK";
-    }
-}
-
-static const char *time_mode_name(void) {
-    return use_24h_time ? "24H" : "12H";
-}
-
-static const char *language_name(void) {
-    switch (hud_language) {
-        case LANG_ES: return "ESPANOL";
-        case LANG_FR: return "FRANCAIS";
-        case LANG_DE: return "DEUTSCH";
-        case LANG_IT: return "ITALIANO";
-        case LANG_PT: return "PORTUGUES";
-        case LANG_EN:
-        default:      return "ENGLISH";
-    }
-}
-
-static const char *toggle_name(void) {
-    switch (toggle_combo_mode) {
-        case TOGGLE_UP:    return "L+R+UP";
-        case TOGGLE_DOWN:  return "L+R+DOWN";
-        case TOGGLE_LEFT:  return "L+R+LEFT";
-        case TOGGLE_RIGHT: return "L+R+RIGHT";
-        case TOGGLE_SELECT:
-        default:           return "L+R+SELECT";
-    }
-}
-
-static const char *tr(int id) {
-    switch (hud_language) {
-        case LANG_ES:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSICION";
-                case TXT_SIZE:       return "TAMANO";
-                case TXT_TEXTCOLOR:  return "COLOR TEXTO";
-                case TXT_MENUBG:     return "FONDO MENU";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATERIA";
-                case TXT_TIME:       return "HORA";
-                case TXT_IP:         return "DIRECCION IP";
-                case TXT_TIMEMODE:   return "FORMATO HORA";
-                case TXT_LANGUAGE:   return "IDIOMA";
-                case TXT_TOGGLE:     return "COMBO HUD";
-                case TXT_FOOTER:     return "UP/DOWN MOVER  LEFT/RIGHT CAMBIAR  O CERRAR";
-                default:             return "";
-            }
-
-        case LANG_FR:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSITION";
-                case TXT_SIZE:       return "TAILLE";
-                case TXT_TEXTCOLOR:  return "COULEUR TEXTE";
-                case TXT_MENUBG:     return "FOND MENU";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATTERIE";
-                case TXT_TIME:       return "HEURE";
-                case TXT_IP:         return "ADRESSE IP";
-                case TXT_TIMEMODE:   return "FORMAT HEURE";
-                case TXT_LANGUAGE:   return "LANGUE";
-                case TXT_TOGGLE:     return "COMBO HUD";
-                case TXT_FOOTER:     return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
-                default:             return "";
-            }
-
-        case LANG_DE:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSITION";
-                case TXT_SIZE:       return "GROSSE";
-                case TXT_TEXTCOLOR:  return "TEXT FARBE";
-                case TXT_MENUBG:     return "MENU HINTERGR";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATTERIE";
-                case TXT_TIME:       return "ZEIT";
-                case TXT_IP:         return "IP ADRESSE";
-                case TXT_TIMEMODE:   return "ZEITFORMAT";
-                case TXT_LANGUAGE:   return "SPRACHE";
-                case TXT_TOGGLE:     return "HUD KOMBO";
-                case TXT_FOOTER:     return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
-                default:             return "";
-            }
-
-        case LANG_IT:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSIZIONE";
-                case TXT_SIZE:       return "DIMENSIONE";
-                case TXT_TEXTCOLOR:  return "COLORE TESTO";
-                case TXT_MENUBG:     return "SFONDO MENU";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATTERIA";
-                case TXT_TIME:       return "ORA";
-                case TXT_IP:         return "INDIRIZZO IP";
-                case TXT_TIMEMODE:   return "FORMATO ORA";
-                case TXT_LANGUAGE:   return "LINGUA";
-                case TXT_TOGGLE:     return "COMBO HUD";
-                case TXT_FOOTER:     return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
-                default:             return "";
-            }
-
-        case LANG_PT:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSICAO";
-                case TXT_SIZE:       return "TAMANHO";
-                case TXT_TEXTCOLOR:  return "COR TEXTO";
-                case TXT_MENUBG:     return "FUNDO MENU";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATERIA";
-                case TXT_TIME:       return "HORA";
-                case TXT_IP:         return "ENDERECO IP";
-                case TXT_TIMEMODE:   return "FORMATO HORA";
-                case TXT_LANGUAGE:   return "IDIOMA";
-                case TXT_TOGGLE:     return "COMBO HUD";
-                case TXT_FOOTER:     return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
-                default:             return "";
-            }
-
-        case LANG_EN:
-        default:
-            switch (id) {
-                case TXT_TITLE:      return "VITAHUD MENU";
-                case TXT_HUD:        return "HUD";
-                case TXT_POSITION:   return "POSITION";
-                case TXT_SIZE:       return "SIZE";
-                case TXT_TEXTCOLOR:  return "TEXT COLOR";
-                case TXT_MENUBG:     return "MENU BG";
-                case TXT_FPS:        return "FPS";
-                case TXT_BATTERY:    return "BATTERY";
-                case TXT_TIME:       return "TIME";
-                case TXT_IP:         return "IP ADDRESS";
-                case TXT_TIMEMODE:   return "TIME MODE";
-                case TXT_LANGUAGE:   return "LANGUAGE";
-                case TXT_TOGGLE:     return "HUD TOGGLE";
-                case TXT_FOOTER:     return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
-                default:             return "";
-            }
-    }
-}
-
-static unsigned int get_text_color_value(void) {
+static unsigned int get_text_color(void) {
     switch (hud_color) {
         case COLOR_GREEN:   return 0xFF00FF00;
         case COLOR_YELLOW:  return 0xFFFFFF00;
@@ -475,26 +176,8 @@ static unsigned int get_text_color_value(void) {
         case COLOR_CYAN:    return 0xFF00FFFF;
         case COLOR_MAGENTA: return 0xFFFF00FF;
         case COLOR_ORANGE:  return 0xFFFF8000;
-        case COLOR_BLUE:    return 0xFF4DA6FF;
-        case COLOR_PINK:    return 0xFFFF80C0;
-        case COLOR_LIME:    return 0xFF80FF00;
-        case COLOR_SILVER:  return 0xFFC0C0C0;
         case COLOR_WHITE:
         default:            return 0xFFFFFFFF;
-    }
-}
-
-static unsigned int get_menu_bg_color_value(void) {
-    switch (menu_bg_color) {
-        case MENU_BG_GRAY:   return 0xCC404040;
-        case MENU_BG_NAVY:   return 0xCC102040;
-        case MENU_BG_GREEN:  return 0xCC103020;
-        case MENU_BG_RED:    return 0xCC401010;
-        case MENU_BG_PURPLE: return 0xCC301040;
-        case MENU_BG_TEAL:   return 0xCC103838;
-        case MENU_BG_WHITE:  return 0xCCD0D0D0;
-        case MENU_BG_BLACK:
-        default:             return 0xCC000000;
     }
 }
 
@@ -510,45 +193,16 @@ static unsigned int get_battery_color(int battery) {
     return 0xFFFF0000;
 }
 
-static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
-    switch (hud_size) {
-        case SIZE_MICRO:
-            *scale = 1;
-            *gap_small = 1;
-            *gap_big = 2;
-            break;
-
-        case SIZE_MINI:
-            *scale = 2;
-            *gap_small = 1;
-            *gap_big = 2;
-            break;
-
-        case SIZE_SMALL:
-            *scale = 2;
-            *gap_small = 2;
-            *gap_big = 3;
-            break;
-
-        case SIZE_NORMAL:
-            *scale = 2;
-            *gap_small = 3;
-            *gap_big = 5;
-            break;
-
-        case SIZE_LARGE:
-            *scale = 3;
-            *gap_small = 2;
-            *gap_big = 4;
-            break;
-
-        case SIZE_XLARGE:
-        default:
-            *scale = 3;
-            *gap_small = 4;
-            *gap_big = 6;
-            break;
+static int get_scale(void) {
+    if (hud_size == SIZE_MINI) {
+        return 1;
     }
+
+    if (hud_size == SIZE_LARGE) {
+        return 3;
+    }
+
+    return 2;
 }
 
 static unsigned char font5x7(char c, int row) {
@@ -598,37 +252,29 @@ static unsigned char font5x7(char c, int row) {
         case '>': { static const unsigned char g[7] = {0x08,0x04,0x02,0x01,0x02,0x04,0x08}; return g[row]; }
         case '/': { static const unsigned char g[7] = {0x01,0x02,0x02,0x04,0x08,0x08,0x10}; return g[row]; }
         case '+': { static const unsigned char g[7] = {0x00,0x04,0x04,0x1F,0x04,0x04,0x00}; return g[row]; }
-        case '.': { static const unsigned char g[7] = {0x00,0x00,0x00,0x00,0x00,0x0C,0x0C}; return g[row]; }
         case ' ': return 0x00;
 
-        default:  return 0x00;
+        default:
+            return 0x00;
     }
 }
 
 static void draw_rect(unsigned int *pixels, int pitch, int x, int y, int w, int h, unsigned int color) {
-    int yy, xx;
-
-    if (w <= 0 || h <= 0) {
-        return;
-    }
-
-    for (yy = 0; yy < h; yy++) {
-        for (xx = 0; xx < w; xx++) {
+    for (int yy = 0; yy < h; yy++) {
+        for (int xx = 0; xx < w; xx++) {
             pixels[(y + yy) * pitch + (x + xx)] = color;
         }
     }
 }
 
 static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, unsigned int color, int scale) {
-    int row, col, sy, sx;
-
-    for (row = 0; row < 7; row++) {
+    for (int row = 0; row < 7; row++) {
         unsigned char bits = font5x7(c, row);
 
-        for (col = 0; col < 5; col++) {
+        for (int col = 0; col < 5; col++) {
             if (bits & (1 << (4 - col))) {
-                for (sy = 0; sy < scale; sy++) {
-                    for (sx = 0; sx < scale; sx++) {
+                for (int sy = 0; sy < scale; sy++) {
+                    for (int sx = 0; sx < scale; sx++) {
                         pixels[(y + row * scale + sy) * pitch + (x + col * scale + sx)] = color;
                     }
                 }
@@ -663,6 +309,9 @@ static void draw_text_shadow(unsigned int *pixels, int pitch, int x, int y, cons
 }
 
 static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int battery, int scale) {
+    if (battery < 0) battery = 0;
+    if (battery > 100) battery = 100;
+
     unsigned int white = 0xFFFFFFFF;
     unsigned int fill = get_battery_color(battery);
 
@@ -671,14 +320,6 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
     int cap_w = 2 * scale;
     int cap_h = 3 * scale;
     int border = scale;
-    int inner_x;
-    int inner_y;
-    int inner_w;
-    int inner_h;
-    int fill_w;
-
-    if (battery < 0) battery = 0;
-    if (battery > 100) battery = 100;
 
     draw_rect(pixels, pitch, x, y, body_w, border, white);
     draw_rect(pixels, pitch, x, y + body_h - border, body_w, border, white);
@@ -687,188 +328,167 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
 
     draw_rect(pixels, pitch, x + body_w, y + (2 * scale), cap_w, cap_h, white);
 
-    inner_x = x + border;
-    inner_y = y + border;
-    inner_w = body_w - (border * 2);
-    inner_h = body_h - (border * 2);
-    fill_w = (inner_w * battery) / 100;
+    int inner_x = x + border;
+    int inner_y = y + border;
+    int inner_w = body_w - (border * 2);
+    int inner_h = body_h - (border * 2);
+
+    int fill_w = (inner_w * battery) / 100;
 
     if (fill_w > 0) {
         draw_rect(pixels, pitch, inner_x, inner_y, fill_w, inner_h, fill);
     }
 }
 
+static const char *position_name(void) {
+    switch (hud_position) {
+        case POS_BOTTOM_LEFT:  return "BOTTOM LEFT";
+        case POS_TOP_RIGHT:    return "TOP RIGHT";
+        case POS_TOP_LEFT:     return "TOP LEFT";
+        case POS_BOTTOM_RIGHT:
+        default:               return "BOTTOM RIGHT";
+    }
+}
+
+static const char *size_name(void) {
+    switch (hud_size) {
+        case SIZE_MINI:  return "MINI";
+        case SIZE_LARGE: return "LARGE";
+        case SIZE_NORMAL:
+        default:         return "NORMAL";
+    }
+}
+
+static const char *color_name(void) {
+    switch (hud_color) {
+        case COLOR_GREEN:   return "GREEN";
+        case COLOR_YELLOW:  return "YELLOW";
+        case COLOR_RED:     return "RED";
+        case COLOR_CYAN:    return "CYAN";
+        case COLOR_MAGENTA: return "MAGENTA";
+        case COLOR_ORANGE:  return "ORANGE";
+        case COLOR_WHITE:
+        default:            return "WHITE";
+    }
+}
+
+static const char *language_name(void) {
+    if (hud_language == LANG_ES) {
+        return "ESPANOL";
+    }
+
+    return "ENGLISH";
+}
+
+static const char *toggle_name(void) {
+    switch (toggle_combo_mode) {
+        case TOGGLE_UP:   return "L+R+UP";
+        case TOGGLE_DOWN: return "L+R+DOWN";
+        case TOGGLE_SELECT:
+        default:          return "L+R+SELECT";
+    }
+}
+
+static const char *onoff_name(int value) {
+    return value ? "ON" : "OFF";
+}
+
 static void menu_change(int dir) {
-    switch (menu_index) {
-        case MENU_ITEM_HUD:
-            hud_enabled = !hud_enabled;
-            break;
-
-        case MENU_ITEM_POSITION:
-            hud_position += dir;
-            if (hud_position < 0) hud_position = POS_COUNT - 1;
-            if (hud_position >= POS_COUNT) hud_position = 0;
-            break;
-
-        case MENU_ITEM_SIZE:
-            hud_size += dir;
-            if (hud_size < 0) hud_size = SIZE_COUNT - 1;
-            if (hud_size >= SIZE_COUNT) hud_size = 0;
-            break;
-
-        case MENU_ITEM_TEXTCOLOR:
-            hud_color += dir;
-            if (hud_color < 0) hud_color = COLOR_COUNT - 1;
-            if (hud_color >= COLOR_COUNT) hud_color = 0;
-            break;
-
-        case MENU_ITEM_MENUBG:
-            menu_bg_color += dir;
-            if (menu_bg_color < 0) menu_bg_color = MENU_BG_COUNT - 1;
-            if (menu_bg_color >= MENU_BG_COUNT) menu_bg_color = 0;
-            break;
-
-        case MENU_ITEM_FPS:
-            show_fps = !show_fps;
-            break;
-
-        case MENU_ITEM_BATTERY:
-            show_battery = !show_battery;
-            break;
-
-        case MENU_ITEM_TIME:
-            show_time = !show_time;
-            break;
-
-        case MENU_ITEM_IP:
-            show_ip = !show_ip;
-            break;
-
-        case MENU_ITEM_TIMEMODE:
-            use_24h_time = !use_24h_time;
-            break;
-
-        case MENU_ITEM_LANGUAGE:
-            hud_language += dir;
-            if (hud_language < 0) hud_language = LANG_COUNT - 1;
-            if (hud_language >= LANG_COUNT) hud_language = 0;
-            break;
-
-        case MENU_ITEM_TOGGLE:
-            toggle_combo_mode += dir;
-            if (toggle_combo_mode < 0) toggle_combo_mode = TOGGLE_COUNT - 1;
-            if (toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = 0;
-            break;
-
-        default:
-            break;
-    }
-}
-
-static const char *menu_value_name(int item) {
-    switch (item) {
-        case MENU_ITEM_HUD:        return onoff_name(hud_enabled);
-        case MENU_ITEM_POSITION:   return position_name();
-        case MENU_ITEM_SIZE:       return size_name();
-        case MENU_ITEM_TEXTCOLOR:  return color_name();
-        case MENU_ITEM_MENUBG:     return menu_bg_name();
-        case MENU_ITEM_FPS:        return onoff_name(show_fps);
-        case MENU_ITEM_BATTERY:    return onoff_name(show_battery);
-        case MENU_ITEM_TIME:       return onoff_name(show_time);
-        case MENU_ITEM_IP:         return onoff_name(show_ip);
-        case MENU_ITEM_TIMEMODE:   return time_mode_name();
-        case MENU_ITEM_LANGUAGE:   return language_name();
-        case MENU_ITEM_TOGGLE:     return toggle_name();
-        default:                   return "";
-    }
-}
-
-static const char *menu_label_name(int item) {
-    switch (item) {
-        case MENU_ITEM_HUD:        return tr(TXT_HUD);
-        case MENU_ITEM_POSITION:   return tr(TXT_POSITION);
-        case MENU_ITEM_SIZE:       return tr(TXT_SIZE);
-        case MENU_ITEM_TEXTCOLOR:  return tr(TXT_TEXTCOLOR);
-        case MENU_ITEM_MENUBG:     return tr(TXT_MENUBG);
-        case MENU_ITEM_FPS:        return tr(TXT_FPS);
-        case MENU_ITEM_BATTERY:    return tr(TXT_BATTERY);
-        case MENU_ITEM_TIME:       return tr(TXT_TIME);
-        case MENU_ITEM_IP:         return tr(TXT_IP);
-        case MENU_ITEM_TIMEMODE:   return tr(TXT_TIMEMODE);
-        case MENU_ITEM_LANGUAGE:   return tr(TXT_LANGUAGE);
-        case MENU_ITEM_TOGGLE:     return tr(TXT_TOGGLE);
-        default:                   return "";
+    if (menu_index == 0) {
+        hud_enabled = !hud_enabled;
+    } else if (menu_index == 1) {
+        hud_position += dir;
+        if (hud_position < 0) hud_position = 3;
+        if (hud_position > 3) hud_position = 0;
+    } else if (menu_index == 2) {
+        hud_size += dir;
+        if (hud_size < 0) hud_size = 2;
+        if (hud_size > 2) hud_size = 0;
+    } else if (menu_index == 3) {
+        hud_color += dir;
+        if (hud_color < 0) hud_color = 6;
+        if (hud_color > 6) hud_color = 0;
+    } else if (menu_index == 4) {
+        show_fps = !show_fps;
+    } else if (menu_index == 5) {
+        show_battery = !show_battery;
+    } else if (menu_index == 6) {
+        show_time = !show_time;
+    } else if (menu_index == 7) {
+        hud_language = !hud_language;
+    } else if (menu_index == 8) {
+        toggle_combo_mode += dir;
+        if (toggle_combo_mode < 0) toggle_combo_mode = 2;
+        if (toggle_combo_mode > 2) toggle_combo_mode = 0;
     }
 }
 
 static void draw_menu_line(unsigned int *pixels, int pitch, int x, int y, int selected, const char *label, const char *value) {
-    unsigned int line_color = selected ? 0xFFFFFF00 : 0xFFFFFFFF;
+    int scale = 1;
+    unsigned int color = selected ? 0xFFFFFF00 : 0xFFFFFFFF;
 
     if (selected) {
-        draw_text_shadow(pixels, pitch, x, y, ">", line_color, 1);
+        draw_text_shadow(pixels, pitch, x, y, ">", color, scale);
     }
 
-    draw_text_shadow(pixels, pitch, x + 14, y, label, line_color, 1);
-    draw_text_shadow(pixels, pitch, x + 228, y, value, line_color, 1);
+    draw_text_shadow(pixels, pitch, x + 12, y, label, color, scale);
+    draw_text_shadow(pixels, pitch, x + 150, y, value, color, scale);
 }
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    int x = 28;
-    int y = 40;
-    int w = 420;
-    int h = 220;
-    int line_y;
-    int i;
+    int x = 20;
+    int y = 24;
+    int w = 330;
+    int h = 150;
 
-    unsigned int bg = get_menu_bg_color_value();
-    unsigned int border = get_text_color_value();
-    unsigned int title = get_text_color_value();
+    draw_rect(pixels, pitch, x - 8, y - 8, w, h, 0xCC000000);
+    draw_rect(pixels, pitch, x - 8, y - 8, w, 1, 0xFFFFFFFF);
+    draw_rect(pixels, pitch, x - 8, y + h - 1, w, 1, 0xFFFFFFFF);
+    draw_rect(pixels, pitch, x - 8, y - 8, 1, h, 0xFFFFFFFF);
+    draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, 0xFFFFFFFF);
+
+    if (hud_language == LANG_ES) {
+        draw_text_shadow(pixels, pitch, x, y, "VITAHUD MENU", 0xFF00FFFF, 1);
+        y += 14;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 0, "HUD", onoff_name(hud_enabled)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 1, "POSICION", position_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 2, "TAMANO", size_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 3, "COLOR", color_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 4, "FPS", onoff_name(show_fps)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 5, "BATERIA", onoff_name(show_battery)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 6, "HORA", onoff_name(show_time)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 7, "IDIOMA", language_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 8, "COMBO", toggle_name());
+    } else {
+        draw_text_shadow(pixels, pitch, x, y, "VITAHUD MENU", 0xFF00FFFF, 1);
+        y += 14;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 0, "HUD", onoff_name(hud_enabled)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 1, "POSITION", position_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 2, "SIZE", size_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 3, "COLOR", color_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 4, "FPS", onoff_name(show_fps)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 5, "BATTERY", onoff_name(show_battery)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 6, "TIME", onoff_name(show_time)); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 7, "LANGUAGE", language_name()); y += 12;
+        draw_menu_line(pixels, pitch, x, y, menu_index == 8, "COMBO", toggle_name());
+    }
+
+    draw_text_shadow(pixels, pitch, x, y + 14, "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE", 0xFFFFFFFF, 1);
 
     (void)screen_w;
     (void)screen_h;
-
-    draw_rect(pixels, pitch, x - 8, y - 8, w, h, bg);
-    draw_rect(pixels, pitch, x - 8, y - 8, w, 1, border);
-    draw_rect(pixels, pitch, x - 8, y + h - 1, w, 1, border);
-    draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
-    draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
-
-    draw_text_shadow(pixels, pitch, x, y, tr(TXT_TITLE), title, 2);
-
-    line_y = y + 20;
-
-    for (i = 0; i < MENU_ITEMS_COUNT; i++) {
-        draw_menu_line(
-            pixels,
-            pitch,
-            x,
-            line_y,
-            menu_index == i,
-            menu_label_name(i),
-            menu_value_name(i)
-        );
-        line_y += 13;
-    }
-
-    draw_text_shadow(pixels, pitch, x, y + 182, tr(TXT_FOOTER), 0xFFFFFFFF, 1);
 }
 
 static void handle_input(void) {
     SceCtrlData pad;
-    unsigned int buttons;
-    unsigned int pressed;
-    unsigned int toggle_combo;
-    int toggle_down;
-    int menu_down;
-
     sceCtrlPeekBufferPositive(0, &pad, 1);
 
-    buttons = pad.buttons;
-    pressed = buttons & ~last_buttons;
+    unsigned int buttons = pad.buttons;
+    unsigned int pressed = buttons & ~last_buttons;
 
-    toggle_combo = get_toggle_combo();
-    toggle_down = ((buttons & toggle_combo) == toggle_combo);
-    menu_down = ((buttons & MENU_COMBO) == MENU_COMBO);
+    unsigned int toggle_combo = get_toggle_combo();
+    int toggle_down = ((buttons & toggle_combo) == toggle_combo);
+    int menu_down = ((buttons & MENU_COMBO) == MENU_COMBO);
 
     if (menu_down && !last_menu_down) {
         menu_open = !menu_open;
@@ -881,12 +501,12 @@ static void handle_input(void) {
     if (menu_open) {
         if (pressed & SCE_CTRL_UP) {
             menu_index--;
-            if (menu_index < 0) menu_index = MENU_ITEMS_COUNT - 1;
+            if (menu_index < 0) menu_index = 8;
         }
 
         if (pressed & SCE_CTRL_DOWN) {
             menu_index++;
-            if (menu_index >= MENU_ITEMS_COUNT) menu_index = 0;
+            if (menu_index > 8) menu_index = 0;
         }
 
         if (pressed & SCE_CTRL_LEFT) {
@@ -914,72 +534,45 @@ static void handle_input(void) {
 static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int battery = scePowerGetBatteryLifePercent();
 
-    char fps_text[16];
+    char fps_text[12];
     char battery_text[8];
-    char time_text[16];
-    char ip_text[32];
-
-    int scale;
-    int gap_small;
-    int gap_big;
-
-    int fps_w;
-    int battery_text_w;
-    int time_w;
-    int ip_w;
-
-    int icon_w;
-    int icon_h;
-
-    int total_w = 0;
-    int text_h;
-    int total_h;
-    int margin = 8;
-    int start_x = margin;
-    int start_y = margin;
-    int x;
-    unsigned int text_color = get_text_color_value();
-
-    get_hud_metrics(&scale, &gap_small, &gap_big);
+    char time_text[10];
 
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
     build_time_text(time_text);
-    build_ip_text(ip_text);
 
-    fps_w = show_fps ? text_width(fps_text, scale) : 0;
-    battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
-    time_w = show_time ? text_width(time_text, scale) : 0;
-    ip_w = show_ip ? text_width(ip_text, scale) : 0;
+    int scale = get_scale();
 
-    icon_w = show_battery ? ((13 * scale) + (2 * scale)) : 0;
-    icon_h = 7 * scale;
+    int gap_small = 2 * scale;
+    int gap_big = 5 * scale;
 
-    if (show_fps) {
-        total_w += fps_w;
-    }
+    int fps_w = show_fps ? text_width(fps_text, scale) : 0;
+    int battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
+    int time_w = show_time ? text_width(time_text, scale) : 0;
 
-    if (show_battery) {
-        if (total_w > 0) total_w += gap_big;
-        total_w += battery_text_w + gap_small + icon_w;
-    }
+    int icon_w = show_battery ? ((13 * scale) + (2 * scale)) : 0;
+    int icon_h = 7 * scale;
 
-    if (show_time) {
-        if (total_w > 0) total_w += gap_big;
-        total_w += time_w;
-    }
+    int total_w = 0;
 
-    if (show_ip) {
-        if (total_w > 0) total_w += gap_big;
-        total_w += ip_w;
-    }
+    if (show_fps) total_w += fps_w;
+    if (show_fps && show_battery) total_w += gap_big;
+    if (show_battery) total_w += battery_text_w + gap_small + icon_w;
+    if ((show_fps || show_battery) && show_time) total_w += gap_big;
+    if (show_time) total_w += time_w;
 
     if (total_w <= 0) {
         return;
     }
 
-    text_h = 7 * scale;
-    total_h = text_h;
+    int text_h = 7 * scale;
+    int total_h = text_h;
+
+    int margin = 8;
+
+    int start_x = margin;
+    int start_y = margin;
 
     if (hud_position == POS_BOTTOM_RIGHT || hud_position == POS_TOP_RIGHT) {
         start_x = screen_w - total_w - margin;
@@ -993,45 +586,44 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         return;
     }
 
-    x = start_x;
+    unsigned int text_color = get_text_color();
+
+    int x = start_x;
 
     if (show_fps) {
         draw_text_shadow(pixels, pitch, x, start_y, fps_text, text_color, scale);
         x += fps_w;
+
+        if (show_battery || show_time) {
+            x += gap_big;
+        }
     }
 
     if (show_battery) {
-        if (x != start_x) x += gap_big;
-
         draw_text_shadow(pixels, pitch, x, start_y, battery_text, text_color, scale);
         x += battery_text_w + gap_small;
 
-        draw_battery_icon(pixels, pitch, x, start_y + ((text_h - icon_h) / 2), battery, scale);
+        int icon_y = start_y + ((text_h - icon_h) / 2);
+        draw_battery_icon(pixels, pitch, x, icon_y, battery, scale);
         x += icon_w;
+
+        if (show_time) {
+            x += gap_big;
+        }
     }
 
     if (show_time) {
-        if (x != start_x) x += gap_big;
         draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale);
-        x += time_w;
-    }
-
-    if (show_ip) {
-        if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, ip_text, text_color, scale);
     }
 }
 
 static void draw_all(void) {
     SceDisplayFrameBuf fb;
-    unsigned int *pixels;
-    int screen_w;
-    int screen_h;
-    int pitch;
-
     fb.size = sizeof(SceDisplayFrameBuf);
 
-    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0 || !fb.base) {
+    int res = sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME);
+
+    if (res < 0 || !fb.base) {
         return;
     }
 
@@ -1039,10 +631,11 @@ static void draw_all(void) {
         return;
     }
 
-    pixels = (unsigned int *)fb.base;
-    screen_w = fb.width;
-    screen_h = fb.height;
-    pitch = fb.pitch;
+    unsigned int *pixels = (unsigned int *)fb.base;
+
+    int screen_w = fb.width;
+    int screen_h = fb.height;
+    int pitch = fb.pitch;
 
     if (hud_enabled) {
         draw_hud(pixels, pitch, screen_w, screen_h);
@@ -1059,8 +652,10 @@ static int hud_thread(SceSize args, void *argp) {
 
     while (1) {
         sceDisplayWaitVblankStart();
+
         handle_input();
         update_fps();
+
         draw_all();
     }
 
@@ -1068,12 +663,10 @@ static int hud_thread(SceSize args, void *argp) {
 }
 
 int module_start(SceSize args, void *argp) {
-    SceUID thid;
-
     (void)args;
     (void)argp;
 
-    thid = sceKernelCreateThread(
+    SceUID thid = sceKernelCreateThread(
         "VitaHUD Thread",
         hud_thread,
         0x10000100,
@@ -1093,5 +686,6 @@ int module_start(SceSize args, void *argp) {
 int module_stop(SceSize args, void *argp) {
     (void)args;
     (void)argp;
+
     return SCE_KERNEL_STOP_SUCCESS;
 }
