@@ -1,0 +1,33 @@
+name: Build VitaHUD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: vitasdk/vitasdk:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+
+      - name: Build
+        run: |
+          cd build
+          make
+
+      - name: Upload vitahud.suprx
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitahud-suprx
+          path: build/vitahud.suprx
