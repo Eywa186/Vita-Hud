@@ -4,6 +4,7 @@
 #include <psp2/power.h>
 #include <psp2/rtc.h>
 #include <psp2/display.h>
+#include <psp2/appmgr.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
@@ -145,10 +146,11 @@
 #define ITEM_CPU_HUD      26
 #define ITEM_BUS_HUD      27
 #define ITEM_GPU_HUD      28
-#define ITEM_RAM_HUD      29
-#define ITEM_IP_HUD       30
-#define ITEM_RESET        31
-#define ITEM_COUNT        32
+#define ITEM_APP_ID_HUD   29
+#define ITEM_RAM_HUD      30
+#define ITEM_IP_HUD       31
+#define ITEM_RESET        32
+#define ITEM_COUNT        33
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -169,6 +171,7 @@ static int show_charging = 0;
 static int show_cpu = 0;
 static int show_bus = 0;
 static int show_gpu = 0;
+static int show_app_id = 0;
 static int show_ram = 0;
 static int show_ip = 0;
 static int use_24h_time = 0;
@@ -346,6 +349,7 @@ static void reset_defaults(void) {
     show_cpu = 0;
     show_bus = 0;
     show_gpu = 0;
+    show_app_id = 0;
     show_ram = 0;
     show_ip = 0;
     use_24h_time = 0;
@@ -386,6 +390,7 @@ static void clamp_settings(void) {
     if (show_cpu < 0 || show_cpu > 1) show_cpu = 0;
     if (show_bus < 0 || show_bus > 1) show_bus = 0;
     if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
+    if (show_app_id < 0 || show_app_id > 1) show_app_id = 0;
     if (show_ram < 0 || show_ram > 1) show_ram = 0;
     if (show_ip < 0 || show_ip > 1) show_ip = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
@@ -433,6 +438,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_cpu", show_cpu);
     write_config_line(fd, "show_bus", show_bus);
     write_config_line(fd, "show_gpu", show_gpu);
+    write_config_line(fd, "show_app_id", show_app_id);
     write_config_line(fd, "show_ram", show_ram);
     write_config_line(fd, "show_ip", show_ip);
     write_config_line(fd, "time_24h", use_24h_time);
@@ -468,6 +474,7 @@ static void load_settings_from_buffer(char *buf) {
     show_cpu = get_config_int(buf, "show_cpu", show_cpu);
     show_bus = get_config_int(buf, "show_bus", show_bus);
     show_gpu = get_config_int(buf, "show_gpu", show_gpu);
+    show_app_id = get_config_int(buf, "show_app_id", show_app_id);
     show_ram = get_config_int(buf, "show_ram", show_ram);
     show_ip = get_config_int(buf, "show_ip", show_ip);
     use_24h_time = get_config_int(buf, "time_24h", use_24h_time);
@@ -743,25 +750,75 @@ static void build_charging_text(char *out) {
 
 static void build_cpu_text(char *out) {
     int pos = 0;
+    int mhz = scePowerGetArmClockFrequency();
 
-    /* Safe placeholder. Live CPU data will be wired later after one call works. */
-    pos = append_text(out, pos, "CPU --M");
+    if (mhz < 0) {
+        mhz = 0;
+    }
+
+    pos = append_text(out, pos, "CPU ");
+    pos = append_int(out, pos, mhz);
+    pos = append_text(out, pos, "M");
     out[pos] = '\0';
 }
 
 static void build_bus_text(char *out) {
     int pos = 0;
+    int mhz = scePowerGetBusClockFrequency();
 
-    /* Safe placeholder. */
-    pos = append_text(out, pos, "BUS --M");
+    if (mhz < 0) {
+        mhz = 0;
+    }
+
+    pos = append_text(out, pos, "BUS ");
+    pos = append_int(out, pos, mhz);
+    pos = append_text(out, pos, "M");
     out[pos] = '\0';
 }
 
 static void build_gpu_text(char *out) {
     int pos = 0;
+    int mhz = scePowerGetGpuClockFrequency();
 
-    /* Safe placeholder. */
-    pos = append_text(out, pos, "GPU --M");
+    if (mhz < 0) {
+        mhz = 0;
+    }
+
+    pos = append_text(out, pos, "GPU ");
+    pos = append_int(out, pos, mhz);
+    pos = append_text(out, pos, "M");
+    out[pos] = '\0';
+}
+
+static void build_app_id_text(char *out) {
+    int pos = 0;
+    char title_id[16];
+    int result;
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        title_id[i] = 0;
+    }
+
+    /*
+     * Live Title ID / App ID.
+     * Uses the current process ID, then asks AppMgr for the title ID.
+     * This avoids network/RAM calls and keeps the risky stuff out.
+     */
+    result = sceAppMgrGetNameById(sceKernelGetProcessId(), title_id);
+
+    pos = append_text(out, pos, "APP ");
+
+    if (result < 0 || title_id[0] == 0) {
+        pos = append_text(out, pos, "UNKNOWN");
+    } else {
+        i = 0;
+
+        while (title_id[i] && i < 12) {
+            out[pos++] = title_id[i++];
+        }
+    }
+
     out[pos] = '\0';
 }
 
@@ -1385,6 +1442,7 @@ static const char *menu_label(int item) {
         case ITEM_CPU_HUD:      return "CPU HUD";
         case ITEM_BUS_HUD:      return "BUS HUD";
         case ITEM_GPU_HUD:      return "GPU HUD";
+        case ITEM_APP_ID_HUD:   return "APP ID HUD";
         case ITEM_RAM_HUD:      return "RAM HUD";
         case ITEM_IP_HUD:       return "IP HUD";
         case ITEM_RESET:        return "RESET DEFAULTS";
@@ -1421,6 +1479,7 @@ static const char *menu_value(int item) {
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
         case ITEM_BUS_HUD:      return onoff_name(show_bus);
         case ITEM_GPU_HUD:      return onoff_name(show_gpu);
+        case ITEM_APP_ID_HUD:   return onoff_name(show_app_id);
         case ITEM_RAM_HUD:      return onoff_name(show_ram);
         case ITEM_IP_HUD:       return onoff_name(show_ip);
         case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : "PRESS X";
@@ -1581,6 +1640,10 @@ static void menu_change(int dir) {
 
         case ITEM_GPU_HUD:
             show_gpu = !show_gpu;
+            break;
+
+        case ITEM_APP_ID_HUD:
+            show_app_id = !show_app_id;
             break;
 
         case ITEM_RAM_HUD:
@@ -1833,6 +1896,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     char cpu_text[16];
     char bus_text[16];
     char gpu_text[16];
+    char app_id_text[24];
     char ram_text[16];
     char ip_text[20];
 
@@ -1848,6 +1912,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int cpu_w;
     int bus_w;
     int gpu_w;
+    int app_id_w;
     int ram_w;
     int ip_w;
     int force_stacked;
@@ -1880,10 +1945,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_cpu_text(cpu_text);
     build_bus_text(bus_text);
     build_gpu_text(gpu_text);
+    build_app_id_text(app_id_text);
     build_ram_text(ram_text);
     build_ip_text(ip_text);
 
-    force_stacked = show_cpu || show_bus || show_gpu || show_ram || show_ip;
+    force_stacked = show_cpu || show_bus || show_gpu || show_app_id || show_ram || show_ip;
 
     fps_w = show_fps ? text_width(fps_text, scale) : 0;
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
@@ -1892,6 +1958,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     cpu_w = show_cpu ? text_width(cpu_text, scale) : 0;
     bus_w = show_bus ? text_width(bus_text, scale) : 0;
     gpu_w = show_gpu ? text_width(gpu_text, scale) : 0;
+    app_id_w = show_app_id ? text_width(app_id_text, scale) : 0;
     ram_w = show_ram ? text_width(ram_text, scale) : 0;
     ip_w = show_ip ? text_width(ip_text, scale) : 0;
 
@@ -1913,6 +1980,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_cpu && cpu_w > total_w) total_w = cpu_w;
         if (show_bus && bus_w > total_w) total_w = bus_w;
         if (show_gpu && gpu_w > total_w) total_w = gpu_w;
+        if (show_app_id && app_id_w > total_w) total_w = app_id_w;
         if (show_ram && ram_w > total_w) total_w = ram_w;
         if (show_ip && ip_w > total_w) total_w = ip_w;
 
@@ -1925,6 +1993,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_cpu) total_h += text_h + gap_small;
         if (show_bus) total_h += text_h + gap_small;
         if (show_gpu) total_h += text_h + gap_small;
+        if (show_app_id) total_h += text_h + gap_small;
         if (show_ram) total_h += text_h + gap_small;
         if (show_ip) total_h += text_h + gap_small;
 
@@ -1962,6 +2031,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_gpu) {
             if (total_w > 0) total_w += gap_big;
             total_w += gpu_w;
+        }
+
+        if (show_app_id) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += app_id_w;
         }
 
         if (show_ram) {
@@ -2034,6 +2108,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         if (show_gpu) {
             draw_text_shadow(pixels, pitch, x, y, gpu_text, text_color, scale);
+            y += text_h + gap_small;
+        }
+
+        if (show_app_id) {
+            draw_text_shadow(pixels, pitch, x, y, app_id_text, text_color, scale);
             y += text_h + gap_small;
         }
 
