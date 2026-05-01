@@ -1,0 +1,7 @@
+{
+  "name": "VitaHUD",
+  "version": "1.0",
+  "author": "Justin + ChatGPT",
+  "description": "PS Vita PSP-style HUD overlay: FPS, battery percent, and 12-hour time. Toggle with L+R+SELECT.",
+  "main": "vitahud.suprx"
+}
