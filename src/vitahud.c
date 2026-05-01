@@ -204,6 +204,22 @@ static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
 
+/*
+ * PSVshellPlus-style stability model:
+ * Do NOT call system APIs inside draw_hud().
+ * Update cached strings on a timer, then draw cached text only.
+ */
+#define SYSTEM_CACHE_UPDATE_USEC 500000
+
+static SceUInt64 last_system_cache_tick = 0;
+
+static char cached_cpu_text[16] = "CPU --M";
+static char cached_bus_text[16] = "BUS --M";
+static char cached_gpu_text[16] = "GPU --M";
+static char cached_app_id_text[24] = "APP UNKNOWN";
+static char cached_ram_text[16] = "RAM OFF";
+static char cached_ip_text[20] = "IP OFF";
+
 static int g_screen_w = 960;
 static int g_screen_h = 544;
 static int last_hud_clear_x = -1;
@@ -230,6 +246,26 @@ static void put_2digits(char *out, int value) {
 static int append_text(char *out, int pos, const char *text) {
     while (*text) out[pos++] = *text++;
     return pos;
+}
+
+static void copy_cstr(char *dst, int dst_size, const char *src) {
+    int i = 0;
+
+    if (!dst || dst_size <= 0) {
+        return;
+    }
+
+    if (!src) {
+        dst[0] = '\0';
+        return;
+    }
+
+    while (src[i] && i < dst_size - 1) {
+        dst[i] = src[i];
+        i++;
+    }
+
+    dst[i] = '\0';
 }
 
 static int append_int(char *out, int pos, int value) {
@@ -753,45 +789,15 @@ static void build_charging_text(char *out) {
 }
 
 static void build_cpu_text(char *out) {
-    int pos = 0;
-    int mhz = scePowerGetArmClockFrequency();
-
-    if (mhz < 0) {
-        mhz = 0;
-    }
-
-    pos = append_text(out, pos, "CPU ");
-    pos = append_int(out, pos, mhz);
-    pos = append_text(out, pos, "M");
-    out[pos] = '\0';
+    copy_cstr(out, 16, cached_cpu_text);
 }
 
 static void build_bus_text(char *out) {
-    int pos = 0;
-    int mhz = scePowerGetBusClockFrequency();
-
-    if (mhz < 0) {
-        mhz = 0;
-    }
-
-    pos = append_text(out, pos, "BUS ");
-    pos = append_int(out, pos, mhz);
-    pos = append_text(out, pos, "M");
-    out[pos] = '\0';
+    copy_cstr(out, 16, cached_bus_text);
 }
 
 static void build_gpu_text(char *out) {
-    int pos = 0;
-    int mhz = scePowerGetGpuClockFrequency();
-
-    if (mhz < 0) {
-        mhz = 0;
-    }
-
-    pos = append_text(out, pos, "GPU ");
-    pos = append_int(out, pos, mhz);
-    pos = append_text(out, pos, "M");
-    out[pos] = '\0';
+    copy_cstr(out, 16, cached_gpu_text);
 }
 
 static int copy_title_id_to_output(char *out, int pos, const char *title_id) {
@@ -804,7 +810,7 @@ static int copy_title_id_to_output(char *out, int pos, const char *title_id) {
     return pos;
 }
 
-static void build_app_id_text(char *out) {
+static void build_app_id_live_text(char *out) {
     int pos = 0;
     char title_id[32];
     int result;
@@ -841,21 +847,68 @@ static void build_app_id_text(char *out) {
         pos = copy_title_id_to_output(out, pos, title_id);
     }
 
-    out[pos] = '\0';
+    out[pos] = ' ';
+}
+
+static void build_app_id_text(char *out) {
+    copy_cstr(out, 24, cached_app_id_text);
 }
 
 static void build_ram_text(char *out) {
-    int pos = 0;
-
-    pos = append_text(out, pos, "RAM OFF");
-    out[pos] = '\0';
+    copy_cstr(out, 16, cached_ram_text);
 }
 
 static void build_ip_text(char *out) {
+    copy_cstr(out, 20, cached_ip_text);
+}
+
+static void build_mhz_cache_text(char *out, int out_size, const char *label, int mhz) {
     int pos = 0;
 
-    pos = append_text(out, pos, "IP OFF");
+    if (mhz < 0) {
+        mhz = 0;
+    }
+
+    pos = append_text(out, pos, label);
+    pos = append_text(out, pos, " ");
+    pos = append_int(out, pos, mhz);
+    pos = append_text(out, pos, "M");
     out[pos] = '\0';
+}
+
+static void update_system_cache(void) {
+    SceRtcTick tick;
+    SceUInt64 now;
+    char temp_app[24];
+
+    sceRtcGetCurrentTick(&tick);
+    now = tick.tick;
+
+    if (last_system_cache_tick != 0 && now - last_system_cache_tick < SYSTEM_CACHE_UPDATE_USEC) {
+        return;
+    }
+
+    last_system_cache_tick = now;
+
+    /*
+     * Cache only.
+     * These calls are no longer inside draw_hud().
+     * This matches the safer PSVshellPlus idea: update system data on a timer,
+     * then draw cached values.
+     */
+    build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", scePowerGetArmClockFrequency());
+    build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", scePowerGetBusClockFrequency());
+    build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", scePowerGetGpuClockFrequency());
+
+    build_app_id_live_text(temp_app);
+    copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
+
+    /*
+     * RAM/IP intentionally remain placeholders for now.
+     * Next step: port PSVshellPlus-style kernel RAM provider.
+     */
+    copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM OFF");
+    copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
 }
 
 static void build_time_text(char *out) {
@@ -2317,6 +2370,7 @@ static int hud_thread(SceSize args, void *argp) {
 
         handle_input();
         update_fps();
+        update_system_cache();
 
         /*
          * NO DELAY.
