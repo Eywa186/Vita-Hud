@@ -7,6 +7,17 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
+/*
+ * Optional advanced system info:
+ * CPU/GPU clocks use ScePower, already linked.
+ * IP/RAM can be enabled later by defining VITAHUD_ENABLE_EXTRA_SYSINFO
+ * and adding the needed VitaSDK stubs after this build is stable.
+ */
+#ifdef VITAHUD_ENABLE_EXTRA_SYSINFO
+#include <psp2/net/netctl.h>
+#include <psp2/kernel/sysmem.h>
+#endif
+
 #define CONFIG_DIR  "ux0:data/VitaHUD"
 #define CONFIG_PATH "ux0:data/VitaHUD/config.txt"
 
@@ -116,6 +127,10 @@
 #define PROFILE_3 2
 #define PROFILE_COUNT 3
 
+#define SCROLL_STYLE_LIST  0
+#define SCROLL_STYLE_WHEEL 1
+#define SCROLL_STYLE_COUNT 2
+
 #define ITEM_HUD          0
 #define ITEM_LAYOUT       1
 #define ITEM_POSITION     2
@@ -142,8 +157,10 @@
 #define ITEM_PROFILE      23
 #define ITEM_SAVE_PROFILE 24
 #define ITEM_LOAD_PROFILE 25
-#define ITEM_RESET        26
-#define ITEM_COUNT        27
+#define ITEM_ADV_INFO     26
+#define ITEM_SCROLL_STYLE 27
+#define ITEM_RESET        28
+#define ITEM_COUNT        29
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -176,6 +193,8 @@ static int auto_hide_mode = AUTO_HIDE_OFF;
 static int toggle_combo_mode = TOGGLE_SELECT;
 static int theme_id = THEME_DEFAULT;
 static int profile_id = PROFILE_1;
+static int advanced_info_enabled = 0;
+static int menu_scroll_style = SCROLL_STYLE_WHEEL;
 
 static int temporary_show_frames = 0;
 static int save_message_frames = 0;
@@ -184,6 +203,8 @@ static int reset_message_frames = 0;
 static int last_toggle_down = 0;
 static int last_menu_down = 0;
 static unsigned int last_buttons = 0;
+static int menu_up_hold_frames = 0;
+static int menu_down_hold_frames = 0;
 
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
@@ -346,6 +367,8 @@ static void reset_defaults(void) {
     toggle_combo_mode = TOGGLE_SELECT;
     theme_id = THEME_DEFAULT;
     profile_id = PROFILE_1;
+    advanced_info_enabled = 0;
+    menu_scroll_style = SCROLL_STYLE_WHEEL;
 
     temporary_show_frames = 0;
     reset_message_frames = 180;
@@ -381,6 +404,8 @@ static void clamp_settings(void) {
     if (toggle_combo_mode < 0 || toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = TOGGLE_SELECT;
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
     if (profile_id < 0 || profile_id >= PROFILE_COUNT) profile_id = PROFILE_1;
+    if (advanced_info_enabled < 0 || advanced_info_enabled > 1) advanced_info_enabled = 0;
+    if (menu_scroll_style < 0 || menu_scroll_style >= SCROLL_STYLE_COUNT) menu_scroll_style = SCROLL_STYLE_WHEEL;
 }
 
 static void write_config_line(SceUID fd, const char *key, int value) {
@@ -423,6 +448,8 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "toggle_combo", toggle_combo_mode);
     write_config_line(fd, "theme", theme_id);
     write_config_line(fd, "profile", profile_id);
+    write_config_line(fd, "advanced_info", advanced_info_enabled);
+    write_config_line(fd, "scroll_style", menu_scroll_style);
 }
 
 static void load_settings_from_buffer(char *buf) {
@@ -453,6 +480,8 @@ static void load_settings_from_buffer(char *buf) {
     toggle_combo_mode = get_config_int(buf, "toggle_combo", toggle_combo_mode);
     theme_id = get_config_int(buf, "theme", theme_id);
     profile_id = get_config_int(buf, "profile", profile_id);
+    advanced_info_enabled = get_config_int(buf, "advanced_info", advanced_info_enabled);
+    menu_scroll_style = get_config_int(buf, "scroll_style", menu_scroll_style);
 
     clamp_settings();
 }
@@ -929,6 +958,7 @@ static unsigned char font5x7(char c, int row) {
         case '>': { static const unsigned char g[7] = {0x08,0x04,0x02,0x01,0x02,0x04,0x08}; return g[row]; }
         case '/': { static const unsigned char g[7] = {0x01,0x02,0x02,0x04,0x08,0x08,0x10}; return g[row]; }
         case '+': { static const unsigned char g[7] = {0x00,0x04,0x04,0x1F,0x04,0x04,0x00}; return g[row]; }
+        case '^': { static const unsigned char g[7] = {0x04,0x0A,0x11,0x00,0x00,0x00,0x00}; return g[row]; }
         case ' ': return 0x00;
 
         default:
@@ -1232,6 +1262,14 @@ static const char *auto_hide_name(void) {
     }
 }
 
+static const char *scroll_style_name(void) {
+    switch (menu_scroll_style) {
+        case SCROLL_STYLE_LIST:  return "LIST";
+        case SCROLL_STYLE_WHEEL:
+        default:                 return "WHEEL";
+    }
+}
+
 static const char *theme_name(void) {
     switch (theme_id) {
         case THEME_VITASHELL: return "VITASHELL";
@@ -1313,6 +1351,8 @@ static const char *menu_label(int item) {
         case ITEM_PROFILE:      return "PROFILE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
+        case ITEM_ADV_INFO:     return "ADVANCED INFO";
+        case ITEM_SCROLL_STYLE: return "SCROLL STYLE";
         case ITEM_RESET:        return "RESET DEFAULTS";
         default:                return "";
     }
@@ -1344,8 +1384,44 @@ static const char *menu_value(int item) {
         case ITEM_PROFILE:      return profile_name();
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? "SAVED" : "PRESS X";
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? "LOADED" : "PRESS X";
+        case ITEM_ADV_INFO:     return onoff_name(advanced_info_enabled);
+        case ITEM_SCROLL_STYLE: return scroll_style_name();
         case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : "PRESS X";
         default:                return "";
+    }
+}
+
+static int menu_item_is_action(int item) {
+    switch (item) {
+        case ITEM_SAVE_PROFILE:
+        case ITEM_LOAD_PROFILE:
+        case ITEM_RESET:
+            return 1;
+
+        default:
+            return 0;
+    }
+}
+
+static void menu_move(int dir) {
+    menu_index += dir;
+
+    if (menu_scroll_style == SCROLL_STYLE_WHEEL) {
+        if (menu_index < 0) {
+            menu_index = ITEM_COUNT - 1;
+        }
+
+        if (menu_index >= ITEM_COUNT) {
+            menu_index = 0;
+        }
+    } else {
+        if (menu_index < 0) {
+            menu_index = 0;
+        }
+
+        if (menu_index >= ITEM_COUNT) {
+            menu_index = ITEM_COUNT - 1;
+        }
     }
 }
 
@@ -1492,6 +1568,16 @@ static void menu_change(int dir) {
             load_profile();
             break;
 
+        case ITEM_ADV_INFO:
+            advanced_info_enabled = !advanced_info_enabled;
+            break;
+
+        case ITEM_SCROLL_STYLE:
+            menu_scroll_style += dir;
+            if (menu_scroll_style < 0) menu_scroll_style = SCROLL_STYLE_COUNT - 1;
+            if (menu_scroll_style >= SCROLL_STYLE_COUNT) menu_scroll_style = 0;
+            break;
+
         case ITEM_RESET:
             reset_defaults();
             break;
@@ -1517,7 +1603,104 @@ static void draw_menu_line(
     }
 
     draw_text_shadow(pixels, pitch, x + 14, y, label, line_color, 1);
-    draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
+
+    if (selected && !menu_item_is_action(menu_index)) {
+        draw_text_shadow(pixels, pitch, x + 176, y, "<", line_color, 1);
+        draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
+        draw_text_shadow(pixels, pitch, x + 330, y, ">", line_color, 1);
+    } else {
+        draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
+    }
+}
+
+static void build_label_number(char *out, const char *label, int value, const char *suffix) {
+    int pos = 0;
+
+    pos = append_text(out, pos, label);
+    pos = append_int(out, pos, value);
+
+    if (suffix) {
+        pos = append_text(out, pos, suffix);
+    }
+
+    out[pos] = '\0';
+}
+
+static void draw_advanced_info(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
+    int x = 474;
+    int y = 44;
+    int w = 300;
+    int h = 112;
+    int line_y;
+    int arm = scePowerGetArmClockFrequency();
+    int bus = scePowerGetBusClockFrequency();
+    int gpu = scePowerGetGpuClockFrequency();
+
+    char line[64];
+
+    unsigned int bg = get_menu_bg();
+    unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
+    unsigned int text = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int select = color_value(menu_select_color, 0xFF00FFFF);
+
+    if (!advanced_info_enabled) {
+        return;
+    }
+
+    if (screen_w <= 480 || screen_h <= 272) {
+        return;
+    }
+
+    if (menu_bg_color != BG_TRANSPARENT) {
+        draw_rect(pixels, pitch, x - 8, y - 8, w, h, bg);
+    }
+
+    draw_rect(pixels, pitch, x - 8, y - 8, w, 1, border);
+    draw_rect(pixels, pitch, x - 8, y + h - 1, w, 1, border);
+    draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
+    draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
+
+    draw_text_shadow(pixels, pitch, x, y, "SYSTEM INFO", select, 1);
+
+    line_y = y + 18;
+
+    build_label_number(line, "CPU ", arm, " MHZ");
+    draw_text_shadow(pixels, pitch, x, line_y, line, text, 1);
+    line_y += 12;
+
+    build_label_number(line, "BUS ", bus, " MHZ");
+    draw_text_shadow(pixels, pitch, x, line_y, line, text, 1);
+    line_y += 12;
+
+    build_label_number(line, "GPU ", gpu, " MHZ");
+    draw_text_shadow(pixels, pitch, x, line_y, line, text, 1);
+    line_y += 12;
+
+#ifdef VITAHUD_ENABLE_EXTRA_SYSINFO
+    build_label_number(line, "RAM FREE ", sceKernelGetFreeMemorySize() / 1024, " KB");
+    draw_text_shadow(pixels, pitch, x, line_y, line, text, 1);
+    line_y += 12;
+
+    {
+        SceNetCtlInfo info;
+        info.ip_address[0] = '\0';
+
+        if (sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info) >= 0) {
+            char ip_line[64];
+            int pos = 0;
+            pos = append_text(ip_line, pos, "IP ");
+            pos = append_text(ip_line, pos, info.ip_address);
+            ip_line[pos] = '\0';
+            draw_text_shadow(pixels, pitch, x, line_y, ip_line, text, 1);
+        } else {
+            draw_text_shadow(pixels, pitch, x, line_y, "IP NOT CONNECTED", text, 1);
+        }
+    }
+#else
+    draw_text_shadow(pixels, pitch, x, line_y, "RAM EXTRA STUB OFF", text, 1);
+    line_y += 12;
+    draw_text_shadow(pixels, pitch, x, line_y, "IP EXTRA STUB OFF", text, 1);
+#endif
 }
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
@@ -1587,6 +1770,16 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         line_y += 12;
     }
 
+    if (menu_scroll > 0) {
+        draw_text_shadow(pixels, pitch, x + w - 32, y, "^", color_value(menu_select_color, 0xFF00FFFF), 1);
+    }
+
+    if (menu_scroll + visible < ITEM_COUNT) {
+        draw_text_shadow(pixels, pitch, x + w - 32, y + h - 36, "V", color_value(menu_select_color, 0xFF00FFFF), 1);
+    }
+
+    draw_advanced_info(pixels, pitch, screen_w, screen_h);
+
     draw_text_shadow(
         pixels,
         pitch,
@@ -1619,6 +1812,8 @@ static void handle_input(void) {
 
     if (menu_down && !last_menu_down) {
         menu_open = !menu_open;
+        menu_up_hold_frames = 0;
+        menu_down_hold_frames = 0;
     }
 
     if (!menu_open && toggle_down && !last_toggle_down) {
@@ -1633,20 +1828,28 @@ static void handle_input(void) {
     }
 
     if (menu_open) {
-        if (pressed & SCE_CTRL_UP) {
-            menu_index--;
+        if (buttons & SCE_CTRL_UP) {
+            menu_up_hold_frames++;
 
-            if (menu_index < 0) {
-                menu_index = ITEM_COUNT - 1;
+            if ((pressed & SCE_CTRL_UP) ||
+                menu_up_hold_frames == 18 ||
+                (menu_up_hold_frames > 18 && ((menu_up_hold_frames - 18) % 4) == 0)) {
+                menu_move(-1);
             }
+        } else {
+            menu_up_hold_frames = 0;
         }
 
-        if (pressed & SCE_CTRL_DOWN) {
-            menu_index++;
+        if (buttons & SCE_CTRL_DOWN) {
+            menu_down_hold_frames++;
 
-            if (menu_index >= ITEM_COUNT) {
-                menu_index = 0;
+            if ((pressed & SCE_CTRL_DOWN) ||
+                menu_down_hold_frames == 18 ||
+                (menu_down_hold_frames > 18 && ((menu_down_hold_frames - 18) % 4) == 0)) {
+                menu_move(1);
             }
+        } else {
+            menu_down_hold_frames = 0;
         }
 
         if (pressed & SCE_CTRL_LEFT) {
@@ -1663,6 +1866,8 @@ static void handle_input(void) {
 
         if (pressed & SCE_CTRL_CIRCLE) {
             menu_open = 0;
+            menu_up_hold_frames = 0;
+            menu_down_hold_frames = 0;
         }
     }
 
