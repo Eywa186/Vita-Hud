@@ -1535,7 +1535,7 @@ static int hud_thread(SceSize args, void *argp) {
          * Small delay gives some menus time to finish drawing
          * before VitaHUD writes over the framebuffer.
          */
-        sceKernelDelayThread(1000);
+        sceKernelDelayThread(2000);
 
         draw_all();
 
