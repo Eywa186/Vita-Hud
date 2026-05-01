@@ -316,28 +316,28 @@ static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
             break;
 
         case SIZE_MINI:
-            *scale = 1;
-            *gap_small = 1;
-            *gap_big = 3;
-            break;
-
-        case SIZE_SMALL:
-            *scale = 2;
-            *gap_small = 2;
-            *gap_big = 4;
-            break;
-
-        case SIZE_NORMAL:
             *scale = 2;
             *gap_small = 2;
             *gap_big = 5;
             break;
 
-        case SIZE_LARGE:
-        default:
+        case SIZE_SMALL:
             *scale = 3;
             *gap_small = 2;
-            *gap_big = 6;
+            *gap_big = 7;
+            break;
+
+        case SIZE_NORMAL:
+            *scale = 4;
+            *gap_small = 3;
+            *gap_big = 9;
+            break;
+
+        case SIZE_LARGE:
+        default:
+            *scale = 5;
+            *gap_small = 3;
+            *gap_big = 11;
             break;
     }
 }
@@ -974,11 +974,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
-    icon_scale = scale - 1;
-
-    if (icon_scale < 1) {
-        icon_scale = 1;
-    }
+    icon_scale = scale;
 
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
