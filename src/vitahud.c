@@ -142,9 +142,8 @@
 #define ITEM_PROFILE      23
 #define ITEM_SAVE_PROFILE 24
 #define ITEM_LOAD_PROFILE 25
-#define ITEM_SAVE_CONFIG  26
-#define ITEM_RESET        27
-#define ITEM_COUNT        28
+#define ITEM_RESET        26
+#define ITEM_COUNT        27
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -522,15 +521,37 @@ static void load_config(void) {
 
 static int save_profile(void) {
     char path[64];
+
+    /*
+     * Profiles are now the main save system.
+     * This saves the FULL VitaHUD setup:
+     * HUD, layout, offsets, font, colors, menu background,
+     * language, auto-hide, toggle combo, theme, and profile id.
+     */
     profile_path(path);
     return save_config_path(path);
 }
 
 static int load_profile(void) {
     char path[64];
+    int result;
+
+    /*
+     * load_settings_from_buffer() already restores the saved theme_id,
+     * HUD colors, menu colors, and menu_bg_color.
+     *
+     * Do NOT call apply_theme() here.
+     * apply_theme() would overwrite the exact custom colors/background
+     * that were saved inside the profile.
+     */
     profile_path(path);
-    save_message_frames = 180;
-    return load_config_path(path);
+    result = load_config_path(path);
+
+    if (result >= 0) {
+        save_message_frames = 180;
+    }
+
+    return result;
 }
 
 static void apply_theme(void) {
@@ -1292,7 +1313,6 @@ static const char *menu_label(int item) {
         case ITEM_PROFILE:      return "PROFILE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
-        case ITEM_SAVE_CONFIG:  return "SAVE CONFIG";
         case ITEM_RESET:        return "RESET DEFAULTS";
         default:                return "";
     }
@@ -1324,7 +1344,6 @@ static const char *menu_value(int item) {
         case ITEM_PROFILE:      return profile_name();
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? "SAVED" : "PRESS X";
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? "LOADED" : "PRESS X";
-        case ITEM_SAVE_CONFIG:  return save_message_frames > 0 ? "SAVED" : "PRESS X";
         case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : "PRESS X";
         default:                return "";
     }
@@ -1471,10 +1490,6 @@ static void menu_change(int dir) {
 
         case ITEM_LOAD_PROFILE:
             load_profile();
-            break;
-
-        case ITEM_SAVE_CONFIG:
-            save_config();
             break;
 
         case ITEM_RESET:
@@ -1942,7 +1957,8 @@ int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
 
-    load_config();
+    /* Auto-load Profile 1 on boot. Use LOAD PROFILE for Profile 2/3 manually. */
+    load_profile();
 
     thid = sceKernelCreateThread(
         "VitaHUD Thread",
