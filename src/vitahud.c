@@ -18,8 +18,7 @@
 #define SIZE_SMALL   2
 #define SIZE_NORMAL  3
 #define SIZE_LARGE   4
-#define SIZE_XLARGE  5
-#define SIZE_COUNT   6
+#define SIZE_COUNT   5
 
 #define COLOR_WHITE    0
 #define COLOR_GREEN    1
@@ -317,33 +316,27 @@ static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
             break;
 
         case SIZE_MINI:
-            *scale = 2;
+            *scale = 1;
             *gap_small = 1;
-            *gap_big = 2;
+            *gap_big = 3;
             break;
 
         case SIZE_SMALL:
             *scale = 2;
             *gap_small = 2;
-            *gap_big = 3;
+            *gap_big = 4;
             break;
 
         case SIZE_NORMAL:
             *scale = 2;
-            *gap_small = 3;
+            *gap_small = 2;
             *gap_big = 5;
             break;
 
         case SIZE_LARGE:
-            *scale = 3;
-            *gap_small = 2;
-            *gap_big = 4;
-            break;
-
-        case SIZE_XLARGE:
         default:
             *scale = 3;
-            *gap_small = 4;
+            *gap_small = 2;
             *gap_big = 6;
             break;
     }
@@ -506,6 +499,35 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
     }
 }
 
+static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int white = 0xFFFFFFFF;
+    int s = scale;
+
+    if (s < 1) {
+        s = 1;
+    }
+
+    draw_rect(pixels, pitch, x + (2 * s), y, 3 * s, s, white);
+    draw_rect(pixels, pitch, x + s, y + s, s, s, white);
+    draw_rect(pixels, pitch, x + (5 * s), y + s, s, s, white);
+
+    draw_rect(pixels, pitch, x, y + (2 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, white);
+
+    draw_rect(pixels, pitch, x, y + (3 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), s, s, white);
+
+    draw_rect(pixels, pitch, x, y + (4 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (6 * s), y + (4 * s), s, s, white);
+
+    draw_rect(pixels, pitch, x + s, y + (5 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (5 * s), y + (5 * s), s, s, white);
+    draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
+}
+
 static const char *onoff_name(int value) {
     return value ? "ON" : "OFF";
 }
@@ -542,11 +564,8 @@ static const char *size_name(void) {
             return "NORMAL";
 
         case SIZE_LARGE:
-            return "LARGE";
-
-        case SIZE_XLARGE:
         default:
-            return "XLARGE";
+            return "LARGE";
     }
 }
 
@@ -807,9 +826,9 @@ static void draw_menu_line(
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int x = 28;
-    int y = 42;
-    int w = 360;
-    int h = 170;
+    int y = 52;
+    int w = 390;
+    int h = 182;
     int line_y;
     int i;
 
@@ -825,9 +844,9 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
     draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
 
-    draw_text_shadow(pixels, pitch, x, y, "VITAHUD MENU", 0xFF00FFFF, 2);
+    draw_text_shadow(pixels, pitch, x, y, "VITAHUD MENU", 0xFF00FFFF, 1);
 
-    line_y = y + 22;
+    line_y = y + 16;
 
     for (i = 0; i < ITEM_COUNT; i++) {
         draw_menu_line(
@@ -847,7 +866,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         pixels,
         pitch,
         x,
-        y + 144,
+        y + 154,
         "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE",
         0xFFFFFFFF,
         1
@@ -930,12 +949,17 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int gap_small;
     int gap_big;
 
+    int icon_scale;
+
     int fps_w;
     int battery_text_w;
     int time_w;
 
-    int icon_w;
-    int icon_h;
+    int battery_icon_w;
+    int battery_icon_h;
+
+    int clock_icon_w;
+    int clock_icon_h;
 
     int total_w = 0;
     int text_h;
@@ -950,6 +974,12 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
+    icon_scale = scale - 1;
+
+    if (icon_scale < 1) {
+        icon_scale = 1;
+    }
+
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
     build_time_text(time_text);
@@ -958,8 +988,16 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
     time_w = show_time ? text_width(time_text, scale) : 0;
 
-    icon_w = show_battery ? ((13 * scale) + (2 * scale)) : 0;
-    icon_h = 7 * scale;
+    battery_icon_w = show_battery ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
+    battery_icon_h = 7 * icon_scale;
+
+    clock_icon_w = show_time ? (7 * icon_scale) : 0;
+    clock_icon_h = 7 * icon_scale;
+
+    /*
+     * HUD order:
+     * FPS 59  [BATTERY ICON]50%  [CLOCK ICON]TIME
+     */
 
     if (show_fps) {
         total_w += fps_w;
@@ -970,7 +1008,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             total_w += gap_big;
         }
 
-        total_w += battery_text_w + gap_small + icon_w;
+        total_w += battery_icon_w + gap_small + battery_text_w;
     }
 
     if (show_time) {
@@ -978,7 +1016,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             total_w += gap_big;
         }
 
-        total_w += time_w;
+        total_w += clock_icon_w + gap_small + time_w;
     }
 
     if (total_w <= 0) {
@@ -1012,25 +1050,35 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             x += gap_big;
         }
 
-        draw_text_shadow(pixels, pitch, x, start_y, battery_text, text_color, scale);
-        x += battery_text_w + gap_small;
-
         draw_battery_icon(
             pixels,
             pitch,
             x,
-            start_y + ((text_h - icon_h) / 2),
+            start_y + ((text_h - battery_icon_h) / 2),
             battery,
-            scale
+            icon_scale
         );
 
-        x += icon_w;
+        x += battery_icon_w + gap_small;
+
+        draw_text_shadow(pixels, pitch, x, start_y, battery_text, text_color, scale);
+        x += battery_text_w;
     }
 
     if (show_time) {
         if (x != start_x) {
             x += gap_big;
         }
+
+        draw_clock_icon(
+            pixels,
+            pitch,
+            x,
+            start_y + ((text_h - clock_icon_h) / 2),
+            icon_scale
+        );
+
+        x += clock_icon_w + gap_small;
 
         draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale);
     }
