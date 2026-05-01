@@ -1,12 +1,10 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
-#include <psp2/kernel/sysmem.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
 #include <psp2/display.h>
 #include <psp2/appmgr.h>
-#include <psp2/net/netctl.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
@@ -816,12 +814,10 @@ static void build_app_id_text(char *out) {
     pid = sceKernelGetProcessId();
 
     /*
-     * APP ID fallback chain:
-     * 1. Try sceAppMgrGetNameById(pid), which should return Title ID by PID.
-     * 2. If that fails, try PARAM.SFO string param 12, commonly titleid.
-     *
-     * Some shell/system contexts can still show UNKNOWN, but this is better
-     * than the original single-call version.
+     * Safer APP ID fallback:
+     * First try title ID by process ID.
+     * If that fails, try PARAM.SFO titleid.
+     * No RAM calls. No NetCtl calls.
      */
     result = sceAppMgrGetNameById(pid, title_id);
 
@@ -844,66 +840,25 @@ static void build_app_id_text(char *out) {
     out[pos] = ' ';
 }
 
-static int get_free_ram_kb(void) {
-    SceKernelFreeMemorySizeInfo info;
-    int result;
-
-    info.size = sizeof(SceKernelFreeMemorySizeInfo);
-    info.size_user = 0;
-    info.size_cdram = 0;
-    info.size_phycont = 0;
-
-    result = sceKernelGetFreeMemorySize(&info);
-
-    if (result < 0) {
-        return 0;
-    }
-
-    return (info.size_user + info.size_cdram + info.size_phycont) / 1024;
-}
-
 static void build_ram_text(char *out) {
     int pos = 0;
-    int ram_kb;
 
-    ram_kb = get_free_ram_kb();
-
-    pos = append_text(out, pos, "RAM ");
-
-    if (ram_kb <= 0) {
-        pos = append_text(out, pos, "ERR");
-    } else {
-        pos = append_int(out, pos, ram_kb);
-        pos = append_text(out, pos, "K");
-    }
-
+    /*
+     * RAM live call rolled back.
+     * The previous RAM syscall can kill the HUD thread on some games/menus.
+     */
+    pos = append_text(out, pos, "RAM OFF");
     out[pos] = ' ';
 }
 
 static void build_ip_text(char *out) {
     int pos = 0;
-    SceNetCtlInfo info;
-    int result;
-    int i;
-
-    pos = append_text(out, pos, "IP ");
 
     /*
-     * Live IP address.
-     * If Wi-Fi/network is unavailable, this safely shows OFF.
+     * IP live call rolled back for recovery.
+     * We will test IP separately after the menu is confirmed stable again.
      */
-    result = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info);
-
-    if (result < 0 || info.ip_address[0] == ' ') {
-        pos = append_text(out, pos, "OFF");
-    } else {
-        i = 0;
-
-        while (info.ip_address[i] && i < 15) {
-            out[pos++] = info.ip_address[i++];
-        }
-    }
-
+    pos = append_text(out, pos, "IP OFF");
     out[pos] = ' ';
 }
 
