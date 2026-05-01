@@ -1,5 +1,4 @@
 #include <psp2/kernel/modulemgr.h>
-#include <psp2/kernel/threadmgr.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
@@ -17,6 +16,8 @@ static SceUInt64 last_tick = 0;
 
 static SceUID display_hook_uid = -1;
 static tai_hook_ref_t display_hook_ref;
+
+typedef int (*SceDisplaySetFrameBufFunc)(const SceDisplayFrameBuf *pParam, int sync);
 
 static void put_2digits(char *out, int value) {
     out[0] = '0' + ((value / 10) % 10);
@@ -85,8 +86,7 @@ static void draw_test_box(const SceDisplayFrameBuf *fb) {
         return;
     }
 
-    if (fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8 &&
-        fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_X8B8G8R8) {
+    if (fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
         return;
     }
 
@@ -116,7 +116,8 @@ static void draw_test_box(const SceDisplayFrameBuf *fb) {
 }
 
 static int sceDisplaySetFrameBuf_hook(const SceDisplayFrameBuf *pParam, int sync) {
-    int ret = TAI_CONTINUE(int, display_hook_ref, pParam, sync);
+    SceDisplaySetFrameBufFunc old_func = (SceDisplaySetFrameBufFunc)display_hook_ref.old;
+    int ret = old_func(pParam, sync);
 
     handle_toggle();
     update_fps();
