@@ -7,15 +7,6 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
-/*
- * Live system info for HUD.
- * CPU/BUS/GPU use ScePower.
- * RAM uses sysmem.
- * IP uses NetCtl, so CMake needs SceNetCtl_stub.
- */
-#include <psp2/net/netctl.h>
-#include <psp2/kernel/sysmem.h>
-
 #define CONFIG_DIR  "ux0:data/VitaHUD"
 #define CONFIG_PATH "ux0:data/VitaHUD/config.txt"
 
@@ -136,26 +127,26 @@
 #define ITEM_BATTERY      8
 #define ITEM_TIME         9
 #define ITEM_CHARGING     10
-#define ITEM_CPU          11
-#define ITEM_BUS          12
-#define ITEM_GPU          13
-#define ITEM_RAM          14
-#define ITEM_IP           15
-#define ITEM_TIMEMODE     16
-#define ITEM_HUD_TEXT     17
-#define ITEM_HUD_SHADOW   18
-#define ITEM_HUD_ICON     19
-#define ITEM_MENU_TEXT    20
-#define ITEM_MENU_SELECT  21
-#define ITEM_MENU_BORDER  22
-#define ITEM_MENUBG       23
-#define ITEM_LANGUAGE     24
-#define ITEM_AUTO_HIDE    25
-#define ITEM_TOGGLE       26
-#define ITEM_THEME        27
-#define ITEM_PROFILE      28
-#define ITEM_SAVE_PROFILE 29
-#define ITEM_LOAD_PROFILE 30
+#define ITEM_TIMEMODE     11
+#define ITEM_HUD_TEXT     12
+#define ITEM_HUD_SHADOW   13
+#define ITEM_HUD_ICON     14
+#define ITEM_MENU_TEXT    15
+#define ITEM_MENU_SELECT  16
+#define ITEM_MENU_BORDER  17
+#define ITEM_MENUBG       18
+#define ITEM_LANGUAGE     19
+#define ITEM_AUTO_HIDE    20
+#define ITEM_TOGGLE       21
+#define ITEM_THEME        22
+#define ITEM_PROFILE      23
+#define ITEM_SAVE_PROFILE 24
+#define ITEM_LOAD_PROFILE 25
+#define ITEM_CPU_HUD      26
+#define ITEM_BUS_HUD      27
+#define ITEM_GPU_HUD      28
+#define ITEM_RAM_HUD      29
+#define ITEM_IP_HUD       30
 #define ITEM_RESET        31
 #define ITEM_COUNT        32
 
@@ -175,6 +166,11 @@ static int show_fps = 1;
 static int show_battery = 1;
 static int show_time = 1;
 static int show_charging = 0;
+static int show_cpu = 0;
+static int show_bus = 0;
+static int show_gpu = 0;
+static int show_ram = 0;
+static int show_ip = 0;
 static int use_24h_time = 0;
 
 static int hud_text_color = COLOR_WHITE;
@@ -191,12 +187,6 @@ static int toggle_combo_mode = TOGGLE_SELECT;
 static int theme_id = THEME_DEFAULT;
 static int profile_id = PROFILE_1;
 
-static int show_cpu = 0;
-static int show_bus = 0;
-static int show_gpu = 0;
-static int show_ram = 0;
-static int show_ip = 0;
-
 static int temporary_show_frames = 0;
 static int save_message_frames = 0;
 static int reset_message_frames = 0;
@@ -204,8 +194,8 @@ static int reset_message_frames = 0;
 static int last_toggle_down = 0;
 static int last_menu_down = 0;
 static unsigned int last_buttons = 0;
-static int menu_up_hold_frames = 0;
-static int menu_down_hold_frames = 0;
+static int hold_up_frames = 0;
+static int hold_down_frames = 0;
 
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
@@ -353,6 +343,11 @@ static void reset_defaults(void) {
     show_battery = 1;
     show_time = 1;
     show_charging = 0;
+    show_cpu = 0;
+    show_bus = 0;
+    show_gpu = 0;
+    show_ram = 0;
+    show_ip = 0;
     use_24h_time = 0;
 
     hud_text_color = COLOR_WHITE;
@@ -368,11 +363,6 @@ static void reset_defaults(void) {
     toggle_combo_mode = TOGGLE_SELECT;
     theme_id = THEME_DEFAULT;
     profile_id = PROFILE_1;
-    show_cpu = 0;
-    show_bus = 0;
-    show_gpu = 0;
-    show_ram = 0;
-    show_ip = 0;
 
     temporary_show_frames = 0;
     reset_message_frames = 180;
@@ -393,6 +383,11 @@ static void clamp_settings(void) {
     if (show_battery < 0 || show_battery > 1) show_battery = 1;
     if (show_time < 0 || show_time > 1) show_time = 1;
     if (show_charging < 0 || show_charging > 1) show_charging = 0;
+    if (show_cpu < 0 || show_cpu > 1) show_cpu = 0;
+    if (show_bus < 0 || show_bus > 1) show_bus = 0;
+    if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
+    if (show_ram < 0 || show_ram > 1) show_ram = 0;
+    if (show_ip < 0 || show_ip > 1) show_ip = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
 
     if (hud_text_color < 0 || hud_text_color >= COLOR_COUNT) hud_text_color = COLOR_WHITE;
@@ -408,11 +403,6 @@ static void clamp_settings(void) {
     if (toggle_combo_mode < 0 || toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = TOGGLE_SELECT;
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
     if (profile_id < 0 || profile_id >= PROFILE_COUNT) profile_id = PROFILE_1;
-    if (show_cpu < 0 || show_cpu > 1) show_cpu = 0;
-    if (show_bus < 0 || show_bus > 1) show_bus = 0;
-    if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
-    if (show_ram < 0 || show_ram > 1) show_ram = 0;
-    if (show_ip < 0 || show_ip > 1) show_ip = 0;
 }
 
 static void write_config_line(SceUID fd, const char *key, int value) {
@@ -440,6 +430,11 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_battery", show_battery);
     write_config_line(fd, "show_time", show_time);
     write_config_line(fd, "show_charging", show_charging);
+    write_config_line(fd, "show_cpu", show_cpu);
+    write_config_line(fd, "show_bus", show_bus);
+    write_config_line(fd, "show_gpu", show_gpu);
+    write_config_line(fd, "show_ram", show_ram);
+    write_config_line(fd, "show_ip", show_ip);
     write_config_line(fd, "time_24h", use_24h_time);
 
     write_config_line(fd, "hud_text_color", hud_text_color);
@@ -455,11 +450,6 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "toggle_combo", toggle_combo_mode);
     write_config_line(fd, "theme", theme_id);
     write_config_line(fd, "profile", profile_id);
-    write_config_line(fd, "show_cpu", show_cpu);
-    write_config_line(fd, "show_bus", show_bus);
-    write_config_line(fd, "show_gpu", show_gpu);
-    write_config_line(fd, "show_ram", show_ram);
-    write_config_line(fd, "show_ip", show_ip);
 }
 
 static void load_settings_from_buffer(char *buf) {
@@ -475,6 +465,11 @@ static void load_settings_from_buffer(char *buf) {
     show_battery = get_config_int(buf, "show_battery", show_battery);
     show_time = get_config_int(buf, "show_time", show_time);
     show_charging = get_config_int(buf, "show_charging", show_charging);
+    show_cpu = get_config_int(buf, "show_cpu", show_cpu);
+    show_bus = get_config_int(buf, "show_bus", show_bus);
+    show_gpu = get_config_int(buf, "show_gpu", show_gpu);
+    show_ram = get_config_int(buf, "show_ram", show_ram);
+    show_ip = get_config_int(buf, "show_ip", show_ip);
     use_24h_time = get_config_int(buf, "time_24h", use_24h_time);
 
     hud_text_color = get_config_int(buf, "hud_text_color", hud_text_color);
@@ -490,11 +485,6 @@ static void load_settings_from_buffer(char *buf) {
     toggle_combo_mode = get_config_int(buf, "toggle_combo", toggle_combo_mode);
     theme_id = get_config_int(buf, "theme", theme_id);
     profile_id = get_config_int(buf, "profile", profile_id);
-    show_cpu = get_config_int(buf, "show_cpu", show_cpu);
-    show_bus = get_config_int(buf, "show_bus", show_bus);
-    show_gpu = get_config_int(buf, "show_gpu", show_gpu);
-    show_ram = get_config_int(buf, "show_ram", show_ram);
-    show_ip = get_config_int(buf, "show_ip", show_ip);
 
     clamp_settings();
 }
@@ -579,12 +569,9 @@ static int load_profile(void) {
     int result;
 
     /*
-     * load_settings_from_buffer() already restores the saved theme_id,
-     * HUD colors, menu colors, and menu_bg_color.
-     *
      * Do NOT call apply_theme() here.
-     * apply_theme() would overwrite the exact custom colors/background
-     * that were saved inside the profile.
+     * The profile already saves exact HUD/menu colors and menu background.
+     * Calling apply_theme() after loading would overwrite saved custom colors.
      */
     profile_path(path);
     result = load_config_path(path);
@@ -751,6 +738,46 @@ static void build_charging_text(char *out) {
         pos = append_text(out, pos, "BAT");
     }
 
+    out[pos] = '\0';
+}
+
+static void build_cpu_text(char *out) {
+    int pos = 0;
+
+    /* Safe placeholder. Live CPU data will be wired later after one call works. */
+    pos = append_text(out, pos, "CPU --M");
+    out[pos] = '\0';
+}
+
+static void build_bus_text(char *out) {
+    int pos = 0;
+
+    /* Safe placeholder. */
+    pos = append_text(out, pos, "BUS --M");
+    out[pos] = '\0';
+}
+
+static void build_gpu_text(char *out) {
+    int pos = 0;
+
+    /* Safe placeholder. */
+    pos = append_text(out, pos, "GPU --M");
+    out[pos] = '\0';
+}
+
+static void build_ram_text(char *out) {
+    int pos = 0;
+
+    /* Safe placeholder. No RAM syscall yet. */
+    pos = append_text(out, pos, "RAM OFF");
+    out[pos] = '\0';
+}
+
+static void build_ip_text(char *out) {
+    int pos = 0;
+
+    /* Safe placeholder. No network syscall yet. */
+    pos = append_text(out, pos, "IP OFF");
     out[pos] = '\0';
 }
 
@@ -971,7 +998,6 @@ static unsigned char font5x7(char c, int row) {
         case '>': { static const unsigned char g[7] = {0x08,0x04,0x02,0x01,0x02,0x04,0x08}; return g[row]; }
         case '/': { static const unsigned char g[7] = {0x01,0x02,0x02,0x04,0x08,0x08,0x10}; return g[row]; }
         case '+': { static const unsigned char g[7] = {0x00,0x04,0x04,0x1F,0x04,0x04,0x00}; return g[row]; }
-        case '^': { static const unsigned char g[7] = {0x04,0x0A,0x11,0x00,0x00,0x00,0x00}; return g[row]; }
         case ' ': return 0x00;
 
         default:
@@ -1341,11 +1367,6 @@ static const char *menu_label(int item) {
         case ITEM_BATTERY:      return "BATTERY";
         case ITEM_TIME:         return "CLOCK";
         case ITEM_CHARGING:     return "CHARGING";
-        case ITEM_CPU:          return "CPU HUD";
-        case ITEM_BUS:          return "BUS HUD";
-        case ITEM_GPU:          return "GPU HUD";
-        case ITEM_RAM:          return "RAM HUD";
-        case ITEM_IP:           return "IP HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
@@ -1361,6 +1382,11 @@ static const char *menu_label(int item) {
         case ITEM_PROFILE:      return "PROFILE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
+        case ITEM_CPU_HUD:      return "CPU HUD";
+        case ITEM_BUS_HUD:      return "BUS HUD";
+        case ITEM_GPU_HUD:      return "GPU HUD";
+        case ITEM_RAM_HUD:      return "RAM HUD";
+        case ITEM_IP_HUD:       return "IP HUD";
         case ITEM_RESET:        return "RESET DEFAULTS";
         default:                return "";
     }
@@ -1377,11 +1403,6 @@ static const char *menu_value(int item) {
         case ITEM_BATTERY:      return onoff_name(show_battery);
         case ITEM_TIME:         return onoff_name(show_time);
         case ITEM_CHARGING:     return onoff_name(show_charging);
-        case ITEM_CPU:          return onoff_name(show_cpu);
-        case ITEM_BUS:          return onoff_name(show_bus);
-        case ITEM_GPU:          return onoff_name(show_gpu);
-        case ITEM_RAM:          return onoff_name(show_ram);
-        case ITEM_IP:           return onoff_name(show_ip);
         case ITEM_TIMEMODE:     return time_mode_name();
         case ITEM_HUD_TEXT:     return color_name_generic(hud_text_color);
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
@@ -1397,33 +1418,13 @@ static const char *menu_value(int item) {
         case ITEM_PROFILE:      return profile_name();
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? "SAVED" : "PRESS X";
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? "LOADED" : "PRESS X";
+        case ITEM_CPU_HUD:      return onoff_name(show_cpu);
+        case ITEM_BUS_HUD:      return onoff_name(show_bus);
+        case ITEM_GPU_HUD:      return onoff_name(show_gpu);
+        case ITEM_RAM_HUD:      return onoff_name(show_ram);
+        case ITEM_IP_HUD:       return onoff_name(show_ip);
         case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : "PRESS X";
         default:                return "";
-    }
-}
-
-static int menu_item_is_action(int item) {
-    switch (item) {
-        case ITEM_SAVE_PROFILE:
-        case ITEM_LOAD_PROFILE:
-        case ITEM_RESET:
-            return 1;
-
-        default:
-            return 0;
-    }
-}
-
-static void menu_move(int dir) {
-    menu_index += dir;
-
-    /* Wheel style only. No LIST mode. */
-    if (menu_index < 0) {
-        menu_index = ITEM_COUNT - 1;
-    }
-
-    if (menu_index >= ITEM_COUNT) {
-        menu_index = 0;
     }
 }
 
@@ -1483,26 +1484,6 @@ static void menu_change(int dir) {
 
         case ITEM_CHARGING:
             show_charging = !show_charging;
-            break;
-
-        case ITEM_CPU:
-            show_cpu = !show_cpu;
-            break;
-
-        case ITEM_BUS:
-            show_bus = !show_bus;
-            break;
-
-        case ITEM_GPU:
-            show_gpu = !show_gpu;
-            break;
-
-        case ITEM_RAM:
-            show_ram = !show_ram;
-            break;
-
-        case ITEM_IP:
-            show_ip = !show_ip;
             break;
 
         case ITEM_TIMEMODE:
@@ -1590,6 +1571,26 @@ static void menu_change(int dir) {
             load_profile();
             break;
 
+        case ITEM_CPU_HUD:
+            show_cpu = !show_cpu;
+            break;
+
+        case ITEM_BUS_HUD:
+            show_bus = !show_bus;
+            break;
+
+        case ITEM_GPU_HUD:
+            show_gpu = !show_gpu;
+            break;
+
+        case ITEM_RAM_HUD:
+            show_ram = !show_ram;
+            break;
+
+        case ITEM_IP_HUD:
+            show_ip = !show_ip;
+            break;
+
         case ITEM_RESET:
             reset_defaults();
             break;
@@ -1615,29 +1616,8 @@ static void draw_menu_line(
     }
 
     draw_text_shadow(pixels, pitch, x + 14, y, label, line_color, 1);
-
-    if (selected && !menu_item_is_action(menu_index)) {
-        draw_text_shadow(pixels, pitch, x + 176, y, "<", line_color, 1);
-        draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
-        draw_text_shadow(pixels, pitch, x + 330, y, ">", line_color, 1);
-    } else {
-        draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
-    }
+    draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
 }
-
-static void build_label_number(char *out, const char *label, int value, const char *suffix) {
-    int pos = 0;
-
-    pos = append_text(out, pos, label);
-    pos = append_int(out, pos, value);
-
-    if (suffix) {
-        pos = append_text(out, pos, suffix);
-    }
-
-    out[pos] = '\0';
-}
-
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int x = 28;
@@ -1690,6 +1670,14 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
 
     draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), color_value(menu_select_color, 0xFF00FFFF), 1);
 
+    if (menu_scroll > 0) {
+        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + 1, "^", color_value(menu_select_color, 0xFF00FFFF), 1);
+    }
+
+    if (menu_scroll + visible < ITEM_COUNT) {
+        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + h - 36, "V", color_value(menu_select_color, 0xFF00FFFF), 1);
+    }
+
     line_y = y + 16;
 
     for (i = menu_scroll; i < ITEM_COUNT && i < menu_scroll + visible; i++) {
@@ -1706,15 +1694,6 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         line_y += 12;
     }
 
-    /* Centered scroll indicators: no side arrows. */
-    if (menu_scroll > 0) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 8, y - 2, "^", color_value(menu_select_color, 0xFF00FFFF), 1);
-    }
-
-    if (menu_scroll + visible < ITEM_COUNT) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 8, y + h - 36, "V", color_value(menu_select_color, 0xFF00FFFF), 1);
-    }
-
     draw_text_shadow(
         pixels,
         pitch,
@@ -1724,6 +1703,34 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         color_value(menu_text_color, 0xFFFFFFFF),
         1
     );
+}
+
+static void move_menu_index(int dir) {
+    menu_index += dir;
+
+    if (menu_index < 0) {
+        menu_index = ITEM_COUNT - 1;
+    }
+
+    if (menu_index >= ITEM_COUNT) {
+        menu_index = 0;
+    }
+}
+
+static int hold_scroll_trigger(int frames) {
+    if (frames == 1) {
+        return 1;
+    }
+
+    if (frames < 18) {
+        return 0;
+    }
+
+    if (frames < 50) {
+        return ((frames - 18) % 5) == 0;
+    }
+
+    return ((frames - 50) % 2) == 0;
 }
 
 static void handle_input(void) {
@@ -1747,8 +1754,6 @@ static void handle_input(void) {
 
     if (menu_down && !last_menu_down) {
         menu_open = !menu_open;
-        menu_up_hold_frames = 0;
-        menu_down_hold_frames = 0;
     }
 
     if (!menu_open && toggle_down && !last_toggle_down) {
@@ -1764,27 +1769,23 @@ static void handle_input(void) {
 
     if (menu_open) {
         if (buttons & SCE_CTRL_UP) {
-            menu_up_hold_frames++;
+            hold_up_frames++;
 
-            if ((pressed & SCE_CTRL_UP) ||
-                menu_up_hold_frames == 18 ||
-                (menu_up_hold_frames > 18 && ((menu_up_hold_frames - 18) % 4) == 0)) {
-                menu_move(-1);
+            if (hold_scroll_trigger(hold_up_frames)) {
+                move_menu_index(-1);
             }
         } else {
-            menu_up_hold_frames = 0;
+            hold_up_frames = 0;
         }
 
         if (buttons & SCE_CTRL_DOWN) {
-            menu_down_hold_frames++;
+            hold_down_frames++;
 
-            if ((pressed & SCE_CTRL_DOWN) ||
-                menu_down_hold_frames == 18 ||
-                (menu_down_hold_frames > 18 && ((menu_down_hold_frames - 18) % 4) == 0)) {
-                menu_move(1);
+            if (hold_scroll_trigger(hold_down_frames)) {
+                move_menu_index(1);
             }
         } else {
-            menu_down_hold_frames = 0;
+            hold_down_frames = 0;
         }
 
         if (pressed & SCE_CTRL_LEFT) {
@@ -1801,8 +1802,6 @@ static void handle_input(void) {
 
         if (pressed & SCE_CTRL_CIRCLE) {
             menu_open = 0;
-            menu_up_hold_frames = 0;
-            menu_down_hold_frames = 0;
         }
     }
 
@@ -1824,58 +1823,6 @@ static int add_text_block(
     return text_width(text, scale);
 }
 
-
-static int get_free_ram_kb(void) {
-    SceKernelFreeMemorySizeInfo info;
-    int result;
-
-    info.size = sizeof(SceKernelFreeMemorySizeInfo);
-    info.size_user = 0;
-    info.size_cdram = 0;
-    info.size_phycont = 0;
-
-    result = sceKernelGetFreeMemorySize(&info);
-
-    if (result < 0) {
-        return 0;
-    }
-
-    return (info.size_user + info.size_cdram + info.size_phycont) / 1024;
-}
-
-static void build_cpu_text(char *out) {
-    build_label_number(out, "CPU ", scePowerGetArmClockFrequency(), "M");
-}
-
-static void build_bus_text(char *out) {
-    build_label_number(out, "BUS ", scePowerGetBusClockFrequency(), "M");
-}
-
-static void build_gpu_text(char *out) {
-    build_label_number(out, "GPU ", scePowerGetGpuClockFrequency(), "M");
-}
-
-static void build_ram_text(char *out) {
-    build_label_number(out, "RAM ", get_free_ram_kb(), "K");
-}
-
-static void build_ip_text(char *out) {
-    SceNetCtlInfo info;
-    int pos = 0;
-
-    info.ip_address[0] = '\0';
-
-    pos = append_text(out, pos, "IP ");
-
-    if (sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info) >= 0 && info.ip_address[0] != '\0') {
-        pos = append_text(out, pos, info.ip_address);
-    } else {
-        pos = append_text(out, pos, "OFF");
-    }
-
-    out[pos] = '\0';
-}
-
 static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int battery = scePowerGetBatteryLifePercent();
 
@@ -1883,11 +1830,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     char battery_text[8];
     char time_text[16];
     char charging_text[8];
-    char cpu_text[24];
-    char bus_text[24];
-    char gpu_text[24];
-    char ram_text[32];
-    char ip_text[48];
+    char cpu_text[16];
+    char bus_text[16];
+    char gpu_text[16];
+    char ram_text[16];
+    char ip_text[20];
 
     int scale;
     int gap_small;
@@ -1903,6 +1850,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int gpu_w;
     int ram_w;
     int ip_w;
+    int force_stacked;
 
     int battery_icon_w;
     int battery_icon_h;
@@ -1918,7 +1866,6 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int start_y;
     int x;
     int y;
-    int stacked_mode;
 
     unsigned int text_color = color_value(hud_text_color, 0xFFFFFFFF);
 
@@ -1935,6 +1882,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_gpu_text(gpu_text);
     build_ram_text(ram_text);
     build_ip_text(ip_text);
+
+    force_stacked = show_cpu || show_bus || show_gpu || show_ram || show_ip;
 
     fps_w = show_fps ? text_width(fps_text, scale) : 0;
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
@@ -1954,13 +1903,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     text_h = 7 * scale;
 
-    /*
-     * Advanced HUD data automatically draws stacked.
-     * That prevents CPU/RAM/IP from making one giant line that runs off-screen.
-     */
-    stacked_mode = (hud_layout == LAYOUT_STACKED || show_cpu || show_bus || show_gpu || show_ram || show_ip);
-
-    if (stacked_mode) {
+    if (hud_layout == LAYOUT_STACKED || force_stacked) {
         total_w = 0;
 
         if (show_fps && fps_w > total_w) total_w = fps_w;
@@ -2006,6 +1949,31 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             total_w += charging_w;
         }
 
+        if (show_cpu) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += cpu_w;
+        }
+
+        if (show_bus) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += bus_w;
+        }
+
+        if (show_gpu) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += gpu_w;
+        }
+
+        if (show_ram) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += ram_w;
+        }
+
+        if (show_ip) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += ip_w;
+        }
+
         total_h = text_h;
     }
 
@@ -2024,13 +1992,14 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         start_y = screen_h - total_h - margin_y;
     }
 
-    if (start_x < 0) start_x = 0;
-    if (start_y < 0) start_y = 0;
+    if (start_x < 0 || start_y < 0) {
+        return;
+    }
 
     x = start_x;
     y = start_y;
 
-    if (stacked_mode) {
+    if (hud_layout == LAYOUT_STACKED || force_stacked) {
         if (show_fps) {
             draw_text_shadow(pixels, pitch, x, y, fps_text, text_color, scale);
             y += text_h + gap_small;
@@ -2210,7 +2179,7 @@ int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
 
-    /* Auto-load Profile 1 on boot. Use LOAD PROFILE for Profile 2/3 manually. */
+    /* Stable recovery: auto-load Profile 1 on boot. */
     load_profile();
 
     thid = sceKernelCreateThread(
