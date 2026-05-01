@@ -3,6 +3,8 @@
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
+#include <psp2/display.h>
+#include <taihen.h>
 
 #define TOGGLE_COMBO (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT)
 
@@ -12,6 +14,9 @@ static int last_combo_down = 0;
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
+
+static SceUID display_hook_uid = -1;
+static tai_hook_ref_t display_hook_ref;
 
 static void put_2digits(char *out, int value) {
     out[0] = '0' + ((value / 10) % 10);
@@ -75,57 +80,74 @@ static void handle_toggle(void) {
     last_combo_down = combo_down;
 }
 
-static int hud_thread(SceSize args, void *argp) {
-    (void)args;
-    (void)argp;
-
-    while (1) {
-        handle_toggle();
-        update_fps();
-
-        if (hud_enabled) {
-            int battery = scePowerGetBatteryLifePercent();
-
-            char time_text[9];
-            get_time_12h(time_text);
-
-            /*
-             * v1 logic:
-             * fps_value = live FPS
-             * battery = live battery %
-             * time_text = 12-hour time
-             *
-             * Next step after clean build:
-             * add real overlay drawing.
-             */
-            (void)battery;
-            (void)time_text;
-            (void)fps_value;
-        }
-
-        sceKernelDelayThread(16666);
+static void draw_test_box(const SceDisplayFrameBuf *fb) {
+    if (!fb || !fb->base) {
+        return;
     }
 
-    return 0;
+    if (fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8 &&
+        fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_X8B8G8R8) {
+        return;
+    }
+
+    unsigned int *pixels = (unsigned int *)fb->base;
+
+    int screen_w = fb->width;
+    int screen_h = fb->height;
+    int pitch = fb->pitch;
+
+    int box_w = 100;
+    int box_h = 18;
+
+    int start_x = screen_w - box_w - 8;
+    int start_y = screen_h - box_h - 8;
+
+    if (start_x < 0 || start_y < 0) {
+        return;
+    }
+
+    unsigned int color = 0xFF00FF00;
+
+    for (int y = 0; y < box_h; y++) {
+        for (int x = 0; x < box_w; x++) {
+            pixels[(start_y + y) * pitch + (start_x + x)] = color;
+        }
+    }
+}
+
+static int sceDisplaySetFrameBuf_hook(const SceDisplayFrameBuf *pParam, int sync) {
+    int ret = TAI_CONTINUE(int, display_hook_ref, pParam, sync);
+
+    handle_toggle();
+    update_fps();
+
+    if (hud_enabled) {
+        int battery = scePowerGetBatteryLifePercent();
+
+        char time_text[9];
+        get_time_12h(time_text);
+
+        draw_test_box(pParam);
+
+        (void)battery;
+        (void)time_text;
+        (void)fps_value;
+    }
+
+    return ret;
 }
 
 int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
 
-    SceUID thid = sceKernelCreateThread(
-        "VitaHUD Thread",
-        hud_thread,
-        0x10000100,
-        0x10000,
-        0,
-        0,
-        0
+    display_hook_uid = taiHookFunctionImport(
+        &display_hook_ref,
+        TAI_MAIN_MODULE,
+        TAI_ANY_LIBRARY,
+        0x7A410B64,
+        sceDisplaySetFrameBuf_hook
     );
-
-    if (thid >= 0) {
-        sceKernelStartThread(thid, 0, 0);
-    }
 
     return SCE_KERNEL_START_SUCCESS;
 }
@@ -133,6 +155,10 @@ int module_start(SceSize args, void *argp) {
 int module_stop(SceSize args, void *argp) {
     (void)args;
     (void)argp;
+
+    if (display_hook_uid >= 0) {
+        taiHookRelease(display_hook_uid, display_hook_ref);
+    }
 
     return SCE_KERNEL_STOP_SUCCESS;
 }
