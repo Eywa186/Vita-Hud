@@ -942,15 +942,10 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
-build_fps_text(fps_text);
-build_battery_text(battery_text, battery);
-build_time_text(time_text);
-
-ip_text[0] = '\0';
-
-if (show_ip) {
+    build_fps_text(fps_text);
+    build_battery_text(battery_text, battery);
+    build_time_text(time_text);
     build_ip_text(ip_text);
-}
 
     fps_w = show_fps ? text_width(fps_text, scale) : 0;
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
