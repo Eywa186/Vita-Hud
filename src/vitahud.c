@@ -1,10 +1,12 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/kernel/sysmem.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
 #include <psp2/display.h>
 #include <psp2/appmgr.h>
+#include <psp2/net/netctl.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
@@ -790,52 +792,119 @@ static void build_gpu_text(char *out) {
     out[pos] = '\0';
 }
 
+static int copy_title_id_to_output(char *out, int pos, const char *title_id) {
+    int i = 0;
+
+    while (title_id[i] && i < 12) {
+        out[pos++] = title_id[i++];
+    }
+
+    return pos;
+}
+
 static void build_app_id_text(char *out) {
     int pos = 0;
-    char title_id[16];
+    char title_id[32];
     int result;
+    int pid;
     int i;
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < 32; i++) {
         title_id[i] = 0;
     }
 
+    pid = sceKernelGetProcessId();
+
     /*
-     * Live Title ID / App ID.
-     * Uses the current process ID, then asks AppMgr for the title ID.
-     * This avoids network/RAM calls and keeps the risky stuff out.
+     * APP ID fallback chain:
+     * 1. Try sceAppMgrGetNameById(pid), which should return Title ID by PID.
+     * 2. If that fails, try PARAM.SFO string param 12, commonly titleid.
+     *
+     * Some shell/system contexts can still show UNKNOWN, but this is better
+     * than the original single-call version.
      */
-    result = sceAppMgrGetNameById(sceKernelGetProcessId(), title_id);
+    result = sceAppMgrGetNameById(pid, title_id);
+
+    if (result < 0 || title_id[0] == 0) {
+        for (i = 0; i < 32; i++) {
+            title_id[i] = 0;
+        }
+
+        result = sceAppMgrAppParamGetString(pid, 12, title_id, sizeof(title_id));
+    }
 
     pos = append_text(out, pos, "APP ");
 
     if (result < 0 || title_id[0] == 0) {
         pos = append_text(out, pos, "UNKNOWN");
     } else {
-        i = 0;
-
-        while (title_id[i] && i < 12) {
-            out[pos++] = title_id[i++];
-        }
+        pos = copy_title_id_to_output(out, pos, title_id);
     }
 
-    out[pos] = '\0';
+    out[pos] = ' ';
+}
+
+static int get_free_ram_kb(void) {
+    SceKernelFreeMemorySizeInfo info;
+    int result;
+
+    info.size = sizeof(SceKernelFreeMemorySizeInfo);
+    info.size_user = 0;
+    info.size_cdram = 0;
+    info.size_phycont = 0;
+
+    result = sceKernelGetFreeMemorySize(&info);
+
+    if (result < 0) {
+        return 0;
+    }
+
+    return (info.size_user + info.size_cdram + info.size_phycont) / 1024;
 }
 
 static void build_ram_text(char *out) {
     int pos = 0;
+    int ram_kb;
 
-    /* Safe placeholder. No RAM syscall yet. */
-    pos = append_text(out, pos, "RAM OFF");
-    out[pos] = '\0';
+    ram_kb = get_free_ram_kb();
+
+    pos = append_text(out, pos, "RAM ");
+
+    if (ram_kb <= 0) {
+        pos = append_text(out, pos, "ERR");
+    } else {
+        pos = append_int(out, pos, ram_kb);
+        pos = append_text(out, pos, "K");
+    }
+
+    out[pos] = ' ';
 }
 
 static void build_ip_text(char *out) {
     int pos = 0;
+    SceNetCtlInfo info;
+    int result;
+    int i;
 
-    /* Safe placeholder. No network syscall yet. */
-    pos = append_text(out, pos, "IP OFF");
-    out[pos] = '\0';
+    pos = append_text(out, pos, "IP ");
+
+    /*
+     * Live IP address.
+     * If Wi-Fi/network is unavailable, this safely shows OFF.
+     */
+    result = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info);
+
+    if (result < 0 || info.ip_address[0] == ' ') {
+        pos = append_text(out, pos, "OFF");
+    } else {
+        i = 0;
+
+        while (info.ip_address[i] && i < 15) {
+            out[pos++] = info.ip_address[i++];
+        }
+    }
+
+    out[pos] = ' ';
 }
 
 static void build_time_text(char *out) {
