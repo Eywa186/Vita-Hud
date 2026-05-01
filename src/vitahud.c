@@ -204,19 +204,6 @@ static int append_battery_number(char *out, int pos, int value) {
     return pos;
 }
 
-static int str_eq(const char *a, const char *b) {
-    while (*a && *b) {
-        if (*a != *b) {
-            return 0;
-        }
-
-        a++;
-        b++;
-    }
-
-    return *a == *b;
-}
-
 static int key_match(const char *src, const char *key) {
     while (*key) {
         if (*src != *key) {
@@ -1506,7 +1493,12 @@ static void draw_all(void) {
 
     fb.size = sizeof(SceDisplayFrameBuf);
 
-    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0 || !fb.base) {
+    /*
+     * Anti-glitch patch:
+     * IMMEDIATE is better for VitaShell/LiveArea-style menus
+     * that do not always behave like games/apps.
+     */
+    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_IMMEDIATE) < 0 || !fb.base) {
         return;
     }
 
@@ -1537,6 +1529,14 @@ static int hud_thread(SceSize args, void *argp) {
 
         handle_input();
         update_fps();
+
+        /*
+         * Anti-glitch patch:
+         * Small delay gives some menus time to finish drawing
+         * before VitaHUD writes over the framebuffer.
+         */
+        sceKernelDelayThread(1000);
+
         draw_all();
 
         if (save_message_frames > 0) {
