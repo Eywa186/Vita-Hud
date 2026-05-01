@@ -1778,11 +1778,14 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     row_w = w - 18;
 
     /*
-     * IMPORTANT:
-     * Do NOT fill the whole menu with a black rectangle.
-     * Alpha-looking colors do not blend reliably on Vita framebuffer.
-     * This keeps the game visible and uses only frame/separator lines.
+     * Menu background:
+     * Uses MENU BG setting again.
+     * Default is BLACK, but user can change it with MENU BG.
      */
+    if (menu_bg_color != BG_TRANSPARENT) {
+        draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, get_menu_bg());
+    }
+
     draw_rect(pixels, pitch, panel_x, panel_y, panel_w, 1, border);
     draw_rect(pixels, pitch, panel_x, panel_y + panel_h - 1, panel_w, 1, border);
     draw_rect(pixels, pitch, panel_x, panel_y, 1, panel_h, border);
@@ -2144,45 +2147,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     /*
-     * No filled black HUD backing.
-     * Only a thin frame so the HUD looks cleaner without covering the game.
+     * HUD background:
+     * Transparent again. No HUD BG option.
+     * We still track the last HUD footprint for layout bookkeeping,
+     * but we do not draw a black rectangle behind FPS/battery/time.
      */
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x,
-        last_hud_clear_y,
-        last_hud_clear_w,
-        1,
-        0xFF2A2A2A
-    );
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x,
-        last_hud_clear_y + last_hud_clear_h - 1,
-        last_hud_clear_w,
-        1,
-        0xFF2A2A2A
-    );
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x,
-        last_hud_clear_y,
-        1,
-        last_hud_clear_h,
-        0xFF2A2A2A
-    );
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x + last_hud_clear_w - 1,
-        last_hud_clear_y,
-        1,
-        last_hud_clear_h,
-        0xFF2A2A2A
-    );
 
     x = start_x;
     y = start_y;
