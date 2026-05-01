@@ -20,11 +20,13 @@ add_executable(vitahud
 )
 
 target_link_libraries(vitahud
+  taihen_stub
   SceLibKernel_stub
   SceKernelThreadMgr_stub
   SceCtrl_stub
   ScePower_stub
   SceRtc_stub
+  SceDisplay_stub
 )
 
 vita_create_self(vitahud.suprx vitahud
