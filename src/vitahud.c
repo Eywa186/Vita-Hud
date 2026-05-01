@@ -190,15 +190,27 @@ static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
 
+static int g_screen_w = 960;
+static int g_screen_h = 544;
+
+/*
+ * IMPORTANT FIX:
+ * The previous version delayed after VBlank and used IMMEDIATE.
+ * That makes some menus worse because VitaHUD draws late/into unstable redraws.
+ *
+ * This version:
+ * - NO delay in hud_thread
+ * - uses SCE_DISPLAY_SETBUF_NEXTFRAME
+ * - clips every pixel write so nothing writes outside the active framebuffer
+ */
+
 static void put_2digits(char *out, int value) {
     out[0] = '0' + ((value / 10) % 10);
     out[1] = '0' + (value % 10);
 }
 
 static int append_text(char *out, int pos, const char *text) {
-    while (*text) {
-        out[pos++] = *text++;
-    }
+    while (*text) out[pos++] = *text++;
     return pos;
 }
 
@@ -257,10 +269,7 @@ static int append_battery_number(char *out, int pos, int value) {
 
 static int key_match(const char *src, const char *key) {
     while (*key) {
-        if (*src != *key) {
-            return 0;
-        }
-
+        if (*src != *key) return 0;
         src++;
         key++;
     }
@@ -290,9 +299,7 @@ static int get_config_int(const char *buf, const char *key, int default_value) {
 
     while (*p) {
         if (key_match(p, key)) {
-            while (*p && *p != '=') {
-                p++;
-            }
+            while (*p && *p != '=') p++;
 
             if (*p == '=') {
                 p++;
@@ -300,13 +307,9 @@ static int get_config_int(const char *buf, const char *key, int default_value) {
             }
         }
 
-        while (*p && *p != '\n') {
-            p++;
-        }
+        while (*p && *p != '\n') p++;
 
-        if (*p == '\n') {
-            p++;
-        }
+        if (*p == '\n') p++;
     }
 
     return default_value;
@@ -735,6 +738,10 @@ static void build_time_text(char *out) {
     out[pos] = '\0';
 }
 
+/*
+ * Vita A8B8G8R8 values.
+ * Yellow must be 0xFF00FFFF on this framebuffer.
+ */
 static unsigned int color_value(int color_id, unsigned int fallback) {
     switch (color_id) {
         case COLOR_WHITE:   return 0xFFFFFFFF;
@@ -911,14 +918,28 @@ static unsigned char font5x7(char c, int row) {
 static void draw_rect(unsigned int *pixels, int pitch, int x, int y, int w, int h, unsigned int color) {
     int yy;
     int xx;
+    int x2;
+    int y2;
 
-    if (x < 0 || y < 0 || w <= 0 || h <= 0) {
+    if (w <= 0 || h <= 0) {
         return;
     }
 
-    for (yy = 0; yy < h; yy++) {
-        for (xx = 0; xx < w; xx++) {
-            pixels[(y + yy) * pitch + (x + xx)] = color;
+    x2 = x + w;
+    y2 = y + h;
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x2 > g_screen_w) x2 = g_screen_w;
+    if (y2 > g_screen_h) y2 = g_screen_h;
+
+    if (x >= x2 || y >= y2) {
+        return;
+    }
+
+    for (yy = y; yy < y2; yy++) {
+        for (xx = x; xx < x2; xx++) {
+            pixels[yy * pitch + xx] = color;
         }
     }
 }
@@ -928,6 +949,8 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
     int col;
     int sy;
     int sx;
+    int px;
+    int py;
     int bold = font_bold_style();
 
     for (row = 0; row < 7; row++) {
@@ -937,14 +960,29 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
             if (bits & (1 << (4 - col))) {
                 for (sy = 0; sy < scale; sy++) {
                     for (sx = 0; sx < scale; sx++) {
-                        pixels[(y + row * scale + sy) * pitch + (x + col * scale + sx)] = color;
+                        px = x + col * scale + sx;
+                        py = y + row * scale + sy;
+
+                        if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
+                            pixels[py * pitch + px] = color;
+                        }
 
                         if (bold >= 1) {
-                            pixels[(y + row * scale + sy) * pitch + (x + col * scale + sx + 1)] = color;
+                            px = x + col * scale + sx + 1;
+                            py = y + row * scale + sy;
+
+                            if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
+                                pixels[py * pitch + px] = color;
+                            }
                         }
 
                         if (bold >= 2) {
-                            pixels[(y + row * scale + sy + 1) * pitch + (x + col * scale + sx)] = color;
+                            px = x + col * scale + sx;
+                            py = y + row * scale + sy + 1;
+
+                            if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
+                                pixels[py * pitch + px] = color;
+                            }
                         }
                     }
                 }
@@ -957,13 +995,9 @@ static int text_width(const char *text, int scale) {
     int count = 0;
     int spacing = 6 * scale + font_extra_spacing();
 
-    if (spacing < 3) {
-        spacing = 3;
-    }
+    if (spacing < 3) spacing = 3;
 
-    while (text[count]) {
-        count++;
-    }
+    while (text[count]) count++;
 
     return count * spacing;
 }
@@ -972,9 +1006,7 @@ static void draw_text(unsigned int *pixels, int pitch, int x, int y, const char 
     int cursor_x = x;
     int spacing = 6 * scale + font_extra_spacing();
 
-    if (spacing < 3) {
-        spacing = 3;
-    }
+    if (spacing < 3) spacing = 3;
 
     while (*text) {
         draw_char(pixels, pitch, cursor_x, y, *text, color, scale);
@@ -1037,9 +1069,7 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     unsigned int white = color_value(hud_icon_color, 0xFFFFFFFF);
     int s = scale;
 
-    if (s < 1) {
-        s = 1;
-    }
+    if (s < 1) s = 1;
 
     draw_rect(pixels, pitch, x + (2 * s), y, 3 * s, s, white);
     draw_rect(pixels, pitch, x + s, y + s, s, s, white);
@@ -1487,8 +1517,13 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     unsigned int bg = get_menu_bg();
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
 
-    (void)screen_w;
-    (void)screen_h;
+    if (screen_w <= 480 || screen_h <= 272) {
+        x = 10;
+        y = 10;
+        w = screen_w - 20;
+        h = screen_h - 20;
+        visible = 11;
+    }
 
     if (menu_index < menu_scroll) {
         menu_scroll = menu_index;
@@ -1541,7 +1576,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         pixels,
         pitch,
         x,
-        y + 218,
+        y + h - 22,
         tr_footer(),
         color_value(menu_text_color, 0xFFFFFFFF),
         1
@@ -1693,16 +1728,19 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     if (hud_layout == LAYOUT_STACKED) {
         total_w = 0;
+
         if (show_fps && fps_w > total_w) total_w = fps_w;
         if (show_battery && battery_icon_w + gap_small + battery_text_w > total_w) total_w = battery_icon_w + gap_small + battery_text_w;
         if (show_time && clock_icon_w + gap_small + time_w > total_w) total_w = clock_icon_w + gap_small + time_w;
         if (show_charging && charging_w > total_w) total_w = charging_w;
 
         total_h = 0;
+
         if (show_fps) total_h += text_h + gap_small;
         if (show_battery) total_h += text_h + gap_small;
         if (show_time) total_h += text_h + gap_small;
         if (show_charging) total_h += text_h + gap_small;
+
         if (total_h > 0) total_h -= gap_small;
     } else {
         if (show_fps) {
@@ -1829,7 +1867,11 @@ static void draw_all(void) {
 
     fb.size = sizeof(SceDisplayFrameBuf);
 
-    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_IMMEDIATE) < 0 || !fb.base) {
+    /*
+     * Stable version:
+     * NEXTFRAME avoids late direct writes that caused worse menu tearing.
+     */
+    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0 || !fb.base) {
         return;
     }
 
@@ -1841,6 +1883,9 @@ static void draw_all(void) {
     screen_w = fb.width;
     screen_h = fb.height;
     pitch = fb.pitch;
+
+    g_screen_w = screen_w;
+    g_screen_h = screen_h;
 
     if (hud_enabled) {
         if (auto_hide_mode == AUTO_HIDE_OFF) {
@@ -1869,8 +1914,10 @@ static int hud_thread(SceSize args, void *argp) {
         handle_input();
         update_fps();
 
-        sceKernelDelayThread(2000);
-
+        /*
+         * NO DELAY.
+         * The 1000/2000us delay made the glitch worse in some menus.
+         */
         draw_all();
 
         if (save_message_frames > 0) {
