@@ -26,6 +26,7 @@ target_link_libraries(vitahud
   ScePower_stub
   SceRtc_stub
   SceDisplay_stub
+  SceIofilemgr_stub
 )
 
 vita_create_self(vitahud.suprx vitahud
