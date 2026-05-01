@@ -1696,9 +1696,7 @@ static void draw_menu_line(
     unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
     unsigned int sel_col = color_value(menu_select_color, 0xFF00FFFF);
     unsigned int accent_col = color_value(menu_select_color, 0xFF00FFFF);
-    unsigned int row_bg = 0xFF101010;
-    unsigned int row_sel_bg = 0xFF161616;
-    unsigned int sep_col = 0xFF232323;
+    unsigned int sep_col = 0xFF2A2A2A;
     int label_x = x + 10;
     int value_w = text_width(value, 1);
     int value_x = x + row_w - 10 - value_w;
@@ -1707,15 +1705,18 @@ static void draw_menu_line(
         value_x = x + 196;
     }
 
+    /*
+     * Clean selection without a black slab:
+     * left accent bar + thin top/bottom rails.
+     */
     if (selected) {
-        draw_rect(pixels, pitch, x + 1, y - 1, row_w - 2, 11, row_sel_bg);
         draw_rect(pixels, pitch, x + 1, y - 1, 2, 11, accent_col);
-        draw_rect(pixels, pitch, x + 3, y - 1, row_w - 4, 1, 0xFF2C2C2C);
-        draw_rect(pixels, pitch, x + 3, y + 9, row_w - 4, 1, 0xFF2C2C2C);
+        draw_rect(pixels, pitch, x + 4, y - 1, row_w - 6, 1, accent_col);
+        draw_rect(pixels, pitch, x + 4, y + 9, row_w - 6, 1, accent_col);
         draw_text_shadow(pixels, pitch, label_x, y, label, sel_col, 1);
         draw_text_shadow(pixels, pitch, value_x, y, value, sel_col, 1);
     } else {
-        draw_rect(pixels, pitch, x + 1, y + 10, row_w - 2, 1, sep_col);
+        draw_rect(pixels, pitch, x + 4, y + 10, row_w - 8, 1, sep_col);
         draw_text_shadow(pixels, pitch, label_x, y, label, text_col, 1);
         draw_text_shadow(pixels, pitch, value_x, y, value, text_col, 1);
     }
@@ -1736,15 +1737,10 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     int content_x;
     int row_w;
 
-    unsigned int bg = get_menu_bg();
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
     unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
     unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
-    unsigned int panel_bg = (menu_bg_color == BG_TRANSPARENT) ? 0xFF070707 : bg;
-    unsigned int header_bg = 0xFF111111;
-    unsigned int footer_bg = 0xFF0D0D0D;
-    unsigned int shadow_bg = 0xFF000000;
-    unsigned int inner_line = 0xFF1E1E1E;
+    unsigned int inner_line = 0xFF2A2A2A;
 
     if (screen_w <= 480 || screen_h <= 272) {
         x = 10;
@@ -1781,16 +1777,20 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     content_x = x + 2;
     row_w = w - 18;
 
-    draw_rect(pixels, pitch, panel_x - 2, panel_y - 2, panel_w + 4, panel_h + 4, shadow_bg);
-    draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, panel_bg);
-
+    /*
+     * IMPORTANT:
+     * Do NOT fill the whole menu with a black rectangle.
+     * Alpha-looking colors do not blend reliably on Vita framebuffer.
+     * This keeps the game visible and uses only frame/separator lines.
+     */
     draw_rect(pixels, pitch, panel_x, panel_y, panel_w, 1, border);
     draw_rect(pixels, pitch, panel_x, panel_y + panel_h - 1, panel_w, 1, border);
     draw_rect(pixels, pitch, panel_x, panel_y, 1, panel_h, border);
     draw_rect(pixels, pitch, panel_x + panel_w - 1, panel_y, 1, panel_h, border);
 
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, header_bg);
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 17, panel_w - 4, 1, border);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 20, panel_w - 4, 1, border);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 18, panel_w - 4, 1, inner_line);
 
     draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), title_col, 1);
 
@@ -1818,10 +1818,6 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
 
         line_y += 12;
     }
-
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 20, panel_w - 4, 1, border);
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 18, panel_w - 4, 12, footer_bg);
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 18, panel_w - 4, 1, inner_line);
 
     draw_text_shadow(
         pixels,
@@ -2142,41 +2138,15 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
      * the current HUD. This prevents stale text like "IP OFF 69" from
      * hanging around when toggles/layout change.
      */
-    if (last_hud_clear_x >= 0 && last_hud_clear_w > 0 && last_hud_clear_h > 0) {
-        draw_rect(
-            pixels,
-            pitch,
-            last_hud_clear_x,
-            last_hud_clear_y,
-            last_hud_clear_w,
-            last_hud_clear_h,
-            0xFF000000
-        );
-    }
-
     last_hud_clear_x = start_x - 6;
     last_hud_clear_y = start_y - 6;
     last_hud_clear_w = total_w + 12;
     last_hud_clear_h = total_h + 12;
 
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x,
-        last_hud_clear_y,
-        last_hud_clear_w,
-        last_hud_clear_h,
-        0xFF000000
-    );
-    draw_rect(
-        pixels,
-        pitch,
-        last_hud_clear_x + 1,
-        last_hud_clear_y + 1,
-        last_hud_clear_w - 2,
-        last_hud_clear_h - 2,
-        0xFF0E0E0E
-    );
+    /*
+     * No filled black HUD backing.
+     * Only a thin frame so the HUD looks cleaner without covering the game.
+     */
     draw_rect(
         pixels,
         pitch,
@@ -2357,17 +2327,7 @@ static void draw_all(void) {
 
     if (should_draw_hud) {
         draw_hud(pixels, pitch, screen_w, screen_h);
-    } else if (last_hud_clear_x >= 0 && last_hud_clear_w > 0 && last_hud_clear_h > 0) {
-        draw_rect(
-            pixels,
-            pitch,
-            last_hud_clear_x,
-            last_hud_clear_y,
-            last_hud_clear_w,
-            last_hud_clear_h,
-            0xFF000000
-        );
-
+    } else {
         last_hud_clear_x = -1;
         last_hud_clear_y = -1;
         last_hud_clear_w = 0;
