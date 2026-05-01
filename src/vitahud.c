@@ -19,32 +19,6 @@ static void put_2digits(char *out, int value) {
     out[1] = '0' + (value % 10);
 }
 
-static void get_time_12h(char *out) {
-    SceDateTime time;
-    sceRtcGetCurrentClockLocalTime(&time);
-
-    int hour = time.hour;
-    int is_pm = 0;
-
-    if (hour >= 12) {
-        is_pm = 1;
-    }
-
-    hour = hour % 12;
-
-    if (hour == 0) {
-        hour = 12;
-    }
-
-    put_2digits(&out[0], hour);
-    out[2] = ':';
-    put_2digits(&out[3], time.minute);
-    out[5] = ' ';
-    out[6] = is_pm ? 'P' : 'A';
-    out[7] = 'M';
-    out[8] = '\0';
-}
-
 static void update_fps(void) {
     SceRtcTick tick;
     sceRtcGetCurrentTick(&tick);
@@ -76,55 +50,230 @@ static void handle_toggle(void) {
     last_combo_down = combo_down;
 }
 
+static int append_text(char *out, int pos, const char *text) {
+    while (*text) {
+        out[pos++] = *text++;
+    }
+
+    return pos;
+}
+
+static int append_2digit_number(char *out, int pos, int value) {
+    if (value < 0) {
+        value = 0;
+    }
+
+    if (value > 99) {
+        value = 99;
+    }
+
+    out[pos++] = '0' + ((value / 10) % 10);
+    out[pos++] = '0' + (value % 10);
+
+    return pos;
+}
+
+static int append_battery_number(char *out, int pos, int value) {
+    if (value < 0) {
+        value = 0;
+    }
+
+    if (value > 100) {
+        value = 100;
+    }
+
+    if (value == 100) {
+        out[pos++] = '1';
+        out[pos++] = '0';
+        out[pos++] = '0';
+    } else {
+        out[pos++] = '0' + ((value / 10) % 10);
+        out[pos++] = '0' + (value % 10);
+    }
+
+    return pos;
+}
+
+static void build_hud_text(char *out) {
+    SceDateTime time;
+    sceRtcGetCurrentClockLocalTime(&time);
+
+    int hour = time.hour;
+    int is_pm = 0;
+
+    if (hour >= 12) {
+        is_pm = 1;
+    }
+
+    hour = hour % 12;
+
+    if (hour == 0) {
+        hour = 12;
+    }
+
+    int battery = scePowerGetBatteryLifePercent();
+    int pos = 0;
+
+    pos = append_text(out, pos, "FPS ");
+    pos = append_2digit_number(out, pos, (int)fps_value);
+
+    pos = append_text(out, pos, "  BAT ");
+    pos = append_battery_number(out, pos, battery);
+    out[pos++] = '%';
+
+    pos = append_text(out, pos, "  ");
+
+    put_2digits(&out[pos], hour);
+    pos += 2;
+
+    out[pos++] = ':';
+
+    put_2digits(&out[pos], time.minute);
+    pos += 2;
+
+    out[pos++] = ' ';
+    out[pos++] = is_pm ? 'P' : 'A';
+    out[pos++] = 'M';
+    out[pos] = '\0';
+}
+
 static unsigned char font5x7(char c, int row) {
     switch (c) {
-        case 'V': {
+        case '0': {
             static const unsigned char g[7] = {
-                0x11, 0x11, 0x11, 0x11, 0x0A, 0x0A, 0x04
+                0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E
             };
             return g[row];
         }
 
-        case 'i': {
+        case '1': {
             static const unsigned char g[7] = {
-                0x04, 0x00, 0x0C, 0x04, 0x04, 0x04, 0x0E
+                0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E
             };
             return g[row];
         }
 
-        case 't': {
+        case '2': {
             static const unsigned char g[7] = {
-                0x04, 0x04, 0x1F, 0x04, 0x04, 0x14, 0x08
+                0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F
             };
             return g[row];
         }
 
-        case 'a': {
+        case '3': {
             static const unsigned char g[7] = {
-                0x00, 0x00, 0x0E, 0x01, 0x0F, 0x11, 0x0F
+                0x1E, 0x01, 0x01, 0x0E, 0x01, 0x01, 0x1E
             };
             return g[row];
         }
 
-        case 'H': {
+        case '4': {
             static const unsigned char g[7] = {
-                0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11
+                0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02
             };
             return g[row];
         }
 
-        case 'U': {
+        case '5': {
             static const unsigned char g[7] = {
-                0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E
+                0x1F, 0x10, 0x10, 0x1E, 0x01, 0x01, 0x1E
             };
             return g[row];
         }
 
-        case 'D': {
+        case '6': {
             static const unsigned char g[7] = {
-                0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E
+                0x0E, 0x10, 0x10, 0x1E, 0x11, 0x11, 0x0E
             };
             return g[row];
+        }
+
+        case '7': {
+            static const unsigned char g[7] = {
+                0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08
+            };
+            return g[row];
+        }
+
+        case '8': {
+            static const unsigned char g[7] = {
+                0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E
+            };
+            return g[row];
+        }
+
+        case '9': {
+            static const unsigned char g[7] = {
+                0x0E, 0x11, 0x11, 0x0F, 0x01, 0x01, 0x0E
+            };
+            return g[row];
+        }
+
+        case 'A': {
+            static const unsigned char g[7] = {
+                0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11
+            };
+            return g[row];
+        }
+
+        case 'B': {
+            static const unsigned char g[7] = {
+                0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E
+            };
+            return g[row];
+        }
+
+        case 'F': {
+            static const unsigned char g[7] = {
+                0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10
+            };
+            return g[row];
+        }
+
+        case 'M': {
+            static const unsigned char g[7] = {
+                0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11
+            };
+            return g[row];
+        }
+
+        case 'P': {
+            static const unsigned char g[7] = {
+                0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10
+            };
+            return g[row];
+        }
+
+        case 'S': {
+            static const unsigned char g[7] = {
+                0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E
+            };
+            return g[row];
+        }
+
+        case 'T': {
+            static const unsigned char g[7] = {
+                0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04
+            };
+            return g[row];
+        }
+
+        case ':': {
+            static const unsigned char g[7] = {
+                0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00
+            };
+            return g[row];
+        }
+
+        case '%': {
+            static const unsigned char g[7] = {
+                0x19, 0x19, 0x02, 0x04, 0x08, 0x13, 0x13
+            };
+            return g[row];
+        }
+
+        case ' ': {
+            return 0x00;
         }
 
         default:
@@ -132,7 +281,15 @@ static unsigned char font5x7(char c, int row) {
     }
 }
 
-static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, unsigned int color, int scale) {
+static void draw_char(
+    unsigned int *pixels,
+    int pitch,
+    int x,
+    int y,
+    char c,
+    unsigned int color,
+    int scale
+) {
     for (int row = 0; row < 7; row++) {
         unsigned char bits = font5x7(c, row);
 
@@ -158,7 +315,15 @@ static int text_width(const char *text, int scale) {
     return count * 6 * scale;
 }
 
-static void draw_text(unsigned int *pixels, int pitch, int x, int y, const char *text, unsigned int color, int scale) {
+static void draw_text(
+    unsigned int *pixels,
+    int pitch,
+    int x,
+    int y,
+    const char *text,
+    unsigned int color,
+    int scale
+) {
     int cursor_x = x;
 
     while (*text) {
@@ -188,9 +353,10 @@ static void draw_hud_text(void) {
     int screen_h = fb.height;
     int pitch = fb.pitch;
 
-    const char *text = "VitaHUD";
-    int scale = 2;
+    char text[40];
+    build_hud_text(text);
 
+    int scale = 1;
     int w = text_width(text, scale);
     int h = 7 * scale;
 
@@ -213,23 +379,14 @@ static int hud_thread(SceSize args, void *argp) {
     (void)argp;
 
     while (1) {
+        sceDisplayWaitVblankStart();
+
         handle_toggle();
         update_fps();
 
         if (hud_enabled) {
-            int battery = scePowerGetBatteryLifePercent();
-
-            char time_text[9];
-            get_time_12h(time_text);
-
             draw_hud_text();
-
-            (void)battery;
-            (void)time_text;
-            (void)fps_value;
         }
-
-        sceKernelDelayThread(16666);
     }
 
     return 0;
