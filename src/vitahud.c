@@ -1826,13 +1826,21 @@ static int add_text_block(
 
 
 static int get_free_ram_kb(void) {
-    int free_bytes = sceKernelGetFreeMemorySize();
+    SceKernelFreeMemorySizeInfo info;
+    int result;
 
-    if (free_bytes < 0) {
+    info.size = sizeof(SceKernelFreeMemorySizeInfo);
+    info.size_user = 0;
+    info.size_cdram = 0;
+    info.size_phycont = 0;
+
+    result = sceKernelGetFreeMemorySize(&info);
+
+    if (result < 0) {
         return 0;
     }
 
-    return free_bytes / 1024;
+    return (info.size_user + info.size_cdram + info.size_phycont) / 1024;
 }
 
 static void build_cpu_text(char *out) {
@@ -2117,7 +2125,6 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 }
 
-static void draw_all
 static void draw_all(void) {
     SceDisplayFrameBuf fb;
     unsigned int *pixels;
