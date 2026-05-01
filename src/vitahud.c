@@ -1688,31 +1688,63 @@ static void draw_menu_line(
     int pitch,
     int x,
     int y,
+    int row_w,
     int selected,
     const char *label,
     const char *value
 ) {
-    unsigned int line_color = selected ? color_value(menu_select_color, 0xFF00FFFF) : color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int sel_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int accent_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int row_bg = 0xFF101010;
+    unsigned int row_sel_bg = 0xFF161616;
+    unsigned int sep_col = 0xFF232323;
+    int label_x = x + 10;
+    int value_w = text_width(value, 1);
+    int value_x = x + row_w - 10 - value_w;
 
-    if (selected) {
-        draw_text_shadow(pixels, pitch, x, y, ">", line_color, 1);
+    if (value_x < x + 196) {
+        value_x = x + 196;
     }
 
-    draw_text_shadow(pixels, pitch, x + 14, y, label, line_color, 1);
-    draw_text_shadow(pixels, pitch, x + 188, y, value, line_color, 1);
+    if (selected) {
+        draw_rect(pixels, pitch, x + 1, y - 1, row_w - 2, 11, row_sel_bg);
+        draw_rect(pixels, pitch, x + 1, y - 1, 2, 11, accent_col);
+        draw_rect(pixels, pitch, x + 3, y - 1, row_w - 4, 1, 0xFF2C2C2C);
+        draw_rect(pixels, pitch, x + 3, y + 9, row_w - 4, 1, 0xFF2C2C2C);
+        draw_text_shadow(pixels, pitch, label_x, y, label, sel_col, 1);
+        draw_text_shadow(pixels, pitch, value_x, y, value, sel_col, 1);
+    } else {
+        draw_rect(pixels, pitch, x + 1, y + 10, row_w - 2, 1, sep_col);
+        draw_text_shadow(pixels, pitch, label_x, y, label, text_col, 1);
+        draw_text_shadow(pixels, pitch, value_x, y, value, text_col, 1);
+    }
 }
 
 static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int x = 28;
-    int y = 44;
+    int y = 42;
     int w = 430;
     int h = 248;
     int line_y;
     int i;
     int visible = 15;
+    int panel_x;
+    int panel_y;
+    int panel_w;
+    int panel_h;
+    int content_x;
+    int row_w;
 
     unsigned int bg = get_menu_bg();
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
+    unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int panel_bg = (menu_bg_color == BG_TRANSPARENT) ? 0xFF070707 : bg;
+    unsigned int header_bg = 0xFF111111;
+    unsigned int footer_bg = 0xFF0D0D0D;
+    unsigned int shadow_bg = 0xFF000000;
+    unsigned int inner_line = 0xFF1E1E1E;
 
     if (screen_w <= 480 || screen_h <= 272) {
         x = 10;
@@ -1742,34 +1774,43 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         menu_scroll = 0;
     }
 
-    if (menu_bg_color != BG_TRANSPARENT) {
-        draw_rect(pixels, pitch, x - 8, y - 8, w, h, bg);
-    }
+    panel_x = x - 10;
+    panel_y = y - 10;
+    panel_w = w + 4;
+    panel_h = h + 4;
+    content_x = x + 2;
+    row_w = w - 18;
 
-    draw_rect(pixels, pitch, x - 8, y - 8, w, 1, border);
-    draw_rect(pixels, pitch, x - 8, y + h - 1, w, 1, border);
-    draw_rect(pixels, pitch, x - 8, y - 8, 1, h, border);
-    draw_rect(pixels, pitch, x + w - 9, y - 8, 1, h, border);
+    draw_rect(pixels, pitch, panel_x - 2, panel_y - 2, panel_w + 4, panel_h + 4, shadow_bg);
+    draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, panel_bg);
 
-    draw_rect(pixels, pitch, x - 4, y + 11, w - 8, 1, border);
-    draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), color_value(menu_select_color, 0xFF00FFFF), 1);
+    draw_rect(pixels, pitch, panel_x, panel_y, panel_w, 1, border);
+    draw_rect(pixels, pitch, panel_x, panel_y + panel_h - 1, panel_w, 1, border);
+    draw_rect(pixels, pitch, panel_x, panel_y, 1, panel_h, border);
+    draw_rect(pixels, pitch, panel_x + panel_w - 1, panel_y, 1, panel_h, border);
+
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, header_bg);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 17, panel_w - 4, 1, border);
+
+    draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), title_col, 1);
 
     if (menu_scroll > 0) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + 1, "^", color_value(menu_select_color, 0xFF00FFFF), 1);
+        draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + 1, "^", title_col, 1);
     }
 
     if (menu_scroll + visible < ITEM_COUNT) {
-        draw_text_shadow(pixels, pitch, x + (w / 2) - 12, y + h - 36, "V", color_value(menu_select_color, 0xFF00FFFF), 1);
+        draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + h - 36, "V", title_col, 1);
     }
 
-    line_y = y + 16;
+    line_y = y + 18;
 
     for (i = menu_scroll; i < ITEM_COUNT && i < menu_scroll + visible; i++) {
         draw_menu_line(
             pixels,
             pitch,
-            x,
+            content_x,
             line_y,
+            row_w,
             menu_index == i,
             menu_label(i),
             menu_value(i)
@@ -1778,13 +1819,17 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         line_y += 12;
     }
 
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 20, panel_w - 4, 1, border);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 18, panel_w - 4, 12, footer_bg);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 18, panel_w - 4, 1, inner_line);
+
     draw_text_shadow(
         pixels,
         pitch,
         x,
         y + h - 22,
         tr_footer(),
-        color_value(menu_text_color, 0xFFFFFFFF),
+        text_col,
         1
     );
 }
@@ -2109,10 +2154,10 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         );
     }
 
-    last_hud_clear_x = start_x - 4;
-    last_hud_clear_y = start_y - 4;
-    last_hud_clear_w = total_w + 8;
-    last_hud_clear_h = total_h + 8;
+    last_hud_clear_x = start_x - 6;
+    last_hud_clear_y = start_y - 6;
+    last_hud_clear_w = total_w + 12;
+    last_hud_clear_h = total_h + 12;
 
     draw_rect(
         pixels,
@@ -2122,6 +2167,51 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         last_hud_clear_w,
         last_hud_clear_h,
         0xFF000000
+    );
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x + 1,
+        last_hud_clear_y + 1,
+        last_hud_clear_w - 2,
+        last_hud_clear_h - 2,
+        0xFF0E0E0E
+    );
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x,
+        last_hud_clear_y,
+        last_hud_clear_w,
+        1,
+        0xFF2A2A2A
+    );
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x,
+        last_hud_clear_y + last_hud_clear_h - 1,
+        last_hud_clear_w,
+        1,
+        0xFF2A2A2A
+    );
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x,
+        last_hud_clear_y,
+        1,
+        last_hud_clear_h,
+        0xFF2A2A2A
+    );
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x + last_hud_clear_w - 1,
+        last_hud_clear_y,
+        1,
+        last_hud_clear_h,
+        0xFF2A2A2A
     );
 
     x = start_x;
