@@ -219,6 +219,8 @@ static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
+static int cached_battery_percent = 100;
+
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -889,6 +891,10 @@ static void update_system_cache(void) {
     }
 
     last_system_cache_tick = now;
+
+    cached_battery_percent = scePowerGetBatteryLifePercent();
+    if (cached_battery_percent < 0) cached_battery_percent = 0;
+    if (cached_battery_percent > 100) cached_battery_percent = 100;
 
     /*
      * Cache only.
@@ -2005,7 +2011,7 @@ static int add_text_block(
 }
 
 static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    int battery = scePowerGetBatteryLifePercent();
+    int battery = cached_battery_percent;
 
     char fps_text[16];
     char battery_text[8];
@@ -2309,58 +2315,40 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 }
 
-static int get_top_layer_framebuffer(SceDisplayFrameBuf *fb) {
-    int ret;
+static int get_framebuffer(unsigned int **pixels, int *pitch, int *screen_w, int *screen_h, int mode) {
+    SceDisplayFrameBuf fb;
 
-    if (!fb) {
-        return -1;
+    fb.size = sizeof(SceDisplayFrameBuf);
+
+    if (sceDisplayGetFrameBuf(&fb, mode) < 0 || !fb.base) {
+        return 0;
     }
 
-    fb->size = sizeof(SceDisplayFrameBuf);
-
-    /*
-     * FORCE TOP-LAYER MODE:
-     * IMMEDIATE is attempted first because it targets the currently visible
-     * frame. If the shell/game does not expose that buffer, fall back to
-     * NEXTFRAME so the HUD can still draw somewhere valid.
-     */
-    ret = sceDisplayGetFrameBuf(fb, SCE_DISPLAY_SETBUF_IMMEDIATE);
-
-    if (ret < 0 || !fb->base || fb->width <= 0 || fb->height <= 0 || fb->pitch <= 0) {
-        fb->size = sizeof(SceDisplayFrameBuf);
-        ret = sceDisplayGetFrameBuf(fb, SCE_DISPLAY_SETBUF_NEXTFRAME);
+    if (fb.pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
+        return 0;
     }
 
-    if (ret < 0 || !fb->base || fb->width <= 0 || fb->height <= 0 || fb->pitch <= 0) {
-        return -1;
+    if (fb.width <= 0 || fb.height <= 0 || fb.pitch <= 0) {
+        return 0;
     }
 
-    if (fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
-        return -1;
-    }
+    *pixels = (unsigned int *)fb.base;
+    *pitch = fb.pitch;
+    *screen_w = fb.width;
+    *screen_h = fb.height;
 
-    return 0;
+    g_screen_w = fb.width;
+    g_screen_h = fb.height;
+
+    return 1;
 }
 
-static void draw_all(void) {
-    SceDisplayFrameBuf fb;
-    unsigned int *pixels;
-    int screen_w;
-    int screen_h;
-    int pitch;
+static void draw_all_to_buffer(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
     int should_draw_hud = 0;
 
-    if (get_top_layer_framebuffer(&fb) < 0) {
+    if (!pixels || pitch <= 0 || screen_w <= 0 || screen_h <= 0) {
         return;
     }
-
-    pixels = (unsigned int *)fb.base;
-    screen_w = fb.width;
-    screen_h = fb.height;
-    pitch = fb.pitch;
-
-    g_screen_w = screen_w;
-    g_screen_h = screen_h;
 
     if (hud_enabled) {
         if (auto_hide_mode == AUTO_HIDE_OFF) {
@@ -2379,9 +2367,38 @@ static void draw_all(void) {
         last_hud_clear_h = 0;
     }
 
+    /* Menu is always drawn AFTER HUD so VitaHUD's own menu is the top object inside our layer. */
     if (menu_open) {
         draw_menu(pixels, pitch, screen_w, screen_h);
     }
+}
+
+static void draw_all_once(int mode) {
+    unsigned int *pixels = 0;
+    int pitch = 0;
+    int screen_w = 0;
+    int screen_h = 0;
+
+    if (get_framebuffer(&pixels, &pitch, &screen_w, &screen_h, mode)) {
+        draw_all_to_buffer(pixels, pitch, screen_w, screen_h);
+    }
+}
+
+static void draw_all_top_layer_burst(void) {
+    /*
+     * Best-possible raw-framebuffer top-layer method:
+     * 1) Draw immediately after VBlank.
+     * 2) Draw again after a tiny delay because some games/menus render late.
+     * 3) Draw once more using NEXTFRAME as a fallback.
+     *
+     * This does not convert the HUD into a PAF/system overlay, but it makes the
+     * current raw framebuffer HUD draw as late and persistently as possible.
+     */
+    draw_all_once(SCE_DISPLAY_SETBUF_IMMEDIATE);
+    sceKernelDelayThread(700);
+    draw_all_once(SCE_DISPLAY_SETBUF_IMMEDIATE);
+    sceKernelDelayThread(700);
+    draw_all_once(SCE_DISPLAY_SETBUF_NEXTFRAME);
 }
 
 static int hud_thread(SceSize args, void *argp) {
@@ -2395,16 +2412,7 @@ static int hud_thread(SceSize args, void *argp) {
         update_fps();
         update_system_cache();
 
-        /*
-         * FORCE TOP-LAYER MODE:
-         * Wait briefly after VBlank so the shell/game/quickmenu finishes its
-         * own draw first, then draw VitaHUD last. A second tiny late pass helps
-         * when a menu redraws over us during the same frame.
-         */
-        sceKernelDelayThread(6500);
-        draw_all();
-        sceKernelDelayThread(1000);
-        draw_all();
+        draw_all_top_layer_burst();
 
         if (save_message_frames > 0) {
             save_message_frames--;
@@ -2434,7 +2442,7 @@ int module_start(SceSize args, void *argp) {
     thid = sceKernelCreateThread(
         "VitaHUD TopLayer Thread",
         hud_thread,
-        0x10000100,
+        0x40,
         0x10000,
         0,
         0,
