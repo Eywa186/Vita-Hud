@@ -1,36 +1,86 @@
-# VitaHUD Anti-Glitch Fixed Build
+# VitaHUD
 
-This is a recovery build focused on stopping the HUD/menu flicker/glitching caused by unstable direct-framebuffer drawing.
+A small PS Vita taiHEN user plugin that draws a PSP-style live HUD over games/apps.
 
-## Fixes in this build
+## Current v1 features
 
-- Keeps your original `vitahud.suprx` HUD path.
-- Removes the PSVshellPlus duplicate-plugin direction.
-- Adds a framebuffer stability gate: VitaHUD waits until the same framebuffer pointer/size is stable before drawing.
-- Draws the HUD at a lower, steadier cadence when the menu is closed.
-- Keeps the menu responsive when opened.
-- Adds a compact black backing plate behind HUD text to stop stale/ghost pixels in menus that do not repaint cleanly.
-- Keeps logging at `ur0:data/VitaHUD/vitahud_log.txt`.
+- Live FPS counter
+- Live battery percentage
+- 12-hour clock
+- Toggle HUD on/off with **L + R + SELECT**
+- Bottom-right overlay by default
+- Draws directly into the framebuffer
 
-## Install
+## GitHub auto-build method
 
-Copy the built `vitahud.suprx` to:
+This project includes a GitHub Actions workflow. Once you upload the folder to GitHub, GitHub will build the plugin for you.
+
+### Steps
+
+1. Create a new GitHub repository.
+2. Upload every file/folder from this project.
+3. Open the repository on GitHub.
+4. Click **Actions**.
+5. Click **Build VitaHUD**.
+6. Click **Run workflow**.
+7. Wait for it to finish.
+8. Open the finished workflow run.
+9. Download the artifact named **vitahud-suprx**.
+10. Extract it. Inside will be:
+
+```txt
+vitahud.suprx
+```
+
+## Vita install
+
+Copy the built plugin here:
 
 ```txt
 ur0:tai/vitahud.suprx
 ```
 
-In `ur0:tai/config.txt`, under `*main`, use only:
+Then edit:
 
 ```txt
+ur0:tai/config.txt
+```
+
+Add under `*ALL`:
+
+```txt
+*ALL
 ur0:tai/vitahud.suprx
 ```
 
-Do not add this under `*KERNEL`.
+Reboot the Vita.
 
-Full reboot after install.
+## Toggle combo
 
-## Toggle/menu
+```txt
+L + R + SELECT
+```
 
-- HUD toggle: your configured toggle
-- Menu: `L + R + START`
+## Manual build requirements
+
+- VitaSDK
+- taiHEN headers/stubs
+
+## Manual build
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+Output:
+
+```txt
+vitahud.suprx
+```
+
+## Notes
+
+This v1 targets common 32-bit Vita framebuffer formats first. If a game uses a different pixel format, the HUD may not draw until that format is added.
