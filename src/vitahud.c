@@ -2363,6 +2363,31 @@ static void draw_all_from_framebuf(const SceDisplayFrameBuf *fb) {
     }
 }
 
+typedef int (*VitaHUD_SetFrameBufFn)(const SceDisplayFrameBuf *pParam, int sync);
+
+static int vitahud_continue_setframebuf(const SceDisplayFrameBuf *pParam, int sync) {
+    struct _tai_hook_user *cur = (struct _tai_hook_user *)g_display_hook;
+    struct _tai_hook_user *next = 0;
+    VitaHUD_SetFrameBufFn fn = 0;
+
+    if (!cur) {
+        return 0;
+    }
+
+    next = (struct _tai_hook_user *)cur->next;
+    if (next) {
+        fn = (VitaHUD_SetFrameBufFn)next->func;
+    } else {
+        fn = (VitaHUD_SetFrameBufFn)cur->old;
+    }
+
+    if (!fn) {
+        return 0;
+    }
+
+    return fn(pParam, sync);
+}
+
 static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
     /*
      * Core fix copied from VITABatteryPlus behavior:
@@ -2387,7 +2412,7 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
         temporary_show_frames--;
     }
 
-    return TAI_CONTINUE(int, g_display_hook, pParam, sync);
+    return vitahud_continue_setframebuf(pParam, sync);
 }
 
 int module_start(SceSize args, void *argp) {
