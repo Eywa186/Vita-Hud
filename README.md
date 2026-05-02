@@ -1,43 +1,36 @@
-# VitaHUD Recovery Fixed
+# VitaHUD Anti-Glitch Fixed Build
 
-This is the cleaned recovery build for the original direct-framebuffer VitaHUD.
+This is a recovery build focused on stopping the HUD/menu flicker/glitching caused by unstable direct-framebuffer drawing.
+
+## Fixes in this build
+
+- Keeps your original `vitahud.suprx` HUD path.
+- Removes the PSVshellPlus duplicate-plugin direction.
+- Adds a framebuffer stability gate: VitaHUD waits until the same framebuffer pointer/size is stable before drawing.
+- Draws the HUD at a lower, steadier cadence when the menu is closed.
+- Keeps the menu responsive when opened.
+- Adds a compact black backing plate behind HUD text to stop stale/ghost pixels in menus that do not repaint cleanly.
+- Keeps logging at `ur0:data/VitaHUD/vitahud_log.txt`.
 
 ## Install
 
-Copy the GitHub Actions artifact `vitahud.suprx` to:
+Copy the built `vitahud.suprx` to:
 
 ```txt
 ur0:tai/vitahud.suprx
 ```
 
-Add under `*main` in `ur0:tai/config.txt`:
+In `ur0:tai/config.txt`, under `*main`, use only:
 
 ```txt
 ur0:tai/vitahud.suprx
 ```
 
-Remove any old temporary test lines like:
+Do not add this under `*KERNEL`.
 
-```txt
-ur0:tai/vitahud_paf_v5.suprx
-ur0:tai/VitaHUD_Shell.suprx
-ur0:tai/VitaHUD_Kernel.skprx
-```
+Full reboot after install.
 
-Full reboot.
+## Toggle/menu
 
-## Toggle
-
-Default menu combo:
-
-```txt
-L + R + START
-```
-
-## Notes
-
-This recovery build keeps the original HUD source but fixes the direct framebuffer getter to try IMMEDIATE first, then NEXTFRAME. It also logs startup to:
-
-```txt
-ur0:data/VitaHUD/vitahud_log.txt
-```
+- HUD toggle: your configured toggle
+- Menu: `L + R + START`

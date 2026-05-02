@@ -225,6 +225,21 @@ static int cached_battery_charging = 0;
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
+
+/*
+ * Anti-glitch state. Some Vita screens/menus switch framebuffer pointers or
+ * temporarily expose unstable buffers. Drawing during those few frames causes
+ * flicker/garbage. We wait for the same buffer shape to remain stable.
+ */
+#define VITAHUD_STABLE_FRAMES_REQUIRED 6
+#define VITAHUD_DRAW_DIVIDER 2
+
+static void *last_fb_base_ptr = 0;
+static int last_fb_pitch_value = 0;
+static int last_fb_width_value = 0;
+static int last_fb_height_value = 0;
+static int stable_fb_frames = 0;
+static int draw_divider_counter = 0;
 static int last_hud_clear_x = -1;
 static int last_hud_clear_y = -1;
 static int last_hud_clear_w = 0;
@@ -235,9 +250,10 @@ static int last_hud_clear_h = 0;
  * The previous version delayed after VBlank and used IMMEDIATE.
  * That makes some menus worse because VitaHUD draws late/into unstable redraws.
  *
- * This version:
- * - NO delay in hud_thread
- * - uses SCE_DISPLAY_SETBUF_NEXTFRAME
+ * Anti-glitch recovery model:
+ * - waits for the framebuffer pointer/size to stay stable before drawing
+ * - draws the HUD/menu at a lower, steadier cadence
+ * - uses a small backing plate behind HUD text so stale pixels do not smear
  * - clips every pixel write so nothing writes outside the active framebuffer
  */
 
@@ -2251,11 +2267,20 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     /*
-     * HUD background:
-     * Transparent again. No HUD BG option.
-     * We still track the last HUD footprint for layout bookkeeping,
-     * but we do not draw a black rectangle behind FPS/battery/time.
+     * Anti-glitch backing plate:
+     * Direct framebuffer HUDs can smear in static menus because the game/shell
+     * does not always repaint the exact same area every frame. A compact black
+     * plate keeps the HUD stable and prevents ghost/stale pixels.
      */
+    draw_rect(
+        pixels,
+        pitch,
+        last_hud_clear_x,
+        last_hud_clear_y,
+        last_hud_clear_w,
+        last_hud_clear_h,
+        0xC0000000
+    );
 
     x = start_x;
     y = start_y;
@@ -2369,10 +2394,46 @@ static void draw_all(void) {
     int should_draw_hud = 0;
 
     if (get_valid_framebuffer(&fb) < 0) {
+        stable_fb_frames = 0;
         return;
     }
 
     if (fb.pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
+        stable_fb_frames = 0;
+        return;
+    }
+
+    if (!fb.base || fb.width <= 0 || fb.height <= 0 || fb.pitch <= 0) {
+        stable_fb_frames = 0;
+        return;
+    }
+
+    /*
+     * Critical anti-glitch gate:
+     * If the screen/menu changes buffers, skip the first few frames. This avoids
+     * drawing into transition buffers that cause flicker/corruption.
+     */
+    if (fb.base != last_fb_base_ptr ||
+        fb.pitch != last_fb_pitch_value ||
+        fb.width != last_fb_width_value ||
+        fb.height != last_fb_height_value) {
+        last_fb_base_ptr = fb.base;
+        last_fb_pitch_value = fb.pitch;
+        last_fb_width_value = fb.width;
+        last_fb_height_value = fb.height;
+        stable_fb_frames = 0;
+        return;
+    }
+
+    if (stable_fb_frames < VITAHUD_STABLE_FRAMES_REQUIRED) {
+        stable_fb_frames++;
+        return;
+    }
+
+    /* Draw every other frame unless the menu is open. This reduces fighting
+     * with games/menus while keeping the HUD responsive enough. */
+    draw_divider_counter++;
+    if (!menu_open && (draw_divider_counter % VITAHUD_DRAW_DIVIDER) != 0) {
         return;
     }
 
@@ -2418,8 +2479,8 @@ static int hud_thread(SceSize args, void *argp) {
         update_system_cache();
 
         /*
-         * NO DELAY.
-         * The 1000/2000us delay made the glitch worse in some menus.
+         * Anti-glitch draw is gated inside draw_all(): stable framebuffer first,
+         * then lower-cadence drawing. No blind post-vblank delay.
          */
         draw_all();
 
@@ -2445,7 +2506,7 @@ int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
 
-    vh_log("VitaHUD recovery build: module_start reached\n");
+    vh_log("VitaHUD anti-glitch v2: module_start reached\n");
 
     /* Stable recovery: auto-load Profile 1 on boot. */
     load_profile();
@@ -2463,9 +2524,9 @@ int module_start(SceSize args, void *argp) {
 
     if (thid >= 0) {
         sceKernelStartThread(thid, 0, 0);
-        vh_log("VitaHUD recovery build: thread started\n");
+        vh_log("VitaHUD anti-glitch v2: thread started\n");
     } else {
-        vh_log("VitaHUD recovery build: thread create failed\n");
+        vh_log("VitaHUD anti-glitch v2: thread create failed\n");
     }
 
     return SCE_KERNEL_START_SUCCESS;
