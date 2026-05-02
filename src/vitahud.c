@@ -8,8 +8,9 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
-#define CONFIG_DIR  "ux0:data/VitaHUD"
-#define CONFIG_PATH "ux0:data/VitaHUD/config.txt"
+#define CONFIG_DIR  "ur0:data/VitaHUD"
+#define CONFIG_PATH "ur0:data/VitaHUD/config.txt"
+#define LOG_PATH    "ur0:data/VitaHUD/vitahud_log.txt"
 
 #define MENU_COMBO (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_START)
 
@@ -219,6 +220,8 @@ static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
+static int cached_battery_percent = 0;
+static int cached_battery_charging = 0;
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -237,6 +240,49 @@ static int last_hud_clear_h = 0;
  * - uses SCE_DISPLAY_SETBUF_NEXTFRAME
  * - clips every pixel write so nothing writes outside the active framebuffer
  */
+
+
+static int vh_strlen(const char *s) {
+    int n = 0;
+    if (!s) return 0;
+    while (s[n]) n++;
+    return n;
+}
+
+static void vh_log(const char *line) {
+    SceUID fd;
+
+    sceIoMkdir("ur0:data", 0777);
+    sceIoMkdir(CONFIG_DIR, 0777);
+
+    fd = sceIoOpen(LOG_PATH, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND, 0777);
+    if (fd >= 0) {
+        sceIoWrite(fd, line, vh_strlen(line));
+        sceIoClose(fd);
+    }
+}
+
+static int get_valid_framebuffer(SceDisplayFrameBuf *fb) {
+    int ret;
+
+    if (!fb) {
+        return -1;
+    }
+
+    fb->size = sizeof(SceDisplayFrameBuf);
+    ret = sceDisplayGetFrameBuf(fb, SCE_DISPLAY_SETBUF_IMMEDIATE);
+    if (ret >= 0 && fb->base && fb->width > 0 && fb->height > 0 && fb->pitch > 0) {
+        return 0;
+    }
+
+    fb->size = sizeof(SceDisplayFrameBuf);
+    ret = sceDisplayGetFrameBuf(fb, SCE_DISPLAY_SETBUF_NEXTFRAME);
+    if (ret >= 0 && fb->base && fb->width > 0 && fb->height > 0 && fb->pitch > 0) {
+        return 0;
+    }
+
+    return -1;
+}
 
 static void put_2digits(char *out, int value) {
     out[0] = '0' + ((value / 10) % 10);
@@ -779,7 +825,7 @@ static void build_battery_text(char *out, int battery) {
 static void build_charging_text(char *out) {
     int pos = 0;
 
-    if (scePowerIsBatteryCharging()) {
+    if (cached_battery_charging) {
         pos = append_text(out, pos, "CHG");
     } else {
         pos = append_text(out, pos, "BAT");
@@ -889,6 +935,11 @@ static void update_system_cache(void) {
     }
 
     last_system_cache_tick = now;
+
+    cached_battery_percent = scePowerGetBatteryLifePercent();
+    if (cached_battery_percent < 0) cached_battery_percent = 0;
+    if (cached_battery_percent > 100) cached_battery_percent = 100;
+    cached_battery_charging = scePowerIsBatteryCharging();
 
     /*
      * Cache only.
@@ -2005,7 +2056,7 @@ static int add_text_block(
 }
 
 static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    int battery = scePowerGetBatteryLifePercent();
+    int battery = cached_battery_percent;
 
     char fps_text[16];
     char battery_text[8];
@@ -2317,13 +2368,7 @@ static void draw_all(void) {
     int pitch;
     int should_draw_hud = 0;
 
-    fb.size = sizeof(SceDisplayFrameBuf);
-
-    /*
-     * Stable version:
-     * NEXTFRAME avoids late direct writes that caused worse menu tearing.
-     */
-    if (sceDisplayGetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0 || !fb.base) {
+    if (get_valid_framebuffer(&fb) < 0) {
         return;
     }
 
@@ -2400,8 +2445,11 @@ int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
 
+    vh_log("VitaHUD recovery build: module_start reached\n");
+
     /* Stable recovery: auto-load Profile 1 on boot. */
     load_profile();
+    update_system_cache();
 
     thid = sceKernelCreateThread(
         "VitaHUD Thread",
@@ -2415,6 +2463,9 @@ int module_start(SceSize args, void *argp) {
 
     if (thid >= 0) {
         sceKernelStartThread(thid, 0, 0);
+        vh_log("VitaHUD recovery build: thread started\n");
+    } else {
+        vh_log("VitaHUD recovery build: thread create failed\n");
     }
 
     return SCE_KERNEL_START_SUCCESS;

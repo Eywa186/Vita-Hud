@@ -1,86 +1,43 @@
-# VitaHUD
+# VitaHUD Recovery Fixed
 
-A small PS Vita taiHEN user plugin that draws a PSP-style live HUD over games/apps.
+This is the cleaned recovery build for the original direct-framebuffer VitaHUD.
 
-## Current v1 features
+## Install
 
-- Live FPS counter
-- Live battery percentage
-- 12-hour clock
-- Toggle HUD on/off with **L + R + SELECT**
-- Bottom-right overlay by default
-- Draws directly into the framebuffer
-
-## GitHub auto-build method
-
-This project includes a GitHub Actions workflow. Once you upload the folder to GitHub, GitHub will build the plugin for you.
-
-### Steps
-
-1. Create a new GitHub repository.
-2. Upload every file/folder from this project.
-3. Open the repository on GitHub.
-4. Click **Actions**.
-5. Click **Build VitaHUD**.
-6. Click **Run workflow**.
-7. Wait for it to finish.
-8. Open the finished workflow run.
-9. Download the artifact named **vitahud-suprx**.
-10. Extract it. Inside will be:
-
-```txt
-vitahud.suprx
-```
-
-## Vita install
-
-Copy the built plugin here:
+Copy the GitHub Actions artifact `vitahud.suprx` to:
 
 ```txt
 ur0:tai/vitahud.suprx
 ```
 
-Then edit:
+Add under `*main` in `ur0:tai/config.txt`:
 
 ```txt
-ur0:tai/config.txt
-```
-
-Add under `*ALL`:
-
-```txt
-*ALL
 ur0:tai/vitahud.suprx
 ```
 
-Reboot the Vita.
-
-## Toggle combo
+Remove any old temporary test lines like:
 
 ```txt
-L + R + SELECT
+ur0:tai/vitahud_paf_v5.suprx
+ur0:tai/VitaHUD_Shell.suprx
+ur0:tai/VitaHUD_Kernel.skprx
 ```
 
-## Manual build requirements
+Full reboot.
 
-- VitaSDK
-- taiHEN headers/stubs
+## Toggle
 
-## Manual build
-
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
-
-Output:
+Default menu combo:
 
 ```txt
-vitahud.suprx
+L + R + START
 ```
 
 ## Notes
 
-This v1 targets common 32-bit Vita framebuffer formats first. If a game uses a different pixel format, the HUD may not draw until that format is added.
+This recovery build keeps the original HUD source but fixes the direct framebuffer getter to try IMMEDIATE first, then NEXTFRAME. It also logs startup to:
+
+```txt
+ur0:data/VitaHUD/vitahud_log.txt
+```
