@@ -209,6 +209,15 @@ static unsigned int last_buttons = 0;
 static int hold_up_frames = 0;
 static int hold_down_frames = 0;
 
+#define MENU_PAGE_MAIN    0
+#define MENU_PAGE_PROFILE 1
+#define MENU_PAGE_THEME   2
+
+static int menu_page = MENU_PAGE_MAIN;
+static int menu_nav_dir = 0;
+static SceUInt64 menu_nav_hold_start_tick = 0;
+static SceUInt64 menu_nav_next_repeat_tick = 0;
+
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
@@ -387,6 +396,10 @@ static void reset_defaults(void) {
     menu_open = 0;
     menu_index = 0;
     menu_scroll = 0;
+    menu_page = MENU_PAGE_MAIN;
+    menu_nav_dir = 0;
+    menu_nav_hold_start_tick = 0;
+    menu_nav_next_repeat_tick = 0;
 
     hud_position = POS_BOTTOM_RIGHT;
     hud_layout = LAYOUT_SINGLE;
@@ -1497,6 +1510,110 @@ static const char *tr_footer(void) {
     }
 }
 
+
+static int current_menu_count(void) {
+    switch (menu_page) {
+        case MENU_PAGE_PROFILE:
+            return 3;
+
+        case MENU_PAGE_THEME:
+            return 7;
+
+        case MENU_PAGE_MAIN:
+        default:
+            return 24;
+    }
+}
+
+static int current_menu_item_at(int index) {
+    static const int main_items[24] = {
+        ITEM_HUD,
+        ITEM_LAYOUT,
+        ITEM_POSITION,
+        ITEM_X_OFFSET,
+        ITEM_Y_OFFSET,
+        ITEM_SIZE,
+        ITEM_FONT,
+        ITEM_FPS,
+        ITEM_BATTERY,
+        ITEM_TIME,
+        ITEM_CPU_HUD,
+        ITEM_BUS_HUD,
+        ITEM_GPU_HUD,
+        ITEM_APP_ID_HUD,
+        ITEM_RAM_HUD,
+        ITEM_IP_HUD,
+        ITEM_CHARGING,
+        ITEM_TIMEMODE,
+        ITEM_PROFILE_MENU,
+        ITEM_THEME_MENU,
+        ITEM_LANGUAGE,
+        ITEM_AUTO_HIDE,
+        ITEM_TOGGLE,
+        ITEM_RESET
+    };
+
+    static const int profile_items[3] = {
+        ITEM_PROFILE,
+        ITEM_SAVE_PROFILE,
+        ITEM_LOAD_PROFILE
+    };
+
+    static const int theme_items[7] = {
+        ITEM_THEME,
+        ITEM_HUD_SHADOW,
+        ITEM_HUD_ICON,
+        ITEM_MENU_TEXT,
+        ITEM_MENU_SELECT,
+        ITEM_MENU_BORDER,
+        ITEM_MENUBG
+    };
+
+    if (index < 0) {
+        index = 0;
+    }
+
+    if (menu_page == MENU_PAGE_PROFILE) {
+        if (index >= 3) index = 2;
+        return profile_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_THEME) {
+        if (index >= 7) index = 6;
+        return theme_items[index];
+    }
+
+    if (index >= 24) index = 23;
+    return main_items[index];
+}
+
+static int current_menu_item(void) {
+    return current_menu_item_at(menu_index);
+}
+
+static void enter_menu_page(int page) {
+    menu_page = page;
+    menu_index = 0;
+    menu_scroll = 0;
+    hold_up_frames = 0;
+    hold_down_frames = 0;
+    menu_nav_dir = 0;
+    menu_nav_hold_start_tick = 0;
+    menu_nav_next_repeat_tick = 0;
+}
+
+static const char *current_menu_title(void) {
+    if (menu_page == MENU_PAGE_PROFILE) {
+        return "PROFILE MENU";
+    }
+
+    if (menu_page == MENU_PAGE_THEME) {
+        return "THEME / COLOR";
+    }
+
+    return tr_menu_title();
+}
+
 static const char *menu_label(int item) {
     switch (item) {
         case ITEM_HUD:          return "HUD";
@@ -1515,11 +1632,11 @@ static const char *menu_label(int item) {
         case ITEM_THEME:        return "THEME PRESET";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
-        case ITEM_HUD_ICON:     return "HUD ICON";
+        case ITEM_HUD_ICON:     return "BATTERY ICON";
         case ITEM_MENU_TEXT:    return "MENU TEXT";
         case ITEM_MENU_SELECT:  return "MENU SELECT";
         case ITEM_MENU_BORDER:  return "MENU BORDER";
-        case ITEM_MENUBG:       return "MENU BG";
+        case ITEM_MENUBG:       return "MENU BACKGROUND";
         case ITEM_PROFILE_MENU: return "PROFILE MENU";
         case ITEM_PROFILE:      return "PROFILE SLOT";
         case ITEM_LANGUAGE:     return "LANGUAGE";
@@ -1557,9 +1674,9 @@ static const char *menu_value(int item) {
         case ITEM_MENU_SELECT:  return color_name_generic(menu_select_color);
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
         case ITEM_MENUBG:       return menu_bg_name();
-        case ITEM_THEME_MENU:   return "SECTION";
+        case ITEM_THEME_MENU:   return "OPEN";
         case ITEM_THEME:        return theme_name();
-        case ITEM_PROFILE_MENU: return "SECTION";
+        case ITEM_PROFILE_MENU: return "OPEN";
         case ITEM_PROFILE:      return profile_name();
         case ITEM_LANGUAGE:     return language_name();
         case ITEM_AUTO_HIDE:    return auto_hide_name();
@@ -1578,10 +1695,15 @@ static const char *menu_value(int item) {
 }
 
 static void menu_change(int dir) {
-    switch (menu_index) {
+    int item = current_menu_item();
+
+    switch (item) {
         case ITEM_THEME_MENU:
+            enter_menu_page(MENU_PAGE_THEME);
+            break;
+
         case ITEM_PROFILE_MENU:
-            /* Section headers: no action. */
+            enter_menu_page(MENU_PAGE_PROFILE);
             break;
 
         case ITEM_HUD:
@@ -1837,8 +1959,8 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         menu_scroll = 0;
     }
 
-    if (menu_scroll > ITEM_COUNT - visible) {
-        menu_scroll = ITEM_COUNT - visible;
+    if (menu_scroll > current_menu_count() - visible) {
+        menu_scroll = current_menu_count() - visible;
     }
 
     if (menu_scroll < 0) {
@@ -1870,19 +1992,19 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 20, panel_w - 4, 1, border);
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 18, panel_w - 4, 1, inner_line);
 
-    draw_text_shadow(pixels, pitch, x, y, tr_menu_title(), title_col, 1);
+    draw_text_shadow(pixels, pitch, x, y, current_menu_title(), title_col, 1);
 
     if (menu_scroll > 0) {
         draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + 1, "^", title_col, 1);
     }
 
-    if (menu_scroll + visible < ITEM_COUNT) {
+    if (menu_scroll + visible < current_menu_count()) {
         draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + h - 36, "V", title_col, 1);
     }
 
     line_y = y + 18;
 
-    for (i = menu_scroll; i < ITEM_COUNT && i < menu_scroll + visible; i++) {
+    for (i = menu_scroll; i < current_menu_count() && i < menu_scroll + visible; i++) {
         draw_menu_line(
             pixels,
             pitch,
@@ -1890,8 +2012,8 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
             line_y,
             row_w,
             menu_index == i,
-            menu_label(i),
-            menu_value(i)
+            menu_label(current_menu_item_at(i)),
+            menu_value(current_menu_item_at(i))
         );
 
         line_y += 12;
@@ -1909,42 +2031,100 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
 }
 
 static void move_menu_index(int dir) {
+    int count = current_menu_count();
+
+    if (count <= 0) {
+        menu_index = 0;
+        return;
+    }
+
     menu_index += dir;
 
     if (menu_index < 0) {
-        menu_index = ITEM_COUNT - 1;
+        menu_index = count - 1;
     }
 
-    if (menu_index >= ITEM_COUNT) {
+    if (menu_index >= count) {
         menu_index = 0;
     }
 }
 
-static int hold_scroll_trigger(int frames) {
-    /*
-     * Smoother menu navigation:
-     * - Tap = one movement only.
-     * - Short hold = no runaway repeat.
-     * - Longer hold = gradually faster scrolling.
-     * This only affects input pacing; it does not touch the render/glitch hook.
-     */
-    if (frames == 1) {
-        return 1;
+static int menu_repeat_interval_usec(SceUInt64 held_usec) {
+    if (held_usec < 900000) {
+        return 190000;
     }
 
-    if (frames < 24) {
-        return 0;
+    if (held_usec < 1800000) {
+        return 115000;
     }
 
-    if (frames < 90) {
-        return ((frames - 24) % 12) == 0;
+    if (held_usec < 3000000) {
+        return 75000;
     }
 
-    if (frames < 180) {
-        return ((frames - 90) % 7) == 0;
+    return 52000;
+}
+
+static void handle_menu_vertical(unsigned int buttons, unsigned int pressed) {
+    int dir = 0;
+    SceRtcTick tick;
+    SceUInt64 now;
+    SceUInt64 held_usec;
+    int interval;
+
+    if (buttons & SCE_CTRL_UP) {
+        dir = -1;
+    } else if (buttons & SCE_CTRL_DOWN) {
+        dir = 1;
     }
 
-    return ((frames - 180) % 4) == 0;
+    if (dir == 0) {
+        hold_up_frames = 0;
+        hold_down_frames = 0;
+        menu_nav_dir = 0;
+        menu_nav_hold_start_tick = 0;
+        menu_nav_next_repeat_tick = 0;
+        return;
+    }
+
+    sceRtcGetCurrentTick(&tick);
+    now = tick.tick;
+
+    if ((dir < 0 && (pressed & SCE_CTRL_UP)) || (dir > 0 && (pressed & SCE_CTRL_DOWN)) || menu_nav_dir != dir) {
+        move_menu_index(dir);
+        menu_nav_dir = dir;
+        menu_nav_hold_start_tick = now;
+        menu_nav_next_repeat_tick = now + 520000;
+
+        if (dir < 0) {
+            hold_up_frames = 1;
+            hold_down_frames = 0;
+        } else {
+            hold_down_frames = 1;
+            hold_up_frames = 0;
+        }
+
+        return;
+    }
+
+    if (menu_nav_hold_start_tick == 0) {
+        menu_nav_hold_start_tick = now;
+        menu_nav_next_repeat_tick = now + 520000;
+        return;
+    }
+
+    if (now >= menu_nav_next_repeat_tick) {
+        move_menu_index(dir);
+        held_usec = now - menu_nav_hold_start_tick;
+        interval = menu_repeat_interval_usec(held_usec);
+        menu_nav_next_repeat_tick = now + interval;
+
+        if (dir < 0) {
+            hold_up_frames++;
+        } else {
+            hold_down_frames++;
+        }
+    }
 }
 
 static void handle_input(void) {
@@ -1982,25 +2162,7 @@ static void handle_input(void) {
     }
 
     if (menu_open) {
-        if (buttons & SCE_CTRL_UP) {
-            hold_up_frames++;
-
-            if (hold_scroll_trigger(hold_up_frames)) {
-                move_menu_index(-1);
-            }
-        } else {
-            hold_up_frames = 0;
-        }
-
-        if (buttons & SCE_CTRL_DOWN) {
-            hold_down_frames++;
-
-            if (hold_scroll_trigger(hold_down_frames)) {
-                move_menu_index(1);
-            }
-        } else {
-            hold_down_frames = 0;
-        }
+        handle_menu_vertical(buttons, pressed);
 
         if (pressed & SCE_CTRL_LEFT) {
             menu_change(-1);
@@ -2015,7 +2177,11 @@ static void handle_input(void) {
         }
 
         if (pressed & SCE_CTRL_CIRCLE) {
-            menu_open = 0;
+            if (menu_page != MENU_PAGE_MAIN) {
+                enter_menu_page(MENU_PAGE_MAIN);
+            } else {
+                menu_open = 0;
+            }
         }
     }
 
