@@ -118,6 +118,12 @@
 #define PROFILE_3 2
 #define PROFILE_COUNT 3
 
+/*
+ * MENU ORDER ONLY.
+ * Render/glitch hook path is intentionally untouched.
+ * CPU/BUS/GPU/APP/RAM/IP are now directly under CLOCK for faster toggling.
+ * Theme/color and profile groups are exposed as clear menu sections.
+ */
 #define ITEM_HUD          0
 #define ITEM_LAYOUT       1
 #define ITEM_POSITION     2
@@ -128,30 +134,32 @@
 #define ITEM_FPS          7
 #define ITEM_BATTERY      8
 #define ITEM_TIME         9
-#define ITEM_CHARGING     10
-#define ITEM_TIMEMODE     11
-#define ITEM_HUD_TEXT     12
-#define ITEM_HUD_SHADOW   13
-#define ITEM_HUD_ICON     14
-#define ITEM_MENU_TEXT    15
-#define ITEM_MENU_SELECT  16
-#define ITEM_MENU_BORDER  17
-#define ITEM_MENUBG       18
-#define ITEM_LANGUAGE     19
-#define ITEM_AUTO_HIDE    20
-#define ITEM_TOGGLE       21
-#define ITEM_THEME        22
-#define ITEM_PROFILE      23
-#define ITEM_SAVE_PROFILE 24
-#define ITEM_LOAD_PROFILE 25
-#define ITEM_CPU_HUD      26
-#define ITEM_BUS_HUD      27
-#define ITEM_GPU_HUD      28
-#define ITEM_APP_ID_HUD   29
-#define ITEM_RAM_HUD      30
-#define ITEM_IP_HUD       31
-#define ITEM_RESET        32
-#define ITEM_COUNT        33
+#define ITEM_CPU_HUD      10
+#define ITEM_BUS_HUD      11
+#define ITEM_GPU_HUD      12
+#define ITEM_APP_ID_HUD   13
+#define ITEM_RAM_HUD      14
+#define ITEM_IP_HUD       15
+#define ITEM_CHARGING     16
+#define ITEM_TIMEMODE     17
+#define ITEM_THEME_MENU   18
+#define ITEM_THEME        19
+#define ITEM_HUD_TEXT     20
+#define ITEM_HUD_SHADOW   21
+#define ITEM_HUD_ICON     22
+#define ITEM_MENU_TEXT    23
+#define ITEM_MENU_SELECT  24
+#define ITEM_MENU_BORDER  25
+#define ITEM_MENUBG       26
+#define ITEM_PROFILE_MENU 27
+#define ITEM_PROFILE      28
+#define ITEM_SAVE_PROFILE 29
+#define ITEM_LOAD_PROFILE 30
+#define ITEM_LANGUAGE     31
+#define ITEM_AUTO_HIDE    32
+#define ITEM_TOGGLE       33
+#define ITEM_RESET        34
+#define ITEM_COUNT        35
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -1503,6 +1511,8 @@ static const char *menu_label(int item) {
         case ITEM_TIME:         return "CLOCK";
         case ITEM_CHARGING:     return "CHARGING";
         case ITEM_TIMEMODE:     return "TIME MODE";
+        case ITEM_THEME_MENU:   return "THEME / COLOR";
+        case ITEM_THEME:        return "THEME PRESET";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "HUD ICON";
@@ -1510,11 +1520,11 @@ static const char *menu_label(int item) {
         case ITEM_MENU_SELECT:  return "MENU SELECT";
         case ITEM_MENU_BORDER:  return "MENU BORDER";
         case ITEM_MENUBG:       return "MENU BG";
+        case ITEM_PROFILE_MENU: return "PROFILE MENU";
+        case ITEM_PROFILE:      return "PROFILE SLOT";
         case ITEM_LANGUAGE:     return "LANGUAGE";
         case ITEM_AUTO_HIDE:    return "AUTO HIDE";
         case ITEM_TOGGLE:       return "HUD TOGGLE";
-        case ITEM_THEME:        return "THEME";
-        case ITEM_PROFILE:      return "PROFILE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
         case ITEM_CPU_HUD:      return "CPU HUD";
@@ -1547,11 +1557,13 @@ static const char *menu_value(int item) {
         case ITEM_MENU_SELECT:  return color_name_generic(menu_select_color);
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
         case ITEM_MENUBG:       return menu_bg_name();
+        case ITEM_THEME_MENU:   return "SECTION";
+        case ITEM_THEME:        return theme_name();
+        case ITEM_PROFILE_MENU: return "SECTION";
+        case ITEM_PROFILE:      return profile_name();
         case ITEM_LANGUAGE:     return language_name();
         case ITEM_AUTO_HIDE:    return auto_hide_name();
         case ITEM_TOGGLE:       return toggle_name();
-        case ITEM_THEME:        return theme_name();
-        case ITEM_PROFILE:      return profile_name();
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? "SAVED" : "PRESS X";
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? "LOADED" : "PRESS X";
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
@@ -1567,6 +1579,11 @@ static const char *menu_value(int item) {
 
 static void menu_change(int dir) {
     switch (menu_index) {
+        case ITEM_THEME_MENU:
+        case ITEM_PROFILE_MENU:
+            /* Section headers: no action. */
+            break;
+
         case ITEM_HUD:
             hud_enabled = !hud_enabled;
             break;
@@ -1904,19 +1921,30 @@ static void move_menu_index(int dir) {
 }
 
 static int hold_scroll_trigger(int frames) {
+    /*
+     * Smoother menu navigation:
+     * - Tap = one movement only.
+     * - Short hold = no runaway repeat.
+     * - Longer hold = gradually faster scrolling.
+     * This only affects input pacing; it does not touch the render/glitch hook.
+     */
     if (frames == 1) {
         return 1;
     }
 
-    if (frames < 18) {
+    if (frames < 24) {
         return 0;
     }
 
-    if (frames < 50) {
-        return ((frames - 18) % 5) == 0;
+    if (frames < 90) {
+        return ((frames - 24) % 12) == 0;
     }
 
-    return ((frames - 50) % 2) == 0;
+    if (frames < 180) {
+        return ((frames - 90) % 7) == 0;
+    }
+
+    return ((frames - 180) % 4) == 0;
 }
 
 static void handle_input(void) {
