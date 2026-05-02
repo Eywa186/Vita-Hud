@@ -20,6 +20,7 @@ add_executable(vitahud
 )
 
 target_link_libraries(vitahud
+  taihen_stub
   SceLibKernel_stub
   SceKernelThreadMgr_stub
   SceCtrl_stub

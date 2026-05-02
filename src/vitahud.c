@@ -7,6 +7,7 @@
 #include <psp2/appmgr.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+#include <taihen.h>
 
 #define CONFIG_DIR  "ur0:data/VitaHUD"
 #define CONFIG_PATH "ur0:data/VitaHUD/config.txt"
@@ -204,6 +205,10 @@ static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
 
+/* VITABatteryPlus-style display hook. Draw into the frame buffer being submitted, not a separate polling thread. */
+static SceUID g_display_hook_uid = -1;
+static tai_hook_ref_t g_display_hook;
+
 /*
  * PSVshellPlus-style stability model:
  * Do NOT call system APIs inside draw_hud().
@@ -219,8 +224,6 @@ static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
-static int cached_battery_percent = 100;
-
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -891,10 +894,6 @@ static void update_system_cache(void) {
     }
 
     last_system_cache_tick = now;
-
-    cached_battery_percent = scePowerGetBatteryLifePercent();
-    if (cached_battery_percent < 0) cached_battery_percent = 0;
-    if (cached_battery_percent > 100) cached_battery_percent = 100;
 
     /*
      * Cache only.
@@ -2011,7 +2010,7 @@ static int add_text_block(
 }
 
 static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    int battery = cached_battery_percent;
+    int battery = scePowerGetBatteryLifePercent();
 
     char fps_text[16];
     char battery_text[8];
@@ -2315,40 +2314,32 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 }
 
-static int get_framebuffer(unsigned int **pixels, int *pitch, int *screen_w, int *screen_h, int mode) {
-    SceDisplayFrameBuf fb;
-
-    fb.size = sizeof(SceDisplayFrameBuf);
-
-    if (sceDisplayGetFrameBuf(&fb, mode) < 0 || !fb.base) {
-        return 0;
-    }
-
-    if (fb.pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
-        return 0;
-    }
-
-    if (fb.width <= 0 || fb.height <= 0 || fb.pitch <= 0) {
-        return 0;
-    }
-
-    *pixels = (unsigned int *)fb.base;
-    *pitch = fb.pitch;
-    *screen_w = fb.width;
-    *screen_h = fb.height;
-
-    g_screen_w = fb.width;
-    g_screen_h = fb.height;
-
-    return 1;
-}
-
-static void draw_all_to_buffer(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
+static void draw_all_from_framebuf(const SceDisplayFrameBuf *fb) {
+    unsigned int *pixels;
+    int screen_w;
+    int screen_h;
+    int pitch;
     int should_draw_hud = 0;
 
-    if (!pixels || pitch <= 0 || screen_w <= 0 || screen_h <= 0) {
+    if (!fb || !fb->base) {
         return;
     }
+
+    if (fb->pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
+        return;
+    }
+
+    if (fb->width <= 0 || fb->height <= 0 || fb->pitch <= 0) {
+        return;
+    }
+
+    pixels = (unsigned int *)fb->base;
+    screen_w = fb->width;
+    screen_h = fb->height;
+    pitch = fb->pitch;
+
+    g_screen_w = screen_w;
+    g_screen_h = screen_h;
 
     if (hud_enabled) {
         if (auto_hide_mode == AUTO_HIDE_OFF) {
@@ -2367,91 +2358,52 @@ static void draw_all_to_buffer(unsigned int *pixels, int pitch, int screen_w, in
         last_hud_clear_h = 0;
     }
 
-    /* Menu is always drawn AFTER HUD so VitaHUD's own menu is the top object inside our layer. */
     if (menu_open) {
         draw_menu(pixels, pitch, screen_w, screen_h);
     }
 }
 
-static void draw_all_once(int mode) {
-    unsigned int *pixels = 0;
-    int pitch = 0;
-    int screen_w = 0;
-    int screen_h = 0;
-
-    if (get_framebuffer(&pixels, &pitch, &screen_w, &screen_h, mode)) {
-        draw_all_to_buffer(pixels, pitch, screen_w, screen_h);
-    }
-}
-
-static void draw_all_top_layer_burst(void) {
+static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
     /*
-     * Best-possible raw-framebuffer top-layer method:
-     * 1) Draw immediately after VBlank.
-     * 2) Draw again after a tiny delay because some games/menus render late.
-     * 3) Draw once more using NEXTFRAME as a fallback.
-     *
-     * This does not convert the HUD into a PAF/system overlay, but it makes the
-     * current raw framebuffer HUD draw as late and persistently as possible.
+     * Core fix copied from VITABatteryPlus behavior:
+     * draw during sceDisplaySetFrameBuf, using the submitted buffer.
+     * This avoids polling sceDisplayGetFrameBuf from a separate HUD thread,
+     * which was the source of unstable/zero buffers and menu jitter.
      */
-    draw_all_once(SCE_DISPLAY_SETBUF_IMMEDIATE);
-    sceKernelDelayThread(700);
-    draw_all_once(SCE_DISPLAY_SETBUF_IMMEDIATE);
-    sceKernelDelayThread(700);
-    draw_all_once(SCE_DISPLAY_SETBUF_NEXTFRAME);
-}
+    handle_input();
+    update_fps();
+    update_system_cache();
+    draw_all_from_framebuf(pParam);
 
-static int hud_thread(SceSize args, void *argp) {
-    (void)args;
-    (void)argp;
-
-    while (1) {
-        sceDisplayWaitVblankStart();
-
-        handle_input();
-        update_fps();
-        update_system_cache();
-
-        draw_all_top_layer_burst();
-
-        if (save_message_frames > 0) {
-            save_message_frames--;
-        }
-
-        if (reset_message_frames > 0) {
-            reset_message_frames--;
-        }
-
-        if (temporary_show_frames > 0) {
-            temporary_show_frames--;
-        }
+    if (save_message_frames > 0) {
+        save_message_frames--;
     }
 
-    return 0;
+    if (reset_message_frames > 0) {
+        reset_message_frames--;
+    }
+
+    if (temporary_show_frames > 0) {
+        temporary_show_frames--;
+    }
+
+    return TAI_CONTINUE(int, g_display_hook, pParam, sync);
 }
 
 int module_start(SceSize args, void *argp) {
-    SceUID thid;
-
     (void)args;
     (void)argp;
 
-    /* Stable recovery: auto-load Profile 1 on boot. */
     load_profile();
 
-    thid = sceKernelCreateThread(
-        "VitaHUD TopLayer Thread",
-        hud_thread,
-        0x40,
-        0x10000,
-        0,
-        0,
-        0
+    /* Same import hook method used by VITABatteryPlus 1.8. */
+    g_display_hook_uid = taiHookFunctionImport(
+        &g_display_hook,
+        TAI_MAIN_MODULE,
+        0x4FAACD11,
+        0x7A410B64,
+        sceDisplaySetFrameBuf_patched
     );
-
-    if (thid >= 0) {
-        sceKernelStartThread(thid, 0, 0);
-    }
 
     return SCE_KERNEL_START_SUCCESS;
 }
@@ -2459,6 +2411,11 @@ int module_start(SceSize args, void *argp) {
 int module_stop(SceSize args, void *argp) {
     (void)args;
     (void)argp;
+
+    if (g_display_hook_uid >= 0) {
+        taiHookRelease(g_display_hook_uid, g_display_hook);
+        g_display_hook_uid = -1;
+    }
 
     return SCE_KERNEL_STOP_SUCCESS;
 }
