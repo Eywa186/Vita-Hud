@@ -1134,7 +1134,6 @@ static void build_time_text(char *out) {
     put_2digits(&out[pos], time.minute);
     pos += 2;
 
-    out[pos++] = ' ';
     out[pos++] = is_pm ? 'P' : 'A';
     out[pos++] = 'M';
     out[pos] = '\0';
@@ -1531,6 +1530,114 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (5 * s), y + (5 * s), s, s, white);
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
+static unsigned int get_extra_icon_color(void) {
+    return color_value(hud_icon_color, 0xFFFFFFFF);
+}
+
+static int hud_extra_icon_w(int scale) {
+    return 9 * scale;
+}
+
+static int hud_extra_icon_h(int scale) {
+    return 7 * scale;
+}
+
+static void strip_hud_label(char *out, int out_size, const char *src, const char *label) {
+    int i = 0;
+    int j = 0;
+
+    if (!out || out_size <= 0) {
+        return;
+    }
+
+    out[0] = '\0';
+
+    if (!src) {
+        return;
+    }
+
+    while (label && label[i] && src[i] == label[i]) {
+        i++;
+    }
+
+    if (label && label[i] == '\0' && src[i] == ' ') {
+        i++;
+    } else {
+        i = 0;
+    }
+
+    while (src[i] && j < out_size - 1) {
+        out[j++] = src[i++];
+    }
+
+    out[j] = '\0';
+}
+
+static void draw_cpu_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = get_extra_icon_color();
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x + (2 * s), y + (1 * s), 5 * s, 5 * s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000);
+
+    draw_rect(pixels, pitch, x + (1 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (1 * s), y + (4 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (4 * s), s, s, col);
+
+    draw_rect(pixels, pitch, x + (3 * s), y, s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y, s, s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (6 * s), s, s, col);
+}
+
+static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = get_extra_icon_color();
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x, y + (1 * s), 7 * s, 5 * s, col);
+    draw_rect(pixels, pitch, x + s, y + (2 * s), 5 * s, 3 * s, 0x00000000);
+    draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, 3 * s, col);
+    draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col);
+}
+
+static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = get_extra_icon_color();
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col);
+    draw_rect(pixels, pitch, x + s, y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (7 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + s, y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (6 * s), s, s, col);
+}
+
+static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = get_extra_icon_color();
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, 4 * s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y, 3 * s, s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + s, y + (4 * s), 3 * s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), s, s, 0x00000000);
+}
+
 
 static const char *word_open(void) {
     switch (hud_language) {
@@ -3303,6 +3410,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     char app_id_text[24];
     char ram_text[16];
     char ip_text[20];
+    char cpu_value_text[16];
+    char bus_value_text[16];
+    char gpu_value_text[16];
+    char app_id_value_text[24];
+    char ram_value_text[16];
 
     int scale;
     int gap_small;
@@ -3325,6 +3437,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int battery_icon_h;
     int clock_icon_w;
     int clock_icon_h;
+    int extra_icon_w;
+    int extra_icon_h;
 
     int total_w = 0;
     int total_h;
@@ -3353,17 +3467,23 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_ram_text(ram_text);
     build_ip_text(ip_text);
 
+    strip_hud_label(cpu_value_text, sizeof(cpu_value_text), cpu_text, "CPU");
+    strip_hud_label(bus_value_text, sizeof(bus_value_text), bus_text, "BUS");
+    strip_hud_label(gpu_value_text, sizeof(gpu_value_text), gpu_text, "GPU");
+    strip_hud_label(app_id_value_text, sizeof(app_id_value_text), app_id_text, "APP");
+    strip_hud_label(ram_value_text, sizeof(ram_value_text), ram_text, "RAM");
+
     force_stacked = 0;
 
     fps_w = show_fps ? text_width(fps_text, scale) : 0;
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
     time_w = show_time ? text_width(time_text, scale) : 0;
     charging_w = show_charging ? text_width(charging_text, scale) : 0;
-    cpu_w = show_cpu ? text_width(cpu_text, scale) : 0;
-    bus_w = show_bus ? text_width(bus_text, scale) : 0;
-    gpu_w = show_gpu ? text_width(gpu_text, scale) : 0;
-    app_id_w = show_app_id ? text_width(app_id_text, scale) : 0;
-    ram_w = show_ram ? text_width(ram_text, scale) : 0;
+    cpu_w = show_cpu ? text_width(cpu_value_text, scale) : 0;
+    bus_w = show_bus ? text_width(bus_value_text, scale) : 0;
+    gpu_w = show_gpu ? text_width(gpu_value_text, scale) : 0;
+    app_id_w = show_app_id ? text_width(app_id_value_text, scale) : 0;
+    ram_w = show_ram ? text_width(ram_value_text, scale) : 0;
     ip_w = show_ip ? text_width(ip_text, scale) : 0;
 
     battery_icon_w = show_battery ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
@@ -3371,6 +3491,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     clock_icon_w = show_time ? (7 * icon_scale) : 0;
     clock_icon_h = 7 * icon_scale;
+    extra_icon_w = hud_extra_icon_w(icon_scale);
+    extra_icon_h = hud_extra_icon_h(icon_scale);
 
     text_h = 7 * scale;
 
@@ -3381,11 +3503,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_battery && battery_icon_w + gap_small + battery_text_w > total_w) total_w = battery_icon_w + gap_small + battery_text_w;
         if (show_time && clock_icon_w + gap_small + time_w > total_w) total_w = clock_icon_w + gap_small + time_w;
         if (show_charging && charging_w > total_w) total_w = charging_w;
-        if (show_cpu && cpu_w > total_w) total_w = cpu_w;
-        if (show_bus && bus_w > total_w) total_w = bus_w;
-        if (show_gpu && gpu_w > total_w) total_w = gpu_w;
-        if (show_app_id && app_id_w > total_w) total_w = app_id_w;
-        if (show_ram && ram_w > total_w) total_w = ram_w;
+        if (show_cpu && extra_icon_w + gap_small + cpu_w > total_w) total_w = extra_icon_w + gap_small + cpu_w;
+        if (show_bus && extra_icon_w + gap_small + bus_w > total_w) total_w = extra_icon_w + gap_small + bus_w;
+        if (show_gpu && extra_icon_w + gap_small + gpu_w > total_w) total_w = extra_icon_w + gap_small + gpu_w;
+        if (show_app_id && extra_icon_w + gap_small + app_id_w > total_w) total_w = extra_icon_w + gap_small + app_id_w;
+        if (show_ram && extra_icon_w + gap_small + ram_w > total_w) total_w = extra_icon_w + gap_small + ram_w;
         if (show_ip && ip_w > total_w) total_w = ip_w;
 
         total_h = 0;
@@ -3424,27 +3546,27 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         if (show_cpu) {
             if (total_w > 0) total_w += gap_big;
-            total_w += cpu_w;
+            total_w += extra_icon_w + gap_small + cpu_w;
         }
 
         if (show_bus) {
             if (total_w > 0) total_w += gap_big;
-            total_w += bus_w;
+            total_w += extra_icon_w + gap_small + bus_w;
         }
 
         if (show_gpu) {
             if (total_w > 0) total_w += gap_big;
-            total_w += gpu_w;
+            total_w += extra_icon_w + gap_small + gpu_w;
         }
 
         if (show_app_id) {
             if (total_w > 0) total_w += gap_big;
-            total_w += app_id_w;
+            total_w += extra_icon_w + gap_small + app_id_w;
         }
 
         if (show_ram) {
             if (total_w > 0) total_w += gap_big;
-            total_w += ram_w;
+            total_w += extra_icon_w + gap_small + ram_w;
         }
 
         if (show_ip) {
@@ -3542,27 +3664,32 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         }
 
         if (show_cpu) {
-            draw_text_shadow(pixels, pitch, x, y, cpu_text, text_color, scale);
+            draw_cpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, cpu_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_bus) {
-            draw_text_shadow(pixels, pitch, x, y, bus_text, text_color, scale);
+            draw_cpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, bus_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_gpu) {
-            draw_text_shadow(pixels, pitch, x, y, gpu_text, text_color, scale);
+            draw_gpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, gpu_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_app_id) {
-            draw_text_shadow(pixels, pitch, x, y, app_id_text, text_color, scale);
+            draw_game_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, app_id_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_ram) {
-            draw_text_shadow(pixels, pitch, x, y, ram_text, text_color, scale);
+            draw_ram_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, ram_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
@@ -3620,31 +3747,41 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     if (show_cpu) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, cpu_text, text_color, scale);
+        draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, cpu_value_text, text_color, scale);
         x += cpu_w;
     }
 
     if (show_bus) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, bus_text, text_color, scale);
+        draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, bus_value_text, text_color, scale);
         x += bus_w;
     }
 
     if (show_gpu) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, gpu_text, text_color, scale);
+        draw_gpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, gpu_value_text, text_color, scale);
         x += gpu_w;
     }
 
     if (show_app_id) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, app_id_text, text_color, scale);
+        draw_game_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, app_id_value_text, text_color, scale);
         x += app_id_w;
     }
 
     if (show_ram) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, ram_text, text_color, scale);
+        draw_ram_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, ram_value_text, text_color, scale);
         x += ram_w;
     }
 
