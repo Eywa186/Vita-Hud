@@ -1,5 +1,6 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/kernel/sysmem.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
@@ -1053,10 +1054,42 @@ static void update_system_cache(void) {
     copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
 
     /*
-     * RAM/IP intentionally remain placeholders for now.
-     * Next step: port PSVshellPlus-style kernel RAM provider.
+     * RAM HUD working pass.
+     * Uses VitaSDK user-mode sysmem free-size API.
+     * Keep this cached here, not in draw_hud(), so drawing remains stable.
      */
-    copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM OFF");
+    {
+        SceKernelFreeMemorySizeInfo mem_info;
+        int ret;
+        int free_bytes;
+        int free_mb;
+        int pos;
+
+        mem_info.size = sizeof(SceKernelFreeMemorySizeInfo);
+        mem_info.size_user = 0;
+        mem_info.size_cdram = 0;
+        mem_info.size_phycont = 0;
+
+        ret = sceKernelGetFreeMemorySize(&mem_info);
+
+        if (ret >= 0) {
+            /*
+             * Total visible free user memory pools.
+             * size_user + size_cdram + size_phycont are returned in bytes.
+             */
+            free_bytes = mem_info.size_user + mem_info.size_cdram + mem_info.size_phycont;
+            free_mb = free_bytes / (1024 * 1024);
+
+            pos = 0;
+            pos = append_text(cached_ram_text, pos, "RAM ");
+            pos = append_int(cached_ram_text, pos, free_mb);
+            pos = append_text(cached_ram_text, pos, "M");
+            cached_ram_text[pos] = '\0';
+        } else {
+            copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM ERR");
+        }
+    }
+
     copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
 }
 
