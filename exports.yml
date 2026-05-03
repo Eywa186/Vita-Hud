@@ -4,5 +4,5 @@ vitahud:
     major: 1
     minor: 0
   main:
-    start: module_start
-    stop: module_stop
+    module_start: module_start
+    module_stop: module_stop
