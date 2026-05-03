@@ -212,6 +212,7 @@
 #define ITEM_HUD_SHADOW   23
 #define ITEM_HUD_ICON     24
 #define ITEM_CLOCK_ICON   25
+#define ITEM_FPS_ICON     47
 #define ITEM_CPU_ICON     42
 #define ITEM_BUS_ICON     43
 #define ITEM_GPU_ICON     44
@@ -272,6 +273,7 @@ static int hud_text_color = COLOR_WHITE;
 static int hud_shadow_color = COLOR_BLACK;
 static int hud_icon_color = COLOR_AUTO;
 static int clock_icon_color = COLOR_AUTO;
+static int fps_icon_color = COLOR_AUTO;
 static int cpu_icon_color = COLOR_AUTO;
 static int bus_icon_color = COLOR_AUTO;
 static int gpu_icon_color = COLOR_AUTO;
@@ -616,6 +618,7 @@ static void reset_defaults(void) {
     hud_shadow_color = COLOR_BLACK;
     hud_icon_color = COLOR_AUTO;
     clock_icon_color = COLOR_AUTO;
+    fps_icon_color = COLOR_AUTO;
     cpu_icon_color = COLOR_AUTO;
     bus_icon_color = COLOR_AUTO;
     gpu_icon_color = COLOR_AUTO;
@@ -668,6 +671,7 @@ static void clamp_settings(void) {
     if (hud_shadow_color < 0 || hud_shadow_color >= COLOR_COUNT) hud_shadow_color = COLOR_BLACK;
     if (hud_icon_color < 0 || hud_icon_color >= COLOR_COUNT) hud_icon_color = COLOR_AUTO;
     if (clock_icon_color < 0 || clock_icon_color >= COLOR_COUNT) clock_icon_color = COLOR_AUTO;
+    if (fps_icon_color < 0 || fps_icon_color >= COLOR_COUNT) fps_icon_color = COLOR_AUTO;
     if (cpu_icon_color < 0 || cpu_icon_color >= COLOR_COUNT) cpu_icon_color = COLOR_AUTO;
     if (bus_icon_color < 0 || bus_icon_color >= COLOR_COUNT) bus_icon_color = COLOR_AUTO;
     if (gpu_icon_color < 0 || gpu_icon_color >= COLOR_COUNT) gpu_icon_color = COLOR_AUTO;
@@ -733,6 +737,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "hud_shadow_color", hud_shadow_color);
     write_config_line(fd, "hud_icon_color", hud_icon_color);
     write_config_line(fd, "clock_icon_color", clock_icon_color);
+    write_config_line(fd, "fps_icon_color", fps_icon_color);
     write_config_line(fd, "cpu_icon_color", cpu_icon_color);
     write_config_line(fd, "bus_icon_color", bus_icon_color);
     write_config_line(fd, "gpu_icon_color", gpu_icon_color);
@@ -787,6 +792,7 @@ static void load_settings_from_buffer(char *buf) {
     hud_shadow_color = get_config_int(buf, "hud_shadow_color", hud_shadow_color);
     hud_icon_color = get_config_int(buf, "hud_icon_color", hud_icon_color);
     clock_icon_color = get_config_int(buf, "clock_icon_color", clock_icon_color);
+    fps_icon_color = get_config_int(buf, "fps_icon_color", fps_icon_color);
     cpu_icon_color = get_config_int(buf, "cpu_icon_color", cpu_icon_color);
     bus_icon_color = get_config_int(buf, "bus_icon_color", bus_icon_color);
     gpu_icon_color = get_config_int(buf, "gpu_icon_color", gpu_icon_color);
@@ -1652,7 +1658,7 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
 static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
-    unsigned int col = color_value(hud_icon_color, 0xFFFFFFFF);
+    unsigned int col = color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
     if (s < 1) s = 1;
@@ -2081,6 +2087,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_GREEN;
             clock_icon_color = COLOR_WHITE;
+            fps_icon_color = COLOR_WHITE;
             cpu_icon_color = COLOR_GREEN;
             bus_icon_color = COLOR_GREEN;
             gpu_icon_color = COLOR_GREEN;
@@ -2096,6 +2103,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_MAGENTA;
             clock_icon_color = COLOR_CYAN;
+            fps_icon_color = COLOR_CYAN;
             cpu_icon_color = COLOR_CYAN;
             bus_icon_color = COLOR_AQUA;
             gpu_icon_color = COLOR_MAGENTA;
@@ -2111,6 +2119,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_GREEN;
             clock_icon_color = COLOR_LIME;
+            fps_icon_color = COLOR_LIME;
             hud_box_enabled = 1;
             hud_box_bg_color = BG_BLACK;
             hud_layout = LAYOUT_COMPACT;
@@ -2121,6 +2130,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_GOLD;
             clock_icon_color = COLOR_AMBER;
+            fps_icon_color = COLOR_AMBER;
             hud_box_enabled = 1;
             hud_box_bg_color = BG_BLACK;
             hud_layout = LAYOUT_SINGLE;
@@ -2131,6 +2141,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_NAVY;
             hud_icon_color = COLOR_AQUA;
             clock_icon_color = COLOR_SKY;
+            fps_icon_color = COLOR_SKY;
             cpu_icon_color = COLOR_AQUA;
             bus_icon_color = COLOR_SKY;
             gpu_icon_color = COLOR_ELECTRIC_BLUE;
@@ -2146,6 +2157,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_CRIMSON;
             clock_icon_color = COLOR_RED;
+            fps_icon_color = COLOR_RED;
             cpu_icon_color = COLOR_CRIMSON;
             bus_icon_color = COLOR_RED;
             gpu_icon_color = COLOR_MAROON;
@@ -2161,6 +2173,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_AUTO;
             clock_icon_color = COLOR_WHITE;
+            fps_icon_color = COLOR_WHITE;
             cpu_icon_color = COLOR_AUTO;
             bus_icon_color = COLOR_AUTO;
             gpu_icon_color = COLOR_AUTO;
@@ -2177,6 +2190,7 @@ static void apply_hud_theme(void) {
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_AUTO;
             clock_icon_color = COLOR_AUTO;
+            fps_icon_color = COLOR_AUTO;
             cpu_icon_color = COLOR_AUTO;
             bus_icon_color = COLOR_AUTO;
             gpu_icon_color = COLOR_AUTO;
@@ -2335,7 +2349,7 @@ static const char *hud_theme_name_for(int id) {
 
 static int item_uses_color_menu(int item) {
     return item == ITEM_HUD_TEXT || item == ITEM_HUD_SHADOW || item == ITEM_HUD_ICON ||
-           item == ITEM_CLOCK_ICON || item == ITEM_CPU_ICON || item == ITEM_BUS_ICON ||
+           item == ITEM_CLOCK_ICON || item == ITEM_FPS_ICON || item == ITEM_CPU_ICON || item == ITEM_BUS_ICON ||
            item == ITEM_GPU_ICON || item == ITEM_APP_ICON || item == ITEM_RAM_ICON ||
            item == ITEM_MENU_TEXT || item == ITEM_MENU_SELECT ||
            item == ITEM_MENU_BORDER || item == ITEM_TOP_BAR;
@@ -2374,6 +2388,7 @@ static int choice_current_index_for_target(int target) {
             case ITEM_HUD_SHADOW:  return hud_shadow_color;
             case ITEM_HUD_ICON:    return hud_icon_color;
             case ITEM_CLOCK_ICON:  return clock_icon_color;
+            case ITEM_FPS_ICON:    return fps_icon_color;
             case ITEM_CPU_ICON:    return cpu_icon_color;
             case ITEM_BUS_ICON:    return bus_icon_color;
             case ITEM_GPU_ICON:    return gpu_icon_color;
@@ -2429,6 +2444,7 @@ static void set_choice_for_target(int target, int index) {
             case ITEM_HUD_SHADOW:  hud_shadow_color = index; break;
             case ITEM_HUD_ICON:    hud_icon_color = index; break;
             case ITEM_CLOCK_ICON:  clock_icon_color = index; break;
+            case ITEM_FPS_ICON:    fps_icon_color = index; break;
             case ITEM_CPU_ICON:    cpu_icon_color = index; break;
             case ITEM_BUS_ICON:    bus_icon_color = index; break;
             case ITEM_GPU_ICON:    gpu_icon_color = index; break;
@@ -2542,7 +2558,7 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 19;
+            return 20;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_CHOICE:
@@ -2587,11 +2603,12 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[19] = {
+    static const int theme_items[20] = {
         ITEM_THEME,
         ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
+        ITEM_FPS_ICON,
         ITEM_HUD_ICON,
         ITEM_CLOCK_ICON,
         ITEM_CPU_ICON,
@@ -2690,6 +2707,7 @@ static const char *choice_title_for_target(void) {
         case ITEM_HUD_SHADOW: return "HUD SHADOW";
         case ITEM_HUD_ICON: return "BATTERY ICON";
         case ITEM_CLOCK_ICON: return "CLOCK ICON";
+        case ITEM_FPS_ICON: return "FPS ICON";
         case ITEM_CPU_ICON: return "CPU ICON";
         case ITEM_BUS_ICON: return "BUS ICON";
         case ITEM_GPU_ICON: return "GPU ICON";
@@ -2773,6 +2791,7 @@ static const char *menu_label(int item) {
             case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
             case ITEM_HUD_ICON:     return "ICONO BATERIA";
             case ITEM_CLOCK_ICON:   return "ICONO RELOJ";
+            case ITEM_FPS_ICON:     return "ICONO FPS";
             case ITEM_CPU_ICON:     return "ICONO CPU";
             case ITEM_BUS_ICON:     return "ICONO BUS";
             case ITEM_GPU_ICON:     return "ICONO GPU";
@@ -2824,6 +2843,7 @@ static const char *menu_label(int item) {
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "BATTERY ICON";
         case ITEM_CLOCK_ICON:   return "CLOCK ICON";
+        case ITEM_FPS_ICON:     return "FPS ICON";
         case ITEM_CPU_ICON:     return "CPU ICON";
         case ITEM_BUS_ICON:     return "BUS ICON";
         case ITEM_GPU_ICON:     return "GPU ICON";
@@ -2879,6 +2899,7 @@ static const char *menu_value(int item) {
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
         case ITEM_HUD_ICON:     return color_name_generic(hud_icon_color);
         case ITEM_CLOCK_ICON:   return color_name_generic(clock_icon_color);
+        case ITEM_FPS_ICON:     return color_name_generic(fps_icon_color);
         case ITEM_CPU_ICON:     return color_name_generic(cpu_icon_color);
         case ITEM_BUS_ICON:     return color_name_generic(bus_icon_color);
         case ITEM_GPU_ICON:     return color_name_generic(gpu_icon_color);
@@ -3041,6 +3062,12 @@ static void menu_change(int dir) {
             clock_icon_color += dir;
             if (clock_icon_color < 0) clock_icon_color = COLOR_COUNT - 1;
             if (clock_icon_color >= COLOR_COUNT) clock_icon_color = 0;
+            break;
+
+        case ITEM_FPS_ICON:
+            fps_icon_color += dir;
+            if (fps_icon_color < 0) fps_icon_color = COLOR_COUNT - 1;
+            if (fps_icon_color >= COLOR_COUNT) fps_icon_color = 0;
             break;
 
         case ITEM_HUD_BOX:
