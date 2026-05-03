@@ -3768,7 +3768,7 @@ static const char *choice_title_for_target(void) {
         case ITEM_MENU_SIZE: return "MAIN MENU SIZE";
         case ITEM_FONT: return "FONT";
         case ITEM_DEBUG_FONT: return "DEBUG FONT";
-        case ITEM_DEBUG_COLOR: return "DEBUG COLOR";
+        case ITEM_DEBUG_COLOR: return "DEBUG COLORS";
         case ITEM_HUD_OPACITY: return "HUD OPACITY";
         case ITEM_MENU_OPACITY: return "MENU OPACITY";
         case ITEM_FPS_STYLE: return "FPS STYLE";
@@ -3945,8 +3945,8 @@ static const char *menu_label(int item) {
             case ITEM_RESET_PROFILES: return "RESET PROFILES";
             case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
             case ITEM_HUD_MENU:     return "HUD MENU";
-            case ITEM_DEBUG_COLOR:  return "DEBUG COLOR";
             case ITEM_DEBUG_FONT:   return "DEBUG FONT";
+            case ITEM_DEBUG_COLOR:  return "DEBUG COLORS";
             case ITEM_RESET:        return "RESET OPTIONS";
             default:                return "";
         }
