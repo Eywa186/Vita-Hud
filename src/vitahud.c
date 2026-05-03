@@ -178,6 +178,18 @@
 #define CLOCK_STYLE_DATE_TIME 3
 #define CLOCK_STYLE_COUNT     4
 
+#define ICON_STYLE_ORIGINAL 0
+#define ICON_STYLE_OUTLINE  1
+#define ICON_STYLE_SOLID    2
+#define ICON_STYLE_DIAMOND  3
+#define ICON_STYLE_CROSS    4
+#define ICON_STYLE_DOTS     5
+#define ICON_STYLE_CHEVRON  6
+#define ICON_STYLE_MINI     7
+#define ICON_STYLE_BARS     8
+#define ICON_STYLE_TARGET   9
+#define ICON_STYLE_COUNT    10
+
 #define AUTO_HIDE_OFF 0
 #define AUTO_HIDE_3S  1
 #define AUTO_HIDE_5S  2
@@ -236,7 +248,8 @@
 #define HUD_ORDER_APP_ID  5
 #define HUD_ORDER_RAM     6
 #define HUD_ORDER_FPS     7
-#define HUD_ORDER_COUNT   8
+#define HUD_ORDER_DATE    8
+#define HUD_ORDER_COUNT   9
 
 /*
  * MENU ORDER ONLY.
@@ -331,7 +344,19 @@
 #define ITEM_HUD_MENU 84
 #define ITEM_DEBUG_COLOR 85
 #define ITEM_DEBUG_FONT 86
-#define ITEM_COUNT        87
+#define ITEM_DATE_HUD 87
+#define ITEM_DATE_ICON 88
+#define ITEM_ICON_CHANGER_MENU 89
+#define ITEM_FPS_ICON_STYLE 90
+#define ITEM_BATTERY_ICON_STYLE 91
+#define ITEM_CLOCK_ICON_STYLE 92
+#define ITEM_DATE_ICON_STYLE 93
+#define ITEM_CPU_ICON_STYLE 94
+#define ITEM_BUS_ICON_STYLE 95
+#define ITEM_GPU_ICON_STYLE 96
+#define ITEM_RAM_ICON_STYLE 97
+#define ITEM_APP_ICON_STYLE 98
+#define ITEM_COUNT        99
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -348,6 +373,7 @@ static int font_style = FONT_DEFAULT;
 static int show_fps = 1;
 static int show_battery = 1;
 static int show_time = 1;
+static int show_date = 0;
 static int show_cpu = 0;
 static int show_bus = 0;
 static int show_gpu = 0;
@@ -357,6 +383,16 @@ static int use_24h_time = 0;
 static int fps_display_style = FPS_STYLE_ICON_NUMBER;
 static int battery_display_style = BATTERY_STYLE_ICON_PERCENT;
 static int clock_display_style = CLOCK_STYLE_ICON_TIME;
+
+static int fps_icon_style = ICON_STYLE_ORIGINAL;
+static int battery_icon_style = ICON_STYLE_ORIGINAL;
+static int clock_icon_style = ICON_STYLE_ORIGINAL;
+static int date_icon_style = ICON_STYLE_ORIGINAL;
+static int cpu_icon_style = ICON_STYLE_ORIGINAL;
+static int bus_icon_style = ICON_STYLE_ORIGINAL;
+static int gpu_icon_style = ICON_STYLE_ORIGINAL;
+static int ram_icon_style = ICON_STYLE_ORIGINAL;
+static int app_icon_style = ICON_STYLE_ORIGINAL;
 
 static int debug_enabled = 0;
 static int debug_show_framebuf = 1;
@@ -394,6 +430,7 @@ static int hud_order[HUD_ORDER_COUNT] = {
     HUD_ORDER_FPS,
     HUD_ORDER_BATTERY,
     HUD_ORDER_CLOCK,
+    HUD_ORDER_DATE,
     HUD_ORDER_CPU,
     HUD_ORDER_BUS,
     HUD_ORDER_GPU,
@@ -405,6 +442,7 @@ static int hud_text_color = COLOR_WHITE;
 static int hud_shadow_color = COLOR_BLACK;
 static int hud_icon_color = COLOR_AUTO;
 static int clock_icon_color = COLOR_AUTO;
+static int date_icon_color = COLOR_AUTO;
 static int fps_icon_color = COLOR_AUTO;
 static int cpu_icon_color = COLOR_AUTO;
 static int bus_icon_color = COLOR_AUTO;
@@ -451,6 +489,7 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_DEBUG 12
 #define MENU_PAGE_TOGGLE_COMBOS 13
 #define MENU_PAGE_HUD_MENU 14
+#define MENU_PAGE_ICON_CHANGER 15
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -497,6 +536,8 @@ static int saved_debug_index = 0;
 static int saved_debug_scroll = 0;
 static int saved_toggle_index = 0;
 static int saved_toggle_scroll = 0;
+static int saved_icon_changer_index = 0;
+static int saved_icon_changer_scroll = 0;
 
 static int current_menu_count(void);
 
@@ -680,11 +721,12 @@ static void reset_hud_order_defaults(void) {
     hud_order[0] = HUD_ORDER_FPS;
     hud_order[1] = HUD_ORDER_BATTERY;
     hud_order[2] = HUD_ORDER_CLOCK;
-    hud_order[3] = HUD_ORDER_CPU;
-    hud_order[4] = HUD_ORDER_BUS;
-    hud_order[5] = HUD_ORDER_GPU;
-    hud_order[6] = HUD_ORDER_RAM;
-    hud_order[7] = HUD_ORDER_APP_ID;
+    hud_order[3] = HUD_ORDER_DATE;
+    hud_order[4] = HUD_ORDER_CPU;
+    hud_order[5] = HUD_ORDER_BUS;
+    hud_order[6] = HUD_ORDER_GPU;
+    hud_order[7] = HUD_ORDER_RAM;
+    hud_order[8] = HUD_ORDER_APP_ID;
 }
 
 static void clamp_hud_order(void) {
@@ -712,6 +754,7 @@ static const char *hud_order_name_for(int id) {
     switch (id) {
         case HUD_ORDER_BATTERY: return "BATTERY HUD";
         case HUD_ORDER_CLOCK:   return "CLOCK HUD";
+        case HUD_ORDER_DATE:    return "DATE HUD";
         case HUD_ORDER_CPU:     return "CPU";
         case HUD_ORDER_BUS:     return "BUS";
         case HUD_ORDER_GPU:     return "GPU";
@@ -802,6 +845,7 @@ static void reset_color_defaults(void) {
     hud_shadow_color = COLOR_BLACK;
     hud_icon_color = COLOR_AUTO;
     clock_icon_color = COLOR_AUTO;
+    date_icon_color = COLOR_AUTO;
     fps_icon_color = COLOR_AUTO;
     cpu_icon_color = COLOR_AUTO;
     bus_icon_color = COLOR_AUTO;
@@ -823,6 +867,7 @@ static void reset_overlay_defaults(void) {
     show_fps = 1;
     show_battery = 1;
     show_time = 1;
+    show_date = 0;
     show_cpu = 0;
     show_bus = 0;
     show_gpu = 0;
@@ -865,6 +910,7 @@ static void reset_defaults(void) {
     show_fps = 1;
     show_battery = 1;
     show_time = 1;
+    show_date = 0;
     show_cpu = 0;
     show_bus = 0;
     show_gpu = 0;
@@ -874,6 +920,15 @@ static void reset_defaults(void) {
     fps_display_style = FPS_STYLE_ICON_NUMBER;
     battery_display_style = BATTERY_STYLE_ICON_PERCENT;
     clock_display_style = CLOCK_STYLE_ICON_TIME;
+    fps_icon_style = ICON_STYLE_ORIGINAL;
+    battery_icon_style = ICON_STYLE_ORIGINAL;
+    clock_icon_style = ICON_STYLE_ORIGINAL;
+    date_icon_style = ICON_STYLE_ORIGINAL;
+    cpu_icon_style = ICON_STYLE_ORIGINAL;
+    bus_icon_style = ICON_STYLE_ORIGINAL;
+    gpu_icon_style = ICON_STYLE_ORIGINAL;
+    ram_icon_style = ICON_STYLE_ORIGINAL;
+    app_icon_style = ICON_STYLE_ORIGINAL;
     fps_warning_enabled = 0;
     fps_low_limit_index = 0;
     battery_warning_enabled = 0;
@@ -885,6 +940,7 @@ static void reset_defaults(void) {
     hud_shadow_color = COLOR_BLACK;
     hud_icon_color = COLOR_AUTO;
     clock_icon_color = COLOR_AUTO;
+    date_icon_color = COLOR_AUTO;
     fps_icon_color = COLOR_AUTO;
     cpu_icon_color = COLOR_AUTO;
     bus_icon_color = COLOR_AUTO;
@@ -944,6 +1000,7 @@ static void clamp_settings(void) {
     if (show_fps < 0 || show_fps > 1) show_fps = 1;
     if (show_battery < 0 || show_battery > 1) show_battery = 1;
     if (show_time < 0 || show_time > 1) show_time = 1;
+    if (show_date < 0 || show_date > 1) show_date = 0;
     if (show_cpu < 0 || show_cpu > 1) show_cpu = 0;
     if (show_bus < 0 || show_bus > 1) show_bus = 0;
     if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
@@ -953,6 +1010,15 @@ static void clamp_settings(void) {
     if (fps_display_style < 0 || fps_display_style >= FPS_STYLE_COUNT) fps_display_style = FPS_STYLE_ICON_NUMBER;
     if (battery_display_style < 0 || battery_display_style >= BATTERY_STYLE_COUNT) battery_display_style = BATTERY_STYLE_ICON_PERCENT;
     if (clock_display_style < 0 || clock_display_style >= CLOCK_STYLE_COUNT) clock_display_style = CLOCK_STYLE_ICON_TIME;
+    if (fps_icon_style < 0 || fps_icon_style >= ICON_STYLE_COUNT) fps_icon_style = ICON_STYLE_ORIGINAL;
+    if (battery_icon_style < 0 || battery_icon_style >= ICON_STYLE_COUNT) battery_icon_style = ICON_STYLE_ORIGINAL;
+    if (clock_icon_style < 0 || clock_icon_style >= ICON_STYLE_COUNT) clock_icon_style = ICON_STYLE_ORIGINAL;
+    if (date_icon_style < 0 || date_icon_style >= ICON_STYLE_COUNT) date_icon_style = ICON_STYLE_ORIGINAL;
+    if (cpu_icon_style < 0 || cpu_icon_style >= ICON_STYLE_COUNT) cpu_icon_style = ICON_STYLE_ORIGINAL;
+    if (bus_icon_style < 0 || bus_icon_style >= ICON_STYLE_COUNT) bus_icon_style = ICON_STYLE_ORIGINAL;
+    if (gpu_icon_style < 0 || gpu_icon_style >= ICON_STYLE_COUNT) gpu_icon_style = ICON_STYLE_ORIGINAL;
+    if (ram_icon_style < 0 || ram_icon_style >= ICON_STYLE_COUNT) ram_icon_style = ICON_STYLE_ORIGINAL;
+    if (app_icon_style < 0 || app_icon_style >= ICON_STYLE_COUNT) app_icon_style = ICON_STYLE_ORIGINAL;
     if (debug_enabled < 0 || debug_enabled > 1) debug_enabled = 0;
     if (debug_show_framebuf < 0 || debug_show_framebuf > 1) debug_show_framebuf = 1;
     if (debug_show_cache < 0 || debug_show_cache > 1) debug_show_cache = 1;
@@ -981,6 +1047,7 @@ static void clamp_settings(void) {
     if (hud_shadow_color < 0 || hud_shadow_color >= COLOR_COUNT) hud_shadow_color = COLOR_BLACK;
     if (hud_icon_color < 0 || hud_icon_color >= COLOR_COUNT) hud_icon_color = COLOR_AUTO;
     if (clock_icon_color < 0 || clock_icon_color >= COLOR_COUNT) clock_icon_color = COLOR_AUTO;
+    if (date_icon_color < 0 || date_icon_color >= COLOR_COUNT) date_icon_color = COLOR_AUTO;
     if (fps_icon_color < 0 || fps_icon_color >= COLOR_COUNT) fps_icon_color = COLOR_AUTO;
     if (cpu_icon_color < 0 || cpu_icon_color >= COLOR_COUNT) cpu_icon_color = COLOR_AUTO;
     if (bus_icon_color < 0 || bus_icon_color >= COLOR_COUNT) bus_icon_color = COLOR_AUTO;
@@ -1032,6 +1099,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_fps", show_fps);
     write_config_line(fd, "show_battery", show_battery);
     write_config_line(fd, "show_time", show_time);
+    write_config_line(fd, "show_date", show_date);
     write_config_line(fd, "show_cpu", show_cpu);
     write_config_line(fd, "show_bus", show_bus);
     write_config_line(fd, "show_gpu", show_gpu);
@@ -1041,6 +1109,15 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "fps_style", fps_display_style);
     write_config_line(fd, "battery_style", battery_display_style);
     write_config_line(fd, "clock_style", clock_display_style);
+    write_config_line(fd, "fps_icon_style", fps_icon_style);
+    write_config_line(fd, "battery_icon_style", battery_icon_style);
+    write_config_line(fd, "clock_icon_style", clock_icon_style);
+    write_config_line(fd, "date_icon_style", date_icon_style);
+    write_config_line(fd, "cpu_icon_style", cpu_icon_style);
+    write_config_line(fd, "bus_icon_style", bus_icon_style);
+    write_config_line(fd, "gpu_icon_style", gpu_icon_style);
+    write_config_line(fd, "ram_icon_style", ram_icon_style);
+    write_config_line(fd, "app_icon_style", app_icon_style);
     write_config_line(fd, "debug_enabled", debug_enabled);
     write_config_line(fd, "debug_framebuf", debug_show_framebuf);
     write_config_line(fd, "debug_cache", debug_show_cache);
@@ -1072,11 +1149,13 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "hud_order5", hud_order[5]);
     write_config_line(fd, "hud_order6", hud_order[6]);
     write_config_line(fd, "hud_order7", hud_order[7]);
+    write_config_line(fd, "hud_order8", hud_order[8]);
 
     write_config_line(fd, "hud_text_color", hud_text_color);
     write_config_line(fd, "hud_shadow_color", hud_shadow_color);
     write_config_line(fd, "hud_icon_color", hud_icon_color);
     write_config_line(fd, "clock_icon_color", clock_icon_color);
+    write_config_line(fd, "date_icon_color", date_icon_color);
     write_config_line(fd, "fps_icon_color", fps_icon_color);
     write_config_line(fd, "cpu_icon_color", cpu_icon_color);
     write_config_line(fd, "bus_icon_color", bus_icon_color);
@@ -1113,6 +1192,7 @@ static void load_settings_from_buffer(char *buf) {
     show_fps = get_config_int(buf, "show_fps", show_fps);
     show_battery = get_config_int(buf, "show_battery", show_battery);
     show_time = get_config_int(buf, "show_time", show_time);
+    show_date = get_config_int(buf, "show_date", show_date);
     show_cpu = get_config_int(buf, "show_cpu", show_cpu);
     show_bus = get_config_int(buf, "show_bus", show_bus);
     show_gpu = get_config_int(buf, "show_gpu", show_gpu);
@@ -1122,6 +1202,15 @@ static void load_settings_from_buffer(char *buf) {
     fps_display_style = get_config_int(buf, "fps_style", fps_display_style);
     battery_display_style = get_config_int(buf, "battery_style", battery_display_style);
     clock_display_style = get_config_int(buf, "clock_style", clock_display_style);
+    fps_icon_style = get_config_int(buf, "fps_icon_style", fps_icon_style);
+    battery_icon_style = get_config_int(buf, "battery_icon_style", battery_icon_style);
+    clock_icon_style = get_config_int(buf, "clock_icon_style", clock_icon_style);
+    date_icon_style = get_config_int(buf, "date_icon_style", date_icon_style);
+    cpu_icon_style = get_config_int(buf, "cpu_icon_style", cpu_icon_style);
+    bus_icon_style = get_config_int(buf, "bus_icon_style", bus_icon_style);
+    gpu_icon_style = get_config_int(buf, "gpu_icon_style", gpu_icon_style);
+    ram_icon_style = get_config_int(buf, "ram_icon_style", ram_icon_style);
+    app_icon_style = get_config_int(buf, "app_icon_style", app_icon_style);
     debug_enabled = get_config_int(buf, "debug_enabled", debug_enabled);
     debug_show_framebuf = get_config_int(buf, "debug_framebuf", debug_show_framebuf);
     debug_show_cache = get_config_int(buf, "debug_cache", debug_show_cache);
@@ -1153,11 +1242,13 @@ static void load_settings_from_buffer(char *buf) {
     hud_order[5] = get_config_int(buf, "hud_order5", hud_order[5]);
     hud_order[6] = get_config_int(buf, "hud_order6", hud_order[6]);
     hud_order[7] = get_config_int(buf, "hud_order7", hud_order[7]);
+    hud_order[8] = get_config_int(buf, "hud_order8", hud_order[8]);
 
     hud_text_color = get_config_int(buf, "hud_text_color", hud_text_color);
     hud_shadow_color = get_config_int(buf, "hud_shadow_color", hud_shadow_color);
     hud_icon_color = get_config_int(buf, "hud_icon_color", hud_icon_color);
     clock_icon_color = get_config_int(buf, "clock_icon_color", clock_icon_color);
+    date_icon_color = get_config_int(buf, "date_icon_color", date_icon_color);
     fps_icon_color = get_config_int(buf, "fps_icon_color", fps_icon_color);
     cpu_icon_color = get_config_int(buf, "cpu_icon_color", cpu_icon_color);
     bus_icon_color = get_config_int(buf, "bus_icon_color", bus_icon_color);
@@ -1891,6 +1982,18 @@ static void build_time_text(char *out) {
     out[pos++] = is_pm ? 'P' : 'A'; out[pos++] = 'M'; out[pos] = '\0';
 }
 
+static void build_date_text(char *out) {
+    SceDateTime time;
+    int pos = 0;
+
+    sceRtcGetCurrentClockLocalTime(&time);
+    pos = append_2digit_number(out, pos, time.month);
+    out[pos++] = '/';
+    pos = append_2digit_number(out, pos, time.day);
+    out[pos] = '\0';
+}
+
+
 /*
  * Vita A8B8G8R8 values.
  * Yellow must be 0xFF00FFFF on this framebuffer.
@@ -2326,9 +2429,84 @@ static void draw_text_shadow(unsigned int *pixels, int pitch, int x, int y, cons
     draw_text(pixels, pitch, x, y, text, color, scale);
 }
 
+static void draw_icon_style_variant(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    if (s < 1) s = 1;
+
+    switch (style) {
+        case ICON_STYLE_OUTLINE:
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + s, s, 5 * s, col);
+            break;
+        case ICON_STYLE_SOLID:
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col);
+            break;
+        case ICON_STYLE_DIAMOND:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + s, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_CROSS:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col);
+            break;
+        case ICON_STYLE_DOTS:
+            draw_rect(pixels, pitch, x + s, y + s, 2 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), 2 * s, 2 * s, col);
+            break;
+        case ICON_STYLE_CHEVRON:
+            draw_rect(pixels, pitch, x + s, y + s, 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
+            break;
+        case ICON_STYLE_MINI:
+            draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + s, s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (5 * s), s, s, col);
+            break;
+        case ICON_STYLE_BARS:
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            break;
+        case ICON_STYLE_TARGET:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + s, s, s, col);
+            draw_rect(pixels, pitch, x, y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (8 * s), y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + (5 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+            break;
+        case ICON_STYLE_ORIGINAL:
+        default:
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000);
+            break;
+    }
+}
+
 static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int battery, int scale, int charging) {
     unsigned int white = active_battery_alert ? 0xFF0000FF : color_value(hud_icon_color, 0xFFFFFFFF);
     unsigned int fill = active_battery_alert ? 0xFF0000FF : (hud_icon_color == COLOR_AUTO ? get_battery_color(battery) : color_value(hud_icon_color, get_battery_color(battery)));
+
+    if (battery_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, battery_icon_style, fill);
+        return;
+    }
 
     int body_w = 13 * scale;
     int body_h = 7 * scale;
@@ -2377,6 +2555,11 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     unsigned int white = color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
+    if (clock_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, clock_icon_style, white);
+        return;
+    }
+
     if (s < 1) s = 1;
 
     draw_rect(pixels, pitch, x + (2 * s), y, 3 * s, s, white);
@@ -2395,9 +2578,36 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (5 * s), y + (5 * s), s, s, white);
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
+static void draw_calendar_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = color_value(date_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
+    int s = scale;
+
+    if (date_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, date_icon_style, col);
+        return;
+    }
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x + s, y + s, 7 * s, 6 * s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y, s, 2 * s, col);
+    draw_rect(pixels, pitch, x + (6 * s), y, s, 2 * s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (4 * s), y + (5 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), s, s, 0x00000000);
+}
+
 static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = active_fps_alert ? 0xFF0000FF : color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
+
+    if (fps_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, fps_icon_style, col);
+        return;
+    }
 
     if (s < 1) s = 1;
 
@@ -2427,6 +2637,7 @@ static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 }
 
 static int active_extra_icon_color = COLOR_AUTO;
+static int active_extra_icon_style = ICON_STYLE_ORIGINAL;
 
 static unsigned int get_extra_icon_color(void) {
     return color_value(active_extra_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
@@ -2434,6 +2645,10 @@ static unsigned int get_extra_icon_color(void) {
 
 static void set_active_extra_icon_color(int color_id) {
     active_extra_icon_color = color_id;
+}
+
+static void set_active_extra_icon_style(int style_id) {
+    active_extra_icon_style = style_id;
 }
 
 static int hud_extra_icon_w(int scale) {
@@ -2479,6 +2694,11 @@ static void draw_cpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
+    if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
+
     if (s < 1) s = 1;
 
     draw_rect(pixels, pitch, x + (2 * s), y + (1 * s), 5 * s, 5 * s, col);
@@ -2499,6 +2719,11 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
+    if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
+
     if (s < 1) s = 1;
 
     draw_rect(pixels, pitch, x, y + (1 * s), 7 * s, 5 * s, col);
@@ -2512,6 +2737,11 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = get_extra_icon_color();
     int s = scale;
+
+    if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
 
     if (s < 1) s = 1;
 
@@ -2529,6 +2759,11 @@ static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = get_extra_icon_color();
     int s = scale;
+
+    if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
+        draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
 
     if (s < 1) s = 1;
 
@@ -3006,6 +3241,22 @@ static const char *combo_name_for(int combo_mode) {
 
 static const char *toggle_name(void) { return combo_name_for(toggle_combo_mode); }
 static const char *opacity_name_for(int id) { if (id == OPACITY_75) return "75%"; if (id == OPACITY_50) return "50%"; if (id == OPACITY_25) return "25%"; return "100%"; }
+
+static const char *icon_style_name_for(int id) {
+    switch (id) {
+        case ICON_STYLE_OUTLINE: return "OUTLINE";
+        case ICON_STYLE_SOLID: return "SOLID";
+        case ICON_STYLE_DIAMOND: return "DIAMOND";
+        case ICON_STYLE_CROSS: return "CROSS";
+        case ICON_STYLE_DOTS: return "DOTS";
+        case ICON_STYLE_CHEVRON: return "CHEVRON";
+        case ICON_STYLE_MINI: return "MINI";
+        case ICON_STYLE_BARS: return "BARS";
+        case ICON_STYLE_TARGET: return "TARGET";
+        case ICON_STYLE_ORIGINAL:
+        default: return "ORIGINAL";
+    }
+}
 static const char *fps_style_name(void) { if (fps_display_style == FPS_STYLE_NUMBER_ONLY) return "NUMBER ONLY"; if (fps_display_style == FPS_STYLE_ICON_ONLY) return "ICON ONLY"; if (fps_display_style == FPS_STYLE_LABEL_NUMBER) return "FPS + NUMBER"; return "ICON + NUMBER"; }
 static const char *battery_style_name(void) { if (battery_display_style == BATTERY_STYLE_PERCENT_ONLY) return "PERCENT ONLY"; if (battery_display_style == BATTERY_STYLE_ICON_ONLY) return "ICON ONLY"; if (battery_display_style == BATTERY_STYLE_BAR_ONLY) return "BAR ONLY"; return "ICON + PERCENT"; }
 static const char *clock_style_name(void) { if (clock_display_style == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY"; if (clock_display_style == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY"; if (clock_display_style == CLOCK_STYLE_DATE_TIME) return "DATE + TIME"; return "ICON + TIME"; }
@@ -3158,7 +3409,7 @@ static const char *hud_theme_name_for(int id) {
 
 static int item_uses_color_menu(int item) {
     return item == ITEM_HUD_TEXT || item == ITEM_HUD_SHADOW || item == ITEM_HUD_ICON ||
-           item == ITEM_CLOCK_ICON || item == ITEM_FPS_ICON || item == ITEM_CPU_ICON || item == ITEM_BUS_ICON ||
+           item == ITEM_CLOCK_ICON || item == ITEM_DATE_ICON || item == ITEM_FPS_ICON || item == ITEM_CPU_ICON || item == ITEM_BUS_ICON ||
            item == ITEM_GPU_ICON || item == ITEM_APP_ICON || item == ITEM_RAM_ICON ||
            item == ITEM_MENU_TEXT || item == ITEM_MENU_SELECT ||
            item == ITEM_MENU_BORDER || item == ITEM_TOP_BAR || item == ITEM_DEBUG_COLOR;
@@ -3173,19 +3424,28 @@ static int item_uses_combo_menu(int item) {
            item == ITEM_CYCLE_PROFILE_COMBO || item == ITEM_CYCLE_THEME_COMBO;
 }
 
+static int item_uses_icon_style_menu(int item) {
+    return item == ITEM_FPS_ICON_STYLE || item == ITEM_BATTERY_ICON_STYLE ||
+           item == ITEM_CLOCK_ICON_STYLE || item == ITEM_DATE_ICON_STYLE ||
+           item == ITEM_CPU_ICON_STYLE || item == ITEM_BUS_ICON_STYLE ||
+           item == ITEM_GPU_ICON_STYLE || item == ITEM_RAM_ICON_STYLE ||
+           item == ITEM_APP_ICON_STYLE;
+}
+
 static int item_uses_choice_menu(int item) {
     return item == ITEM_LAYOUT || item == ITEM_SIZE || item == ITEM_MENU_SIZE ||
            item == ITEM_FONT || item == ITEM_LANGUAGE || item == ITEM_THEME ||
            item == ITEM_HUD_THEME || item == ITEM_DEBUG_POSITION || item == ITEM_DEBUG_SIZE || item == ITEM_DEBUG_FONT ||
            item == ITEM_HUD_OPACITY || item == ITEM_MENU_OPACITY ||
            item == ITEM_FPS_STYLE || item == ITEM_BATTERY_STYLE || item == ITEM_CLOCK_STYLE ||
-           item_uses_combo_menu(item) || item_uses_color_menu(item) || item_uses_bg_menu(item);
+           item_uses_combo_menu(item) || item_uses_icon_style_menu(item) || item_uses_color_menu(item) || item_uses_bg_menu(item);
 }
 
 static int choice_count_for_target(int target) {
     if (item_uses_color_menu(target)) return COLOR_COUNT;
     if (item_uses_bg_menu(target)) return BG_COUNT;
     if (item_uses_combo_menu(target)) return TOGGLE_COUNT;
+    if (item_uses_icon_style_menu(target)) return ICON_STYLE_COUNT;
 
     switch (target) {
         case ITEM_LAYOUT:    return LAYOUT_COUNT;
@@ -3214,6 +3474,7 @@ static int choice_current_index_for_target(int target) {
             case ITEM_HUD_SHADOW:  return hud_shadow_color;
             case ITEM_HUD_ICON:    return hud_icon_color;
             case ITEM_CLOCK_ICON:  return clock_icon_color;
+            case ITEM_DATE_ICON:   return date_icon_color;
             case ITEM_FPS_ICON:    return fps_icon_color;
             case ITEM_CPU_ICON:    return cpu_icon_color;
             case ITEM_BUS_ICON:    return bus_icon_color;
@@ -3240,6 +3501,18 @@ static int choice_current_index_for_target(int target) {
         if (target == ITEM_CYCLE_THEME_COMBO) return cycle_theme_combo_mode;
     }
 
+    if (item_uses_icon_style_menu(target)) {
+        if (target == ITEM_FPS_ICON_STYLE) return fps_icon_style;
+        if (target == ITEM_BATTERY_ICON_STYLE) return battery_icon_style;
+        if (target == ITEM_CLOCK_ICON_STYLE) return clock_icon_style;
+        if (target == ITEM_DATE_ICON_STYLE) return date_icon_style;
+        if (target == ITEM_CPU_ICON_STYLE) return cpu_icon_style;
+        if (target == ITEM_BUS_ICON_STYLE) return bus_icon_style;
+        if (target == ITEM_GPU_ICON_STYLE) return gpu_icon_style;
+        if (target == ITEM_RAM_ICON_STYLE) return ram_icon_style;
+        if (target == ITEM_APP_ICON_STYLE) return app_icon_style;
+    }
+
     switch (target) {
         case ITEM_LAYOUT:    return hud_layout;
         case ITEM_SIZE:      return hud_size;
@@ -3262,6 +3535,7 @@ static int choice_current_index_for_target(int target) {
 
 static const char *choice_name_for_target(int target, int index) {
     if (item_uses_combo_menu(target)) return combo_name_for(index);
+    if (item_uses_icon_style_menu(target)) return icon_style_name_for(index);
     if (target == ITEM_DEBUG_POSITION) return position_name_for(index);
     if (target == ITEM_DEBUG_SIZE) return size_name_for(index);
     if (target == ITEM_DEBUG_FONT) return font_name_for(index);
@@ -3294,6 +3568,7 @@ static void set_choice_for_target(int target, int index) {
             case ITEM_HUD_SHADOW:  hud_shadow_color = index; break;
             case ITEM_HUD_ICON:    hud_icon_color = index; break;
             case ITEM_CLOCK_ICON:  clock_icon_color = index; break;
+            case ITEM_DATE_ICON:   date_icon_color = index; break;
             case ITEM_FPS_ICON:    fps_icon_color = index; break;
             case ITEM_CPU_ICON:    cpu_icon_color = index; break;
             case ITEM_BUS_ICON:    bus_icon_color = index; break;
@@ -3325,6 +3600,21 @@ static void set_choice_for_target(int target, int index) {
         if (target == ITEM_TOGGLE_MENU_COMBO) menu_toggle_combo_mode = index;
         if (target == ITEM_CYCLE_PROFILE_COMBO) cycle_profile_combo_mode = index;
         if (target == ITEM_CYCLE_THEME_COMBO) cycle_theme_combo_mode = index;
+        return;
+    }
+
+    if (item_uses_icon_style_menu(target)) {
+        if (index < 0) index = 0;
+        if (index >= ICON_STYLE_COUNT) index = ICON_STYLE_COUNT - 1;
+        if (target == ITEM_FPS_ICON_STYLE) fps_icon_style = index;
+        if (target == ITEM_BATTERY_ICON_STYLE) battery_icon_style = index;
+        if (target == ITEM_CLOCK_ICON_STYLE) clock_icon_style = index;
+        if (target == ITEM_DATE_ICON_STYLE) date_icon_style = index;
+        if (target == ITEM_CPU_ICON_STYLE) cpu_icon_style = index;
+        if (target == ITEM_BUS_ICON_STYLE) bus_icon_style = index;
+        if (target == ITEM_GPU_ICON_STYLE) gpu_icon_style = index;
+        if (target == ITEM_RAM_ICON_STYLE) ram_icon_style = index;
+        if (target == ITEM_APP_ICON_STYLE) app_icon_style = index;
         return;
     }
 
@@ -3422,6 +3712,9 @@ static void save_current_menu_page_state(void) {
     } else if (menu_page == MENU_PAGE_TOGGLE_COMBOS) {
         saved_toggle_index = menu_index;
         saved_toggle_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_ICON_CHANGER) {
+        saved_icon_changer_index = menu_index;
+        saved_icon_changer_scroll = menu_scroll;
     }
 }
 
@@ -3457,13 +3750,13 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 10;
+            return 8;
         case MENU_PAGE_HUD_COLORS:
             return 4;
         case MENU_PAGE_MENU_COLORS:
             return 5;
         case MENU_PAGE_ICON_COLORS:
-            return 8;
+            return 11;
         case MENU_PAGE_PERFORMANCE:
             return 5;
         case MENU_PAGE_RESET_OPTIONS:
@@ -3472,31 +3765,34 @@ static int current_menu_count(void) {
             return 9;
         case MENU_PAGE_TOGGLE_COMBOS:
             return 6;
+        case MENU_PAGE_ICON_CHANGER:
+            return 9;
         case MENU_PAGE_HUD_MENU:
             return 6;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_OVERLAYS:
-            return 8;
+            return 9;
         case MENU_PAGE_SIZE:
             return 5;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 11;
+            return 12;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[11] = {
+    static const int main_items[12] = {
         ITEM_HUD,
-        ITEM_THEME_MENU,
-        ITEM_ALL_HUD_OVERLAYS_MENU,
-        ITEM_PERFORMANCE_ALERTS_MENU,
         ITEM_HUD_MENU,
         ITEM_DEBUG_MENU,
         ITEM_PROFILE_MENU,
+        ITEM_ALL_HUD_OVERLAYS_MENU,
+        ITEM_THEME_MENU,
+        ITEM_ICON_CHANGER_MENU,
+        ITEM_PERFORMANCE_ALERTS_MENU,
         ITEM_MENU_HUD_SIZE_MENU,
         ITEM_LANGUAGE,
         ITEM_TOGGLE,
@@ -3509,13 +3805,11 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[10] = {
+    static const int theme_items[8] = {
         ITEM_THEME,
         ITEM_FONT,
         ITEM_DEBUG_FONT,
         ITEM_DEBUG_COLOR,
-        ITEM_HUD_OPACITY,
-        ITEM_MENU_OPACITY,
         ITEM_HUD_COLORS_MENU,
         ITEM_MENU_COLORS_MENU,
         ITEM_ICON_COLORS_MENU,
@@ -3537,21 +3831,37 @@ static int current_menu_item_at(int index) {
         ITEM_TOP_BAR
     };
 
-    static const int icon_color_items[8] = {
+    static const int icon_color_items[11] = {
         ITEM_FPS_ICON,
         ITEM_HUD_ICON,
         ITEM_CLOCK_ICON,
+        ITEM_DATE_ICON,
         ITEM_CPU_ICON,
         ITEM_BUS_ICON,
         ITEM_GPU_ICON,
         ITEM_RAM_ICON,
-        ITEM_APP_ICON
+        ITEM_APP_ICON,
+        ITEM_HUD_OPACITY,
+        ITEM_MENU_OPACITY
     };
 
-    static const int overlay_items[8] = {
+    static const int icon_changer_items[9] = {
+        ITEM_FPS_ICON_STYLE,
+        ITEM_BATTERY_ICON_STYLE,
+        ITEM_CLOCK_ICON_STYLE,
+        ITEM_DATE_ICON_STYLE,
+        ITEM_CPU_ICON_STYLE,
+        ITEM_BUS_ICON_STYLE,
+        ITEM_GPU_ICON_STYLE,
+        ITEM_RAM_ICON_STYLE,
+        ITEM_APP_ICON_STYLE
+    };
+
+    static const int overlay_items[9] = {
         ITEM_FPS,
         ITEM_BATTERY,
         ITEM_TIME,
+        ITEM_DATE_HUD,
         ITEM_CPU_HUD,
         ITEM_BUS_HUD,
         ITEM_GPU_HUD,
@@ -3631,7 +3941,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 10) index = 9;
+        if (index >= 8) index = 7;
         return theme_items[index];
     }
 
@@ -3646,12 +3956,17 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_ICON_COLORS) {
-        if (index >= 8) index = 7;
+        if (index >= 11) index = 10;
         return icon_color_items[index];
     }
 
+    if (menu_page == MENU_PAGE_ICON_CHANGER) {
+        if (index >= 9) index = 8;
+        return icon_changer_items[index];
+    }
+
     if (menu_page == MENU_PAGE_OVERLAYS) {
-        if (index >= 8) index = 7;
+        if (index >= 9) index = 8;
         return overlay_items[index];
     }
 
@@ -3685,7 +4000,7 @@ static int current_menu_item_at(int index) {
         return toggle_items[index];
     }
 
-    if (index >= 11) index = 10;
+    if (index >= 12) index = 11;
     return main_items[index];
 }
 
@@ -3742,6 +4057,9 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_TOGGLE_COMBOS) {
         menu_index = saved_toggle_index;
         menu_scroll = saved_toggle_scroll;
+    } else if (page == MENU_PAGE_ICON_CHANGER) {
+        menu_index = saved_icon_changer_index;
+        menu_scroll = saved_icon_changer_scroll;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -3787,6 +4105,7 @@ static const char *choice_title_for_target(void) {
         case ITEM_HUD_SHADOW: return "HUD SHADOW";
         case ITEM_HUD_ICON: return "BATTERY ICON";
         case ITEM_CLOCK_ICON: return "CLOCK ICON";
+        case ITEM_DATE_ICON: return "DATE ICON";
         case ITEM_FPS_ICON: return "FPS ICON";
         case ITEM_CPU_ICON: return "CPU ICON";
         case ITEM_BUS_ICON: return "BUS ICON";
@@ -3799,6 +4118,15 @@ static const char *choice_title_for_target(void) {
         case ITEM_MENU_BORDER: return "MENU BORDER";
         case ITEM_MENUBG: return "MENU BACKGROUND";
         case ITEM_TOP_BAR: return "MENU TOP BAR";
+        case ITEM_FPS_ICON_STYLE: return "FPS ICON";
+        case ITEM_BATTERY_ICON_STYLE: return "BATTERY ICON";
+        case ITEM_CLOCK_ICON_STYLE: return "CLOCK ICON";
+        case ITEM_DATE_ICON_STYLE: return "DATE ICON";
+        case ITEM_CPU_ICON_STYLE: return "CPU ICON";
+        case ITEM_BUS_ICON_STYLE: return "BUS ICON";
+        case ITEM_GPU_ICON_STYLE: return "GPU ICON";
+        case ITEM_RAM_ICON_STYLE: return "RAM ICON";
+        case ITEM_APP_ICON_STYLE: return "APP ID ICON";
         default: return "CHOOSE";
     }
 }
@@ -3827,6 +4155,8 @@ static const char *current_menu_title(void) {
     if (menu_page == MENU_PAGE_DEBUG) return "DEBUG MENU";
 
     if (menu_page == MENU_PAGE_TOGGLE_COMBOS) return "TOGGLE COMBOS";
+
+    if (menu_page == MENU_PAGE_ICON_CHANGER) return "ICON CHANGER MENU";
 
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
@@ -3872,6 +4202,7 @@ static const char *menu_label(int item) {
             case ITEM_FPS:          return "FPS HUD";
             case ITEM_BATTERY:      return "BATERIA HUD";
             case ITEM_TIME:         return "RELOJ HUD";
+            case ITEM_DATE_HUD:     return "FECHA HUD";
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "THEME / COLOR / FONT MENU";
             case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
@@ -3886,6 +4217,7 @@ static const char *menu_label(int item) {
             case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
             case ITEM_HUD_ICON:     return "ICONO BATERIA";
             case ITEM_CLOCK_ICON:   return "ICONO RELOJ";
+            case ITEM_DATE_ICON:    return "ICONO FECHA";
             case ITEM_FPS_ICON:     return "ICONO FPS";
             case ITEM_CPU_ICON:     return "ICONO CPU";
             case ITEM_BUS_ICON:     return "ICONO BUS";
@@ -3947,6 +4279,16 @@ static const char *menu_label(int item) {
             case ITEM_HUD_MENU:     return "HUD MENU";
             case ITEM_DEBUG_FONT:   return "DEBUG FONT";
             case ITEM_DEBUG_COLOR:  return "DEBUG COLORS";
+            case ITEM_ICON_CHANGER_MENU: return "ICON CHANGER MENU";
+            case ITEM_FPS_ICON_STYLE: return "FPS ICON";
+            case ITEM_BATTERY_ICON_STYLE: return "BATTERY ICON";
+            case ITEM_CLOCK_ICON_STYLE: return "CLOCK ICON";
+            case ITEM_DATE_ICON_STYLE: return "DATE ICON";
+            case ITEM_CPU_ICON_STYLE: return "CPU ICON";
+            case ITEM_BUS_ICON_STYLE: return "BUS ICON";
+            case ITEM_GPU_ICON_STYLE: return "GPU ICON";
+            case ITEM_RAM_ICON_STYLE: return "RAM ICON";
+            case ITEM_APP_ICON_STYLE: return "APP ID ICON";
             case ITEM_RESET:        return "RESET OPTIONS";
             default:                return "";
         }
@@ -3964,6 +4306,7 @@ static const char *menu_label(int item) {
         case ITEM_FPS:          return "FPS HUD";
         case ITEM_BATTERY:      return "BATTERY HUD";
         case ITEM_TIME:         return "CLOCK HUD";
+        case ITEM_DATE_HUD:     return "DATE HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR / FONT MENU";
         case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
@@ -3978,6 +4321,7 @@ static const char *menu_label(int item) {
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "BATTERY ICON";
         case ITEM_CLOCK_ICON:   return "CLOCK ICON";
+        case ITEM_DATE_ICON:    return "DATE ICON";
         case ITEM_FPS_ICON:     return "FPS ICON";
         case ITEM_CPU_ICON:     return "CPU ICON";
         case ITEM_BUS_ICON:     return "BUS ICON";
@@ -4039,6 +4383,16 @@ static const char *menu_label(int item) {
         case ITEM_HUD_MENU:     return "HUD MENU";
         case ITEM_DEBUG_FONT:   return "DEBUG FONT";
         case ITEM_DEBUG_COLOR:  return "DEBUG COLORS";
+        case ITEM_ICON_CHANGER_MENU: return "ICON CHANGER MENU";
+        case ITEM_FPS_ICON_STYLE: return "FPS ICON";
+        case ITEM_BATTERY_ICON_STYLE: return "BATTERY ICON";
+        case ITEM_CLOCK_ICON_STYLE: return "CLOCK ICON";
+        case ITEM_DATE_ICON_STYLE: return "DATE ICON";
+        case ITEM_CPU_ICON_STYLE: return "CPU ICON";
+        case ITEM_BUS_ICON_STYLE: return "BUS ICON";
+        case ITEM_GPU_ICON_STYLE: return "GPU ICON";
+        case ITEM_RAM_ICON_STYLE: return "RAM ICON";
+        case ITEM_APP_ICON_STYLE: return "APP ID ICON";
         case ITEM_RESET:        return "RESET OPTIONS";
         default:                return "";
     }
@@ -4063,11 +4417,13 @@ static const char *menu_value(int item) {
         case ITEM_FPS:          return onoff_name(show_fps);
         case ITEM_BATTERY:      return onoff_name(show_battery);
         case ITEM_TIME:         return onoff_name(show_time);
+        case ITEM_DATE_HUD:     return onoff_name(show_date);
         case ITEM_TIMEMODE:     return time_mode_name();
         case ITEM_HUD_TEXT:     return color_name_generic(hud_text_color);
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
         case ITEM_HUD_ICON:     return color_name_generic(hud_icon_color);
         case ITEM_CLOCK_ICON:   return color_name_generic(clock_icon_color);
+        case ITEM_DATE_ICON:    return color_name_generic(date_icon_color);
         case ITEM_FPS_ICON:     return color_name_generic(fps_icon_color);
         case ITEM_CPU_ICON:     return color_name_generic(cpu_icon_color);
         case ITEM_BUS_ICON:     return color_name_generic(bus_icon_color);
@@ -4086,6 +4442,7 @@ static const char *menu_value(int item) {
         case ITEM_HUD_COLORS_MENU: return word_open();
         case ITEM_MENU_COLORS_MENU: return word_open();
         case ITEM_ICON_COLORS_MENU: return word_open();
+        case ITEM_ICON_CHANGER_MENU: return word_open();
         case ITEM_PERFORMANCE_ALERTS_MENU: return word_open();
         case ITEM_ALL_HUD_OVERLAYS_MENU: return word_open();
         case ITEM_MENU_HUD_SIZE_MENU: return word_open();
@@ -4119,6 +4476,15 @@ static const char *menu_value(int item) {
         case ITEM_FPS_STYLE: return fps_style_name();
         case ITEM_BATTERY_STYLE: return battery_style_name();
         case ITEM_CLOCK_STYLE: return clock_style_name();
+        case ITEM_FPS_ICON_STYLE: return icon_style_name_for(fps_icon_style);
+        case ITEM_BATTERY_ICON_STYLE: return icon_style_name_for(battery_icon_style);
+        case ITEM_CLOCK_ICON_STYLE: return icon_style_name_for(clock_icon_style);
+        case ITEM_DATE_ICON_STYLE: return icon_style_name_for(date_icon_style);
+        case ITEM_CPU_ICON_STYLE: return icon_style_name_for(cpu_icon_style);
+        case ITEM_BUS_ICON_STYLE: return icon_style_name_for(bus_icon_style);
+        case ITEM_GPU_ICON_STYLE: return icon_style_name_for(gpu_icon_style);
+        case ITEM_RAM_ICON_STYLE: return icon_style_name_for(ram_icon_style);
+        case ITEM_APP_ICON_STYLE: return icon_style_name_for(app_icon_style);
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? word_saved() : word_press_x();
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? word_loaded() : word_press_x();
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
@@ -4187,6 +4553,10 @@ static void menu_change(int dir) {
 
         case ITEM_ICON_COLORS_MENU:
             enter_menu_page(MENU_PAGE_ICON_COLORS);
+            break;
+
+        case ITEM_ICON_CHANGER_MENU:
+            enter_menu_page(MENU_PAGE_ICON_CHANGER);
             break;
 
         case ITEM_ALL_HUD_OVERLAYS_MENU:
@@ -4279,6 +4649,10 @@ static void menu_change(int dir) {
             show_time = !show_time;
             break;
 
+        case ITEM_DATE_HUD:
+            show_date = !show_date;
+            break;
+
         case ITEM_TIMEMODE:
             use_24h_time = !use_24h_time;
             break;
@@ -4305,6 +4679,12 @@ static void menu_change(int dir) {
             clock_icon_color += dir;
             if (clock_icon_color < 0) clock_icon_color = COLOR_COUNT - 1;
             if (clock_icon_color >= COLOR_COUNT) clock_icon_color = 0;
+            break;
+
+        case ITEM_DATE_ICON:
+            date_icon_color += dir;
+            if (date_icon_color < 0) date_icon_color = COLOR_COUNT - 1;
+            if (date_icon_color >= COLOR_COUNT) date_icon_color = 0;
             break;
 
         case ITEM_FPS_ICON:
@@ -5084,6 +5464,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     char fps_text[16];
     char battery_text[8];
     char time_text[24];
+    char date_text[8];
     char cpu_text[16];
     char bus_text[16];
     char gpu_text[16];
@@ -5103,6 +5484,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int fps_w;
     int battery_text_w;
     int time_w;
+    int date_w;
     int cpu_w;
     int bus_w;
     int gpu_w;
@@ -5116,6 +5498,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int battery_icon_h;
     int clock_icon_w;
     int clock_icon_h;
+    int date_icon_w;
+    int date_icon_h;
     int extra_icon_w;
     int extra_icon_h;
 
@@ -5149,6 +5533,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
     build_time_text(time_text);
+    build_date_text(date_text);
     build_cpu_text(cpu_text);
     build_bus_text(bus_text);
     build_gpu_text(gpu_text);
@@ -5166,6 +5551,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     fps_w = (show_fps && fps_display_style != FPS_STYLE_ICON_ONLY) ? text_width(fps_text, scale) : 0;
     battery_text_w = (show_battery && battery_display_style != BATTERY_STYLE_ICON_ONLY && battery_display_style != BATTERY_STYLE_BAR_ONLY) ? text_width(battery_text, scale) : 0;
     time_w = (show_time && clock_display_style != CLOCK_STYLE_ICON_ONLY) ? text_width(time_text, scale) : 0;
+    date_w = show_date ? text_width(date_text, scale) : 0;
     cpu_w = show_cpu ? text_width(cpu_value_text, scale) : 0;
     bus_w = show_bus ? text_width(bus_value_text, scale) : 0;
     gpu_w = show_gpu ? text_width(gpu_value_text, scale) : 0;
@@ -5180,6 +5566,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     clock_icon_w = (show_time && clock_display_style != CLOCK_STYLE_TIME_ONLY && clock_display_style != CLOCK_STYLE_DATE_TIME) ? (7 * icon_scale) : 0;
     clock_icon_h = 7 * icon_scale;
+    date_icon_w = show_date ? (9 * icon_scale) : 0;
+    date_icon_h = 7 * icon_scale;
     extra_icon_w = hud_extra_icon_w(icon_scale);
     extra_icon_h = hud_extra_icon_h(icon_scale);
 
@@ -5231,6 +5619,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_CLOCK:
                     if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
                     break;
+                case HUD_ORDER_DATE:
+                    if (show_date) order_w = date_icon_w + date_w;
+                    break;
                 case HUD_ORDER_CPU:
                     if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
                     break;
@@ -5273,6 +5664,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                     break;
                 case HUD_ORDER_CLOCK:
                     if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
+                    break;
+                case HUD_ORDER_DATE:
+                    if (show_date) order_w = date_icon_w + date_w;
                     break;
                 case HUD_ORDER_CPU:
                     if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
@@ -5384,9 +5778,18 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                     }
                     break;
 
+                case HUD_ORDER_DATE:
+                    if (show_date) {
+                        draw_calendar_icon(pixels, pitch, x, draw_y + ((text_h - date_icon_h) / 2), icon_scale);
+                        draw_text_shadow(pixels, pitch, x + date_icon_w, draw_y, date_text, text_color, scale);
+                        y += text_h + gap_small;
+                    }
+                    break;
+
                 case HUD_ORDER_CPU:
                     if (show_cpu) {
                         set_active_extra_icon_color(cpu_icon_color);
+                        set_active_extra_icon_style(cpu_icon_style);
                         draw_cpu_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
                         draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, cpu_value_text, text_color, scale);
                         y += text_h + gap_small;
@@ -5396,6 +5799,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_BUS:
                     if (show_bus) {
                         set_active_extra_icon_color(bus_icon_color);
+                        set_active_extra_icon_style(bus_icon_style);
                         draw_cpu_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
                         draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, bus_value_text, text_color, scale);
                         y += text_h + gap_small;
@@ -5405,6 +5809,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_GPU:
                     if (show_gpu) {
                         set_active_extra_icon_color(gpu_icon_color);
+                        set_active_extra_icon_style(gpu_icon_style);
                         draw_gpu_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
                         draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, gpu_value_text, text_color, scale);
                         y += text_h + gap_small;
@@ -5414,6 +5819,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_APP_ID:
                     if (show_app_id) {
                         set_active_extra_icon_color(app_icon_color);
+                        set_active_extra_icon_style(app_icon_style);
                         draw_game_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
                         draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, app_id_value_text, text_color, scale);
                         y += text_h + gap_small;
@@ -5423,6 +5829,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_RAM:
                     if (show_ram) {
                         set_active_extra_icon_color(ram_alert_level == 2 ? COLOR_RED : (ram_alert_level == 1 ? COLOR_YELLOW : ram_icon_color));
+                        set_active_extra_icon_style(ram_icon_style);
                         draw_ram_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
                         draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, ram_value_text, ram_text_color, scale);
                         y += text_h + gap_small;
@@ -5452,6 +5859,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 break;
             case HUD_ORDER_CLOCK:
                 if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
+                break;
+            case HUD_ORDER_DATE:
+                if (show_date) order_w = date_icon_w + date_w;
                 break;
             case HUD_ORDER_CPU:
                 if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
@@ -5498,8 +5908,16 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 if (time_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale); x += time_w; }
                 break;
 
+            case HUD_ORDER_DATE:
+                draw_calendar_icon(pixels, pitch, x, start_y + ((text_h - date_icon_h) / 2), icon_scale);
+                x += date_icon_w;
+                draw_text_shadow(pixels, pitch, x, start_y, date_text, text_color, scale);
+                x += date_w;
+                break;
+
             case HUD_ORDER_CPU:
                 set_active_extra_icon_color(cpu_icon_color);
+                set_active_extra_icon_style(cpu_icon_style);
                 draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, cpu_value_text, text_color, scale);
@@ -5508,6 +5926,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             case HUD_ORDER_BUS:
                 set_active_extra_icon_color(bus_icon_color);
+                set_active_extra_icon_style(bus_icon_style);
                 draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, bus_value_text, text_color, scale);
@@ -5516,6 +5935,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             case HUD_ORDER_GPU:
                 set_active_extra_icon_color(gpu_icon_color);
+                set_active_extra_icon_style(gpu_icon_style);
                 draw_gpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, gpu_value_text, text_color, scale);
@@ -5524,6 +5944,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             case HUD_ORDER_APP_ID:
                 set_active_extra_icon_color(app_icon_color);
+                set_active_extra_icon_style(app_icon_style);
                 draw_game_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, app_id_value_text, text_color, scale);
@@ -5532,6 +5953,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             case HUD_ORDER_RAM:
                 set_active_extra_icon_color(ram_alert_level == 2 ? COLOR_RED : (ram_alert_level == 1 ? COLOR_YELLOW : ram_icon_color));
+                set_active_extra_icon_style(ram_icon_style);
                 draw_ram_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, ram_value_text, ram_text_color, scale);
