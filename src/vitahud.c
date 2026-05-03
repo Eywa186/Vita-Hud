@@ -147,21 +147,23 @@
 #define ITEM_HUD_TEXT     20
 #define ITEM_HUD_SHADOW   21
 #define ITEM_HUD_ICON     22
-#define ITEM_HUD_BOX      23
-#define ITEM_HUD_BOX_BG   24
-#define ITEM_MENU_TEXT    25
-#define ITEM_MENU_SELECT  26
-#define ITEM_MENU_BORDER  27
-#define ITEM_MENUBG       28
-#define ITEM_PROFILE_MENU 29
-#define ITEM_PROFILE      30
-#define ITEM_SAVE_PROFILE 31
-#define ITEM_LOAD_PROFILE 32
-#define ITEM_LANGUAGE     33
-#define ITEM_AUTO_HIDE    34
-#define ITEM_TOGGLE       35
-#define ITEM_RESET        36
-#define ITEM_COUNT        37
+#define ITEM_HUD_BOX           23
+#define ITEM_HUD_BOX_BG        24
+#define ITEM_HUD_BOX_OUTLINE   25
+#define ITEM_HUD_BOX_OUT_COLOR 26
+#define ITEM_MENU_TEXT         27
+#define ITEM_MENU_SELECT       28
+#define ITEM_MENU_BORDER       29
+#define ITEM_MENUBG            30
+#define ITEM_PROFILE_MENU      31
+#define ITEM_PROFILE           32
+#define ITEM_SAVE_PROFILE      33
+#define ITEM_LOAD_PROFILE      34
+#define ITEM_LANGUAGE          35
+#define ITEM_AUTO_HIDE         36
+#define ITEM_TOGGLE            37
+#define ITEM_RESET             38
+#define ITEM_COUNT             39
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -196,6 +198,8 @@ static int menu_border_color = COLOR_WHITE;
 static int menu_bg_color = BG_BLACK;
 static int hud_box_enabled = 0;
 static int hud_box_bg_color = BG_BLACK;
+static int hud_box_outline_enabled = 0;
+static int hud_box_outline_color = COLOR_WHITE;
 
 static int hud_language = LANG_EN;
 static int auto_hide_mode = AUTO_HIDE_OFF;
@@ -439,6 +443,8 @@ static void reset_defaults(void) {
     menu_bg_color = BG_BLACK;
     hud_box_enabled = 0;
     hud_box_bg_color = BG_BLACK;
+    hud_box_outline_enabled = 0;
+    hud_box_outline_color = COLOR_WHITE;
 
     hud_language = LANG_EN;
     auto_hide_mode = AUTO_HIDE_OFF;
@@ -482,6 +488,8 @@ static void clamp_settings(void) {
     if (menu_bg_color < 0 || menu_bg_color >= BG_COUNT) menu_bg_color = BG_BLACK;
     if (hud_box_enabled < 0 || hud_box_enabled > 1) hud_box_enabled = 0;
     if (hud_box_bg_color < 0 || hud_box_bg_color >= BG_COUNT) hud_box_bg_color = BG_BLACK;
+    if (hud_box_outline_enabled < 0 || hud_box_outline_enabled > 1) hud_box_outline_enabled = 0;
+    if (hud_box_outline_color < 1 || hud_box_outline_color >= COLOR_COUNT) hud_box_outline_color = COLOR_WHITE;
 
     if (hud_language < 0 || hud_language >= LANG_COUNT) hud_language = LANG_EN;
     if (auto_hide_mode < 0 || auto_hide_mode >= AUTO_HIDE_COUNT) auto_hide_mode = AUTO_HIDE_OFF;
@@ -532,6 +540,8 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "menu_bg", menu_bg_color);
     write_config_line(fd, "hud_box", hud_box_enabled);
     write_config_line(fd, "hud_box_bg", hud_box_bg_color);
+    write_config_line(fd, "hud_box_outline", hud_box_outline_enabled);
+    write_config_line(fd, "hud_box_outline_color", hud_box_outline_color);
 
     write_config_line(fd, "language", hud_language);
     write_config_line(fd, "auto_hide", auto_hide_mode);
@@ -570,6 +580,8 @@ static void load_settings_from_buffer(char *buf) {
     menu_bg_color = get_config_int(buf, "menu_bg", menu_bg_color);
     hud_box_enabled = get_config_int(buf, "hud_box", hud_box_enabled);
     hud_box_bg_color = get_config_int(buf, "hud_box_bg", hud_box_bg_color);
+    hud_box_outline_enabled = get_config_int(buf, "hud_box_outline", hud_box_outline_enabled);
+    hud_box_outline_color = get_config_int(buf, "hud_box_outline_color", hud_box_outline_color);
 
     hud_language = get_config_int(buf, "language", hud_language);
     auto_hide_mode = get_config_int(buf, "auto_hide", auto_hide_mode);
@@ -1636,7 +1648,7 @@ static int current_menu_count(void) {
             return 3;
 
         case MENU_PAGE_THEME:
-            return 10;
+            return 12;
 
         case MENU_PAGE_MAIN:
         default:
@@ -1678,13 +1690,15 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[10] = {
+    static const int theme_items[12] = {
         ITEM_THEME,
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
         ITEM_HUD_ICON,
         ITEM_HUD_BOX,
         ITEM_HUD_BOX_BG,
+        ITEM_HUD_BOX_OUTLINE,
+        ITEM_HUD_BOX_OUT_COLOR,
         ITEM_MENU_TEXT,
         ITEM_MENU_SELECT,
         ITEM_MENU_BORDER,
@@ -1701,7 +1715,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 10) index = 9;
+        if (index >= 12) index = 11;
         return theme_items[index];
     }
 
@@ -1781,8 +1795,10 @@ static const char *menu_label(int item) {
             case ITEM_HUD_TEXT:     return "TEXTO HUD";
             case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
             case ITEM_HUD_ICON:     return "ICONO BATERIA";
-            case ITEM_HUD_BOX:      return "CAJA HUD";
-            case ITEM_HUD_BOX_BG:   return "FONDO CAJA HUD";
+            case ITEM_HUD_BOX:           return "CAJA HUD";
+            case ITEM_HUD_BOX_BG:        return "FONDO CAJA HUD";
+            case ITEM_HUD_BOX_OUTLINE:   return "BORDE CAJA HUD";
+            case ITEM_HUD_BOX_OUT_COLOR: return "COLOR BORDE HUD";
             case ITEM_MENU_TEXT:    return "TEXTO MENU";
             case ITEM_MENU_SELECT:  return "SELECCION MENU";
             case ITEM_MENU_BORDER:  return "BORDE MENU";
@@ -1823,8 +1839,10 @@ static const char *menu_label(int item) {
         case ITEM_HUD_TEXT:     return "HUD TEXT";
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "BATTERY ICON";
-        case ITEM_HUD_BOX:      return "HUD BOX";
-        case ITEM_HUD_BOX_BG:   return "HUD BOX BACKGROUND";
+        case ITEM_HUD_BOX:           return "HUD BOX";
+        case ITEM_HUD_BOX_BG:        return "HUD BOX BACKGROUND";
+        case ITEM_HUD_BOX_OUTLINE:   return "HUD BOX OUTLINE";
+        case ITEM_HUD_BOX_OUT_COLOR: return "HUD BOX OUTLINE COLOR";
         case ITEM_MENU_TEXT:    return "MENU TEXT";
         case ITEM_MENU_SELECT:  return "MENU SELECT";
         case ITEM_MENU_BORDER:  return "MENU BORDER";
@@ -1866,8 +1884,10 @@ static const char *menu_value(int item) {
         case ITEM_MENU_SELECT:  return color_name_generic(menu_select_color);
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
         case ITEM_MENUBG:       return menu_bg_name();
-        case ITEM_HUD_BOX:      return onoff_name(hud_box_enabled);
-        case ITEM_HUD_BOX_BG:   return menu_bg_name_for(hud_box_bg_color);
+        case ITEM_HUD_BOX:           return onoff_name(hud_box_enabled);
+        case ITEM_HUD_BOX_BG:        return menu_bg_name_for(hud_box_bg_color);
+        case ITEM_HUD_BOX_OUTLINE:   return onoff_name(hud_box_outline_enabled);
+        case ITEM_HUD_BOX_OUT_COLOR: return color_name_generic(hud_box_outline_color);
         case ITEM_THEME_MENU:   return word_open();
         case ITEM_THEME:        return theme_name();
         case ITEM_PROFILE_MENU: return word_open();
@@ -1986,6 +2006,16 @@ static void menu_change(int dir) {
             hud_box_bg_color += dir;
             if (hud_box_bg_color < 0) hud_box_bg_color = BG_COUNT - 1;
             if (hud_box_bg_color >= BG_COUNT) hud_box_bg_color = 0;
+            break;
+
+        case ITEM_HUD_BOX_OUTLINE:
+            hud_box_outline_enabled = !hud_box_outline_enabled;
+            break;
+
+        case ITEM_HUD_BOX_OUT_COLOR:
+            hud_box_outline_color += dir;
+            if (hud_box_outline_color < 1) hud_box_outline_color = COLOR_COUNT - 1;
+            if (hud_box_outline_color >= COLOR_COUNT) hud_box_outline_color = 1;
             break;
 
         case ITEM_MENU_TEXT:
@@ -2715,8 +2745,15 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     if (hud_box_enabled) {
-        /* HUD box background only. No outline. */
         draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, last_hud_clear_h, get_menu_bg_for(hud_box_bg_color));
+    }
+
+    if (hud_box_outline_enabled) {
+        unsigned int outline_col = color_value(hud_box_outline_color, 0xFFFFFFFF);
+        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, 1, outline_col);
+        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y + last_hud_clear_h - 1, last_hud_clear_w, 1, outline_col);
+        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, 1, last_hud_clear_h, outline_col);
+        draw_rect(pixels, pitch, last_hud_clear_x + last_hud_clear_w - 1, last_hud_clear_y, 1, last_hud_clear_h, outline_col);
     }
 
     /*
