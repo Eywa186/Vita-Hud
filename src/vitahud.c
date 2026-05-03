@@ -343,6 +343,15 @@ static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
 
+/*
+ * Safe IP cache.
+ * Do NOT query NetCtl constantly from the HUD draw path.
+ * IP updates only when IP HUD is ON and only once every 5 seconds.
+ */
+#define IP_CACHE_UPDATE_USEC 5000000
+
+static SceUInt64 last_ip_cache_tick = 0;
+static int g_net_module_failed = 0;
 
 typedef struct VitaHUD_PSVSClockFrequency {
     SceInt32 cpu;
@@ -389,10 +398,16 @@ static void ensure_net_module_ready(void) {
 
     ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
 
+    /*
+     * 0x8002D013 is commonly returned when the sysmodule is already loaded.
+     * Treat that as OK. Any real failure disables IP calls so it cannot break HUD/menu.
+     */
     if (ret >= 0 || ret == (int)0x8002D013) {
         g_net_module_ready = 1;
+        g_net_module_failed = 0;
     } else {
-        g_net_module_ready = 1;
+        g_net_module_ready = 0;
+        g_net_module_failed = 1;
     }
 }
 
@@ -1118,6 +1133,66 @@ static void build_mhz_cache_text(char *out, int out_size, const char *label, int
     out[pos] = '\0';
 }
 
+static void update_ip_cache_safe(void) {
+    SceRtcTick tick;
+    SceUInt64 now;
+    SceNetCtlInfo net_info;
+    int ret;
+    int i;
+    int pos;
+
+    /*
+     * If IP HUD is OFF, never touch NetCtl.
+     * This keeps normal HUD/menu use completely isolated from network calls.
+     */
+    if (!show_ip) {
+        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        return;
+    }
+
+    sceRtcGetCurrentTick(&tick);
+    now = tick.tick;
+
+    if (last_ip_cache_tick != 0 && now - last_ip_cache_tick < IP_CACHE_UPDATE_USEC) {
+        return;
+    }
+
+    last_ip_cache_tick = now;
+
+    if (g_net_module_failed) {
+        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        return;
+    }
+
+    ensure_net_module_ready();
+
+    if (!g_net_module_ready) {
+        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        return;
+    }
+
+    for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
+        ((char *)&net_info)[i] = 0;
+    }
+
+    ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
+
+    if (ret < 0 || net_info.ip_address[0] == '\0') {
+        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        return;
+    }
+
+    pos = 0;
+    pos = append_text(cached_ip_text, pos, "IP ");
+
+    i = 0;
+    while (net_info.ip_address[i] && pos < (int)sizeof(cached_ip_text) - 1) {
+        cached_ip_text[pos++] = net_info.ip_address[i++];
+    }
+
+    cached_ip_text[pos] = '\0';
+}
+
 static void update_system_cache(void) {
     SceRtcTick tick;
     SceUInt64 now;
@@ -1204,28 +1279,7 @@ static void update_system_cache(void) {
         }
     }
 
-    {
-        SceNetCtlInfo net_info;
-        int ret;
-        int pos;
-        int i;
-
-        ensure_net_module_ready();
-
-        for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
-            ((char *)&net_info)[i] = 0;
-        }
-
-        ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
-
-        if (g_net_module_ready && ret >= 0 && net_info.ip_address[0] != '\0') {
-            pos = 0;
-            pos = append_text(cached_ip_text, pos, "IP ");
-            copy_cstr(cached_ip_text + pos, sizeof(cached_ip_text) - pos, net_info.ip_address);
-        } else {
-            copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-        }
-    }
+    update_ip_cache_safe();
 }
 
 static void build_time_text(char *out) {
@@ -4093,8 +4147,25 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
 }
 
 int module_start(SceSize args, void *argp) {
+    int net_ret;
+
     (void)args;
     (void)argp;
+
+    /*
+     * Prepare NET once at startup. This is intentionally outside the render hook.
+     * If it fails, IP HUD safely falls back to IP OFF.
+     */
+    net_ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+    g_net_module_checked = 1;
+
+    if (net_ret >= 0 || net_ret == (int)0x8002D013) {
+        g_net_module_ready = 1;
+        g_net_module_failed = 0;
+    } else {
+        g_net_module_ready = 0;
+        g_net_module_failed = 1;
+    }
 
     load_profile();
 
