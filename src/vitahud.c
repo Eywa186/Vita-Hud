@@ -188,7 +188,12 @@
 #define ICON_STYLE_MINI     7
 #define ICON_STYLE_BARS     8
 #define ICON_STYLE_TARGET   9
-#define ICON_STYLE_COUNT    10
+#define ICON_STYLE_ALT_1    10
+#define ICON_STYLE_ALT_2    11
+#define ICON_STYLE_ALT_3    12
+#define ICON_STYLE_ALT_4    13
+#define ICON_STYLE_ALT_5    14
+#define ICON_STYLE_COUNT    15
 
 #define AUTO_HIDE_OFF 0
 #define AUTO_HIDE_3S  1
@@ -397,13 +402,13 @@ static int app_icon_style = ICON_STYLE_ORIGINAL;
 static int debug_enabled = 0;
 static int debug_show_framebuf = 1;
 static int debug_show_cache = 1;
-static int debug_show_input = 0;
+static int debug_show_input = 1;
 static int debug_show_system = 1;
-static int debug_position = POS_TOP_LEFT;
+static int debug_position = POS_BOTTOM_LEFT;
 static int debug_x_offset = 8;
 static int debug_y_offset = 8;
 static int debug_size = SIZE_MICRO;
-static int debug_text_color = COLOR_CYAN;
+static int debug_text_color = COLOR_WHITE;
 static int debug_font_style = FONT_DEFAULT;
 
 static volatile int cycle_worker_busy = 0;
@@ -969,13 +974,13 @@ static void reset_defaults(void) {
     debug_enabled = 0;
     debug_show_framebuf = 1;
     debug_show_cache = 1;
-    debug_show_input = 0;
+    debug_show_input = 1;
     debug_show_system = 1;
-    debug_position = POS_TOP_LEFT;
+    debug_position = POS_BOTTOM_LEFT;
     debug_x_offset = 8;
     debug_y_offset = 8;
     debug_size = SIZE_MICRO;
-    debug_text_color = COLOR_CYAN;
+    debug_text_color = COLOR_WHITE;
     debug_font_style = FONT_DEFAULT;
     theme_id = THEME_DEFAULT;
     hud_theme_id = HUD_THEME_DEFAULT;
@@ -1022,15 +1027,15 @@ static void clamp_settings(void) {
     if (debug_enabled < 0 || debug_enabled > 1) debug_enabled = 0;
     if (debug_show_framebuf < 0 || debug_show_framebuf > 1) debug_show_framebuf = 1;
     if (debug_show_cache < 0 || debug_show_cache > 1) debug_show_cache = 1;
-    if (debug_show_input < 0 || debug_show_input > 1) debug_show_input = 0;
+    if (debug_show_input < 0 || debug_show_input > 1) debug_show_input = 1;
     if (debug_show_system < 0 || debug_show_system > 1) debug_show_system = 1;
-    if (debug_position < 0 || debug_position >= POS_COUNT) debug_position = POS_TOP_LEFT;
+    if (debug_position < 0 || debug_position >= POS_COUNT) debug_position = POS_BOTTOM_LEFT;
     if (debug_x_offset < 0) debug_x_offset = 0;
     if (debug_x_offset > 960) debug_x_offset = 960;
     if (debug_y_offset < 0) debug_y_offset = 0;
     if (debug_y_offset > 544) debug_y_offset = 544;
     if (debug_size < 0 || debug_size >= SIZE_COUNT) debug_size = SIZE_MICRO;
-    if (debug_text_color < 0 || debug_text_color >= COLOR_COUNT) debug_text_color = COLOR_CYAN;
+    if (debug_text_color < 0 || debug_text_color >= COLOR_COUNT) debug_text_color = COLOR_WHITE;
     if (debug_font_style < 0 || debug_font_style >= FONT_COUNT) debug_font_style = FONT_DEFAULT;
     if (hud_opacity < 0 || hud_opacity >= OPACITY_COUNT) hud_opacity = OPACITY_100;
     if (menu_opacity < 0 || menu_opacity >= OPACITY_COUNT) menu_opacity = OPACITY_100;
@@ -2499,9 +2504,229 @@ static void draw_icon_style_variant(unsigned int *pixels, int pitch, int x, int 
     }
 }
 
+static int icon_alt_index(int style) {
+    if (style < ICON_STYLE_ALT_1) return -1;
+    if (style > ICON_STYLE_ALT_5) return -1;
+    return style - ICON_STYLE_ALT_1;
+}
+
+static void draw_battery_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col, int battery) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    int fill_w;
+
+    if (s < 1) s = 1;
+    if (battery < 0) battery = 0;
+    if (battery > 100) battery = 100;
+
+    switch (alt) {
+        case 0: /* slim battery */
+            draw_rect(pixels, pitch, x, y + (2 * s), 10 * s, 4 * s, col);
+            draw_rect(pixels, pitch, x + (10 * s), y + (3 * s), s, 2 * s, col);
+            fill_w = (8 * s * battery) / 100;
+            if (fill_w > 0) draw_rect(pixels, pitch, x + s, y + (3 * s), fill_w, 2 * s, col);
+            break;
+        case 1: /* vertical cell */
+            draw_rect(pixels, pitch, x + (3 * s), y, 4 * s, 7 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y, 2 * s, s, col);
+            fill_w = (5 * s * battery) / 100;
+            if (fill_w > 0) draw_rect(pixels, pitch, x + (4 * s), y + (6 * s) - fill_w, 2 * s, fill_w, col);
+            break;
+        case 2: /* round battery badge */
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col);
+            break;
+        case 3: /* segmented battery */
+            draw_rect(pixels, pitch, x, y + (2 * s), 8 * s, 4 * s, col);
+            draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, 4 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 4 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 4 * s, 0x00000000);
+            break;
+        default: /* lightning battery */
+            draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col);
+            draw_rect(pixels, pitch, x + (9 * s), y + (3 * s), s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 2 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), s, 2 * s, 0x00000000);
+            break;
+    }
+}
+
+static void draw_clock_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+
+    switch (alt) {
+        case 0: /* square clock */
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 3 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), 2 * s, s, 0x00000000);
+            break;
+        case 1: /* alarm clock */
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + s, y, 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y, 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 2 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), 2 * s, s, 0x00000000);
+            break;
+        case 2: /* minimal hands */
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, col);
+            break;
+        case 3: /* digital clock */
+            draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 2 * s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000);
+            break;
+        default: /* stopwatch */
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + s, s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 3 * s, 0x00000000);
+            break;
+    }
+}
+
+static void draw_calendar_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+
+    switch (alt) {
+        case 0: /* page fold */
+            draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y, 2 * s, 2 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), 4 * s, s, 0x00000000);
+            break;
+        case 1: /* twin-ring calendar */
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 6 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y, s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y, s, 2 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, 0x00000000);
+            break;
+        case 2: /* mini grid */
+            draw_rect(pixels, pitch, x, y + s, 9 * s, 6 * s, col);
+            draw_rect(pixels, pitch, x, y + (3 * s), 9 * s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + s, s, 6 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, s, 6 * s, 0x00000000);
+            break;
+        case 3: /* date card */
+            draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 3 * s, s, 0x00000000);
+            break;
+        default: /* marked day */
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 6 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 2 * s, 2 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), 2 * s, 2 * s, 0x00000000);
+            break;
+    }
+}
+
+static void draw_fps_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+
+    switch (alt) {
+        case 0: /* tachometer */
+            draw_rect(pixels, pitch, x + s, y + (4 * s), 7 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), 3 * s, s, col);
+            break;
+        case 1: /* speed bars */
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, s, col);
+            break;
+        case 2: /* frame box */
+            draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 6 * s, 3 * s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
+            break;
+        case 3: /* needle badge */
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, 0x00000000);
+            break;
+        default: /* performance spark */
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, s, col);
+            break;
+    }
+}
+
+static void draw_cpu_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+    switch (alt) {
+        case 0: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
+        case 1: draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, 7 * s, col); draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); break;
+        case 2: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y, s, 7 * s, col); draw_rect(pixels, pitch, x + (6 * s), y, s, 7 * s, col); break;
+        case 3: draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col); draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col); draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col); break;
+        default: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
+    }
+}
+
+static void draw_gpu_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+    switch (alt) {
+        case 0: draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col); draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col); break;
+        case 1: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, 3 * s, 0x00000000); break;
+        case 2: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col); draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col); break;
+        case 3: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
+        default: draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, 0x00000000); draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), s, s, 0x00000000); break;
+    }
+}
+
+static void draw_ram_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+    switch (alt) {
+        case 0: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + s, y + (5 * s), s, s, col); draw_rect(pixels, pitch, x + (7 * s), y + (5 * s), s, s, col); break;
+        case 1: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, 3 * s, 0x00000000); draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 3 * s, 0x00000000); break;
+        case 2: draw_rect(pixels, pitch, x, y + s, 9 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, 0x00000000); draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, s, 0x00000000); break;
+        case 3: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x, y + (3 * s), 9 * s, s, col); break;
+        default: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col); draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, 0x00000000); break;
+    }
+}
+
+static void draw_app_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
+    int s = scale;
+    int alt = icon_alt_index(style);
+    if (s < 1) s = 1;
+    switch (alt) {
+        case 0: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 2 * s, 2 * s, 0x00000000); draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, 2 * s, 0x00000000); break;
+        case 1: draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, 7 * s, col); draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, 3 * s, col); break;
+        case 2: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (3 * s), y, 3 * s, s, col); draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), 3 * s, s, col); break;
+        case 3: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + s, s, s, col); draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), s, s, col); break;
+        default: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000); break;
+    }
+}
+
+
 static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int battery, int scale, int charging) {
     unsigned int white = active_battery_alert ? 0xFF0000FF : color_value(hud_icon_color, 0xFFFFFFFF);
     unsigned int fill = active_battery_alert ? 0xFF0000FF : (hud_icon_color == COLOR_AUTO ? get_battery_color(battery) : color_value(hud_icon_color, get_battery_color(battery)));
+
+    if (battery_icon_style >= ICON_STYLE_ALT_1) {
+        draw_battery_alt_icon(pixels, pitch, x, y, scale, battery_icon_style, fill, battery);
+        return;
+    }
 
     if (battery_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, battery_icon_style, fill);
@@ -2555,6 +2780,11 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     unsigned int white = color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
+    if (clock_icon_style >= ICON_STYLE_ALT_1) {
+        draw_clock_alt_icon(pixels, pitch, x, y, scale, clock_icon_style, white);
+        return;
+    }
+
     if (clock_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, clock_icon_style, white);
         return;
@@ -2582,6 +2812,11 @@ static void draw_calendar_icon(unsigned int *pixels, int pitch, int x, int y, in
     unsigned int col = color_value(date_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
+    if (date_icon_style >= ICON_STYLE_ALT_1) {
+        draw_calendar_alt_icon(pixels, pitch, x, y, scale, date_icon_style, col);
+        return;
+    }
+
     if (date_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, date_icon_style, col);
         return;
@@ -2603,6 +2838,11 @@ static void draw_calendar_icon(unsigned int *pixels, int pitch, int x, int y, in
 static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = active_fps_alert ? 0xFF0000FF : color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
+
+    if (fps_icon_style >= ICON_STYLE_ALT_1) {
+        draw_fps_alt_icon(pixels, pitch, x, y, scale, fps_icon_style, col);
+        return;
+    }
 
     if (fps_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, fps_icon_style, col);
@@ -2694,6 +2934,11 @@ static void draw_cpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
+    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
+        draw_cpu_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
+
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
         return;
@@ -2719,6 +2964,11 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
+    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
+        draw_gpu_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
+
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
         return;
@@ -2737,6 +2987,11 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = get_extra_icon_color();
     int s = scale;
+
+    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
+        draw_ram_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
 
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
@@ -2760,6 +3015,11 @@ static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int sc
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
+    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
+        draw_app_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
+        return;
+    }
+
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
         return;
@@ -2774,7 +3034,6 @@ static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int sc
     draw_rect(pixels, pitch, x + s, y + (4 * s), 3 * s, s, 0x00000000);
     draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), s, s, 0x00000000);
 }
-
 
 static const char *word_open(void) {
     switch (hud_language) {
@@ -3253,6 +3512,11 @@ static const char *icon_style_name_for(int id) {
         case ICON_STYLE_MINI: return "MINI";
         case ICON_STYLE_BARS: return "BARS";
         case ICON_STYLE_TARGET: return "TARGET";
+        case ICON_STYLE_ALT_1: return "ALT 1";
+        case ICON_STYLE_ALT_2: return "ALT 2";
+        case ICON_STYLE_ALT_3: return "ALT 3";
+        case ICON_STYLE_ALT_4: return "ALT 4";
+        case ICON_STYLE_ALT_5: return "ALT 5";
         case ICON_STYLE_ORIGINAL:
         default: return "ORIGINAL";
     }
