@@ -139,7 +139,44 @@
 #define TOGGLE_DOWN   2
 #define TOGGLE_LEFT   3
 #define TOGGLE_RIGHT  4
-#define TOGGLE_COUNT  5
+#define TOGGLE_START  5
+#define TOGGLE_TRIANGLE 6
+#define TOGGLE_CIRCLE 7
+#define TOGGLE_SQUARE 8
+#define TOGGLE_CROSS 9
+#define TOGGLE_SELECT_UP 10
+#define TOGGLE_SELECT_DOWN 11
+#define TOGGLE_START_UP 12
+#define TOGGLE_START_DOWN 13
+#define TOGGLE_L_SELECT 14
+#define TOGGLE_R_SELECT 15
+#define TOGGLE_L_START 16
+#define TOGGLE_R_START 17
+#define TOGGLE_COUNT  18
+
+#define OPACITY_100 0
+#define OPACITY_75  1
+#define OPACITY_50  2
+#define OPACITY_25  3
+#define OPACITY_COUNT 4
+
+#define FPS_STYLE_ICON_NUMBER 0
+#define FPS_STYLE_NUMBER_ONLY 1
+#define FPS_STYLE_ICON_ONLY   2
+#define FPS_STYLE_LABEL_NUMBER 3
+#define FPS_STYLE_COUNT       4
+
+#define BATTERY_STYLE_ICON_PERCENT 0
+#define BATTERY_STYLE_PERCENT_ONLY 1
+#define BATTERY_STYLE_ICON_ONLY    2
+#define BATTERY_STYLE_BAR_ONLY     3
+#define BATTERY_STYLE_COUNT        4
+
+#define CLOCK_STYLE_ICON_TIME 0
+#define CLOCK_STYLE_TIME_ONLY 1
+#define CLOCK_STYLE_ICON_ONLY 2
+#define CLOCK_STYLE_DATE_TIME 3
+#define CLOCK_STYLE_COUNT     4
 
 #define AUTO_HIDE_OFF 0
 #define AUTO_HIDE_3S  1
@@ -272,14 +309,26 @@
 #define ITEM_RESET_ALL_DEFAULTS 62
 #define ITEM_DEBUG_MENU 63
 #define ITEM_DEBUG_HUD 64
-#define ITEM_DEBUG_FRAMEBUF 65
-#define ITEM_DEBUG_CACHE 66
-#define ITEM_HUD_OPACITY 67
-#define ITEM_MENU_OPACITY 68
-#define ITEM_FPS_STYLE 69
-#define ITEM_BATTERY_STYLE 70
-#define ITEM_CLOCK_STYLE 71
-#define ITEM_COUNT        72
+#define ITEM_DEBUG_POSITION 65
+#define ITEM_DEBUG_X_OFFSET 66
+#define ITEM_DEBUG_Y_OFFSET 67
+#define ITEM_DEBUG_SIZE 68
+#define ITEM_DEBUG_FRAMEBUF 69
+#define ITEM_DEBUG_CACHE 70
+#define ITEM_DEBUG_INPUT 71
+#define ITEM_DEBUG_SYSTEM 72
+#define ITEM_TOGGLE_HUD_COMBO 73
+#define ITEM_TOGGLE_MENU_COMBO 74
+#define ITEM_CYCLE_PROFILE_ENABLE 75
+#define ITEM_CYCLE_PROFILE_COMBO 76
+#define ITEM_CYCLE_THEME_ENABLE 77
+#define ITEM_CYCLE_THEME_COMBO 78
+#define ITEM_HUD_OPACITY 79
+#define ITEM_MENU_OPACITY 80
+#define ITEM_FPS_STYLE 81
+#define ITEM_BATTERY_STYLE 82
+#define ITEM_CLOCK_STYLE 83
+#define ITEM_COUNT        84
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -302,20 +351,36 @@ static int show_gpu = 0;
 static int show_app_id = 0;
 static int show_ram = 0;
 static int use_24h_time = 0;
+static int fps_display_style = FPS_STYLE_ICON_NUMBER;
+static int battery_display_style = BATTERY_STYLE_ICON_PERCENT;
+static int clock_display_style = CLOCK_STYLE_ICON_TIME;
+
+static int debug_enabled = 0;
+static int debug_show_framebuf = 1;
+static int debug_show_cache = 1;
+static int debug_show_input = 0;
+static int debug_show_system = 1;
+static int debug_position = POS_TOP_LEFT;
+static int debug_x_offset = 8;
+static int debug_y_offset = 8;
+static int debug_size = SIZE_MICRO;
+
+static int menu_toggle_combo_mode = TOGGLE_START;
+static int cycle_profile_enabled = 0;
+static int cycle_profile_combo_mode = TOGGLE_SELECT_UP;
+static int cycle_theme_enabled = 0;
+static int cycle_theme_combo_mode = TOGGLE_SELECT_DOWN;
+static int last_profile_cycle_down = 0;
+static int last_theme_cycle_down = 0;
+
+static int hud_opacity = OPACITY_100;
+static int menu_opacity = OPACITY_100;
 
 static int fps_warning_enabled = 0;
 static int fps_low_limit_index = 0;
 static int battery_warning_enabled = 0;
 static int battery_low_limit_index = 0;
 static int ram_warning_enabled = 0;
-static int hud_opacity_index = 0;
-static int menu_opacity_index = 0;
-static int fps_display_style = 0;
-static int battery_display_style = 0;
-static int clock_display_style = 0;
-static int debug_hud_enabled = 0;
-static int debug_framebuf_enabled = 0;
-static int debug_cache_enabled = 0;
 
 static int hud_order[HUD_ORDER_COUNT] = {
     HUD_ORDER_FPS,
@@ -376,6 +441,7 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_PERFORMANCE 10
 #define MENU_PAGE_RESET_OPTIONS 11
 #define MENU_PAGE_DEBUG 12
+#define MENU_PAGE_TOGGLE_COMBOS 13
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -418,6 +484,8 @@ static int saved_reset_options_index = 0;
 static int saved_reset_options_scroll = 0;
 static int saved_debug_index = 0;
 static int saved_debug_scroll = 0;
+static int saved_toggle_index = 0;
+static int saved_toggle_scroll = 0;
 
 static int current_menu_count(void);
 
@@ -446,9 +514,6 @@ static char cached_ram_text[16] = "RAM OFF";
 static int cached_ram_free_mb = -1;
 static int active_fps_alert = 0;
 static int active_battery_alert = 0;
-static int debug_last_fb_w = 0;
-static int debug_last_fb_h = 0;
-static int debug_last_fb_pitch = 0;
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -712,56 +777,6 @@ static const char *battery_low_limit_name(void) {
     }
 }
 
-static int opacity_percent_for(int index) {
-    switch (index) {
-        case 1: return 75;
-        case 2: return 50;
-        case 3: return 25;
-        case 0:
-        default: return 100;
-    }
-}
-
-static const char *opacity_name_for(int index) {
-    switch (index) {
-        case 1: return "75%";
-        case 2: return "50%";
-        case 3: return "25%";
-        case 0:
-        default: return "100%";
-    }
-}
-
-static const char *fps_style_name(void) {
-    switch (fps_display_style) {
-        case 1: return "NUMBER ONLY";
-        case 2: return "ICON ONLY";
-        case 3: return "FPS + NUMBER";
-        case 0:
-        default: return "ICON + NUMBER";
-    }
-}
-
-static const char *battery_style_name(void) {
-    switch (battery_display_style) {
-        case 1: return "PERCENT ONLY";
-        case 2: return "ICON ONLY";
-        case 3: return "BAR ONLY";
-        case 0:
-        default: return "ICON + PERCENT";
-    }
-}
-
-static const char *clock_style_name(void) {
-    switch (clock_display_style) {
-        case 1: return "TIME ONLY";
-        case 2: return "ICON ONLY";
-        case 3: return "DATE + TIME";
-        case 0:
-        default: return "ICON + TIME";
-    }
-}
-
 static void reset_hud_position_defaults(void) {
     hud_position = POS_BOTTOM_RIGHT;
     hud_x_offset = 8;
@@ -790,8 +805,6 @@ static void reset_color_defaults(void) {
     menu_picture_bg = 0;
     hud_box_enabled = 0;
     hud_box_bg_color = BG_BLACK;
-    hud_opacity_index = 0;
-    menu_opacity_index = 0;
     reset_message_frames = 180;
 }
 
@@ -847,19 +860,14 @@ static void reset_defaults(void) {
     show_app_id = 0;
     show_ram = 0;
     use_24h_time = 0;
+    fps_display_style = FPS_STYLE_ICON_NUMBER;
+    battery_display_style = BATTERY_STYLE_ICON_PERCENT;
+    clock_display_style = CLOCK_STYLE_ICON_TIME;
     fps_warning_enabled = 0;
     fps_low_limit_index = 0;
     battery_warning_enabled = 0;
     battery_low_limit_index = 0;
     ram_warning_enabled = 0;
-    hud_opacity_index = 0;
-    menu_opacity_index = 0;
-    fps_display_style = 0;
-    battery_display_style = 0;
-    clock_display_style = 0;
-    debug_hud_enabled = 0;
-    debug_framebuf_enabled = 0;
-    debug_cache_enabled = 0;
     reset_hud_order_defaults();
 
     hud_text_color = COLOR_WHITE;
@@ -884,6 +892,22 @@ static void reset_defaults(void) {
     hud_language = LANG_EN;
     auto_hide_mode = AUTO_HIDE_OFF;
     toggle_combo_mode = TOGGLE_SELECT;
+    menu_toggle_combo_mode = TOGGLE_START;
+    cycle_profile_enabled = 0;
+    cycle_profile_combo_mode = TOGGLE_SELECT_UP;
+    cycle_theme_enabled = 0;
+    cycle_theme_combo_mode = TOGGLE_SELECT_DOWN;
+    hud_opacity = OPACITY_100;
+    menu_opacity = OPACITY_100;
+    debug_enabled = 0;
+    debug_show_framebuf = 1;
+    debug_show_cache = 1;
+    debug_show_input = 0;
+    debug_show_system = 1;
+    debug_position = POS_TOP_LEFT;
+    debug_x_offset = 8;
+    debug_y_offset = 8;
+    debug_size = SIZE_MICRO;
     theme_id = THEME_DEFAULT;
     hud_theme_id = HUD_THEME_DEFAULT;
     profile_id = PROFILE_1;
@@ -913,19 +937,29 @@ static void clamp_settings(void) {
     if (show_app_id < 0 || show_app_id > 1) show_app_id = 0;
     if (show_ram < 0 || show_ram > 1) show_ram = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
+    if (fps_display_style < 0 || fps_display_style >= FPS_STYLE_COUNT) fps_display_style = FPS_STYLE_ICON_NUMBER;
+    if (battery_display_style < 0 || battery_display_style >= BATTERY_STYLE_COUNT) battery_display_style = BATTERY_STYLE_ICON_PERCENT;
+    if (clock_display_style < 0 || clock_display_style >= CLOCK_STYLE_COUNT) clock_display_style = CLOCK_STYLE_ICON_TIME;
+    if (debug_enabled < 0 || debug_enabled > 1) debug_enabled = 0;
+    if (debug_show_framebuf < 0 || debug_show_framebuf > 1) debug_show_framebuf = 1;
+    if (debug_show_cache < 0 || debug_show_cache > 1) debug_show_cache = 1;
+    if (debug_show_input < 0 || debug_show_input > 1) debug_show_input = 0;
+    if (debug_show_system < 0 || debug_show_system > 1) debug_show_system = 1;
+    if (debug_position < 0 || debug_position >= POS_COUNT) debug_position = POS_TOP_LEFT;
+    if (debug_x_offset < 0) debug_x_offset = 0;
+    if (debug_x_offset > 960) debug_x_offset = 960;
+    if (debug_y_offset < 0) debug_y_offset = 0;
+    if (debug_y_offset > 544) debug_y_offset = 544;
+    if (debug_size < 0 || debug_size >= SIZE_COUNT) debug_size = SIZE_MICRO;
+    if (hud_opacity < 0 || hud_opacity >= OPACITY_COUNT) hud_opacity = OPACITY_100;
+    if (menu_opacity < 0 || menu_opacity >= OPACITY_COUNT) menu_opacity = OPACITY_100;
+    if (cycle_profile_enabled < 0 || cycle_profile_enabled > 1) cycle_profile_enabled = 0;
+    if (cycle_theme_enabled < 0 || cycle_theme_enabled > 1) cycle_theme_enabled = 0;
     if (fps_warning_enabled < 0 || fps_warning_enabled > 1) fps_warning_enabled = 0;
     if (fps_low_limit_index < 0 || fps_low_limit_index > 5) fps_low_limit_index = 0;
     if (battery_warning_enabled < 0 || battery_warning_enabled > 1) battery_warning_enabled = 0;
     if (battery_low_limit_index < 0 || battery_low_limit_index > 2) battery_low_limit_index = 0;
     if (ram_warning_enabled < 0 || ram_warning_enabled > 1) ram_warning_enabled = 0;
-    if (hud_opacity_index < 0 || hud_opacity_index > 3) hud_opacity_index = 0;
-    if (menu_opacity_index < 0 || menu_opacity_index > 3) menu_opacity_index = 0;
-    if (fps_display_style < 0 || fps_display_style > 3) fps_display_style = 0;
-    if (battery_display_style < 0 || battery_display_style > 3) battery_display_style = 0;
-    if (clock_display_style < 0 || clock_display_style > 3) clock_display_style = 0;
-    if (debug_hud_enabled < 0 || debug_hud_enabled > 1) debug_hud_enabled = 0;
-    if (debug_framebuf_enabled < 0 || debug_framebuf_enabled > 1) debug_framebuf_enabled = 0;
-    if (debug_cache_enabled < 0 || debug_cache_enabled > 1) debug_cache_enabled = 0;
     clamp_hud_order();
 
     if (hud_text_color < 0 || hud_text_color >= COLOR_COUNT) hud_text_color = COLOR_WHITE;
@@ -950,6 +984,9 @@ static void clamp_settings(void) {
     /* Auto Hide removed from the menu and forced off. */
     auto_hide_mode = AUTO_HIDE_OFF;
     if (toggle_combo_mode < 0 || toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = TOGGLE_SELECT;
+    if (menu_toggle_combo_mode < 0 || menu_toggle_combo_mode >= TOGGLE_COUNT) menu_toggle_combo_mode = TOGGLE_START;
+    if (cycle_profile_combo_mode < 0 || cycle_profile_combo_mode >= TOGGLE_COUNT) cycle_profile_combo_mode = TOGGLE_SELECT_UP;
+    if (cycle_theme_combo_mode < 0 || cycle_theme_combo_mode >= TOGGLE_COUNT) cycle_theme_combo_mode = TOGGLE_SELECT_DOWN;
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
     if (hud_theme_id < 0 || hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_DEFAULT;
     if (profile_id < 0 || profile_id >= PROFILE_COUNT) profile_id = PROFILE_1;
@@ -986,19 +1023,30 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_app_id", show_app_id);
     write_config_line(fd, "show_ram", show_ram);
     write_config_line(fd, "time_24h", use_24h_time);
+    write_config_line(fd, "fps_style", fps_display_style);
+    write_config_line(fd, "battery_style", battery_display_style);
+    write_config_line(fd, "clock_style", clock_display_style);
+    write_config_line(fd, "debug_enabled", debug_enabled);
+    write_config_line(fd, "debug_framebuf", debug_show_framebuf);
+    write_config_line(fd, "debug_cache", debug_show_cache);
+    write_config_line(fd, "debug_input", debug_show_input);
+    write_config_line(fd, "debug_system", debug_show_system);
+    write_config_line(fd, "debug_position", debug_position);
+    write_config_line(fd, "debug_x_offset", debug_x_offset);
+    write_config_line(fd, "debug_y_offset", debug_y_offset);
+    write_config_line(fd, "debug_size", debug_size);
+    write_config_line(fd, "hud_opacity", hud_opacity);
+    write_config_line(fd, "menu_opacity", menu_opacity);
+    write_config_line(fd, "menu_combo", menu_toggle_combo_mode);
+    write_config_line(fd, "cycle_profile_enabled", cycle_profile_enabled);
+    write_config_line(fd, "cycle_profile_combo", cycle_profile_combo_mode);
+    write_config_line(fd, "cycle_theme_enabled", cycle_theme_enabled);
+    write_config_line(fd, "cycle_theme_combo", cycle_theme_combo_mode);
     write_config_line(fd, "fps_warning", fps_warning_enabled);
     write_config_line(fd, "fps_low_limit", fps_low_limit_index);
     write_config_line(fd, "battery_warning", battery_warning_enabled);
     write_config_line(fd, "battery_low_limit", battery_low_limit_index);
     write_config_line(fd, "ram_warning", ram_warning_enabled);
-    write_config_line(fd, "hud_opacity", hud_opacity_index);
-    write_config_line(fd, "menu_opacity", menu_opacity_index);
-    write_config_line(fd, "fps_style", fps_display_style);
-    write_config_line(fd, "battery_style", battery_display_style);
-    write_config_line(fd, "clock_style", clock_display_style);
-    write_config_line(fd, "debug_hud", debug_hud_enabled);
-    write_config_line(fd, "debug_framebuf", debug_framebuf_enabled);
-    write_config_line(fd, "debug_cache", debug_cache_enabled);
     write_config_line(fd, "hud_order0", hud_order[0]);
     write_config_line(fd, "hud_order1", hud_order[1]);
     write_config_line(fd, "hud_order2", hud_order[2]);
@@ -1054,19 +1102,30 @@ static void load_settings_from_buffer(char *buf) {
     show_app_id = get_config_int(buf, "show_app_id", show_app_id);
     show_ram = get_config_int(buf, "show_ram", show_ram);
     use_24h_time = get_config_int(buf, "time_24h", use_24h_time);
+    fps_display_style = get_config_int(buf, "fps_style", fps_display_style);
+    battery_display_style = get_config_int(buf, "battery_style", battery_display_style);
+    clock_display_style = get_config_int(buf, "clock_style", clock_display_style);
+    debug_enabled = get_config_int(buf, "debug_enabled", debug_enabled);
+    debug_show_framebuf = get_config_int(buf, "debug_framebuf", debug_show_framebuf);
+    debug_show_cache = get_config_int(buf, "debug_cache", debug_show_cache);
+    debug_show_input = get_config_int(buf, "debug_input", debug_show_input);
+    debug_show_system = get_config_int(buf, "debug_system", debug_show_system);
+    debug_position = get_config_int(buf, "debug_position", debug_position);
+    debug_x_offset = get_config_int(buf, "debug_x_offset", debug_x_offset);
+    debug_y_offset = get_config_int(buf, "debug_y_offset", debug_y_offset);
+    debug_size = get_config_int(buf, "debug_size", debug_size);
+    hud_opacity = get_config_int(buf, "hud_opacity", hud_opacity);
+    menu_opacity = get_config_int(buf, "menu_opacity", menu_opacity);
+    menu_toggle_combo_mode = get_config_int(buf, "menu_combo", menu_toggle_combo_mode);
+    cycle_profile_enabled = get_config_int(buf, "cycle_profile_enabled", cycle_profile_enabled);
+    cycle_profile_combo_mode = get_config_int(buf, "cycle_profile_combo", cycle_profile_combo_mode);
+    cycle_theme_enabled = get_config_int(buf, "cycle_theme_enabled", cycle_theme_enabled);
+    cycle_theme_combo_mode = get_config_int(buf, "cycle_theme_combo", cycle_theme_combo_mode);
     fps_warning_enabled = get_config_int(buf, "fps_warning", fps_warning_enabled);
     fps_low_limit_index = get_config_int(buf, "fps_low_limit", fps_low_limit_index);
     battery_warning_enabled = get_config_int(buf, "battery_warning", battery_warning_enabled);
     battery_low_limit_index = get_config_int(buf, "battery_low_limit", battery_low_limit_index);
     ram_warning_enabled = get_config_int(buf, "ram_warning", ram_warning_enabled);
-    hud_opacity_index = get_config_int(buf, "hud_opacity", hud_opacity_index);
-    menu_opacity_index = get_config_int(buf, "menu_opacity", menu_opacity_index);
-    fps_display_style = get_config_int(buf, "fps_style", fps_display_style);
-    battery_display_style = get_config_int(buf, "battery_style", battery_display_style);
-    clock_display_style = get_config_int(buf, "clock_style", clock_display_style);
-    debug_hud_enabled = get_config_int(buf, "debug_hud", debug_hud_enabled);
-    debug_framebuf_enabled = get_config_int(buf, "debug_framebuf", debug_framebuf_enabled);
-    debug_cache_enabled = get_config_int(buf, "debug_cache", debug_cache_enabled);
     hud_order[0] = get_config_int(buf, "hud_order0", hud_order[0]);
     hud_order[1] = get_config_int(buf, "hud_order1", hud_order[1]);
     hud_order[2] = get_config_int(buf, "hud_order2", hud_order[2]);
@@ -1570,25 +1629,32 @@ static void apply_theme(void) {
     }
 }
 
-static unsigned int get_toggle_combo(void) {
-    switch (toggle_combo_mode) {
-        case TOGGLE_UP:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_UP;
-
-        case TOGGLE_DOWN:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_DOWN;
-
-        case TOGGLE_LEFT:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_LEFT;
-
-        case TOGGLE_RIGHT:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_RIGHT;
-
+static unsigned int combo_buttons(int combo_mode) {
+    switch (combo_mode) {
+        case TOGGLE_UP: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_UP;
+        case TOGGLE_DOWN: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_DOWN;
+        case TOGGLE_LEFT: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_LEFT;
+        case TOGGLE_RIGHT: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_RIGHT;
+        case TOGGLE_START: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_START;
+        case TOGGLE_TRIANGLE: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_TRIANGLE;
+        case TOGGLE_CIRCLE: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_CIRCLE;
+        case TOGGLE_SQUARE: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SQUARE;
+        case TOGGLE_CROSS: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_CROSS;
+        case TOGGLE_SELECT_UP: return SCE_CTRL_SELECT | SCE_CTRL_UP;
+        case TOGGLE_SELECT_DOWN: return SCE_CTRL_SELECT | SCE_CTRL_DOWN;
+        case TOGGLE_START_UP: return SCE_CTRL_START | SCE_CTRL_UP;
+        case TOGGLE_START_DOWN: return SCE_CTRL_START | SCE_CTRL_DOWN;
+        case TOGGLE_L_SELECT: return SCE_CTRL_LTRIGGER | SCE_CTRL_SELECT;
+        case TOGGLE_R_SELECT: return SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT;
+        case TOGGLE_L_START: return SCE_CTRL_LTRIGGER | SCE_CTRL_START;
+        case TOGGLE_R_START: return SCE_CTRL_RTRIGGER | SCE_CTRL_START;
         case TOGGLE_SELECT:
-        default:
-            return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT;
+        default: return SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_SELECT;
     }
 }
+
+static unsigned int get_toggle_combo(void) { return combo_buttons(toggle_combo_mode); }
+static unsigned int get_menu_combo(void) { return combo_buttons(menu_toggle_combo_mode); }
 
 static void update_fps(void) {
     SceRtcTick tick;
@@ -1610,11 +1676,7 @@ static void update_fps(void) {
 
 static void build_fps_text(char *out) {
     int pos = 0;
-
-    if (fps_display_style == 3) {
-        pos = append_text(out, pos, "FPS ");
-    }
-
+    if (fps_display_style == FPS_STYLE_LABEL_NUMBER) pos = append_text(out, pos, "FPS ");
     pos = append_2digit_number(out, pos, (int)fps_value);
     out[pos] = '\0';
 }
@@ -1790,63 +1852,25 @@ static void build_time_text(char *out) {
     int pos = 0;
     int hour;
     int is_pm = 0;
-
     sceRtcGetCurrentClockLocalTime(&time);
-
+    if (clock_display_style == CLOCK_STYLE_DATE_TIME) {
+        pos = append_2digit_number(out, pos, time.month);
+        out[pos++] = '/';
+        pos = append_2digit_number(out, pos, time.day);
+        out[pos++] = ' ';
+    }
     if (use_24h_time || hud_layout == LAYOUT_COMPACT || hud_layout == LAYOUT_ICONS) {
-        put_2digits(&out[pos], time.hour);
-        pos += 2;
-
-        out[pos++] = ':';
-
-        put_2digits(&out[pos], time.minute);
-        pos += 2;
-
-        out[pos] = '\0';
-        return;
+        put_2digits(&out[pos], time.hour); pos += 2; out[pos++] = ':';
+        put_2digits(&out[pos], time.minute); pos += 2; out[pos] = '\0'; return;
     }
-
     hour = time.hour;
-
-    if (hour >= 12) {
-        is_pm = 1;
-    }
-
+    if (hour >= 12) is_pm = 1;
     hour = hour % 12;
-
-    if (hour == 0) {
-        hour = 12;
-    }
-
-    put_2digits(&out[pos], hour);
-    pos += 2;
-
-    out[pos++] = ':';
-
-    put_2digits(&out[pos], time.minute);
-    pos += 2;
-
-    out[pos++] = is_pm ? 'P' : 'A';
-    out[pos++] = 'M';
-    out[pos] = '\0';
+    if (hour == 0) hour = 12;
+    put_2digits(&out[pos], hour); pos += 2; out[pos++] = ':';
+    put_2digits(&out[pos], time.minute); pos += 2;
+    out[pos++] = is_pm ? 'P' : 'A'; out[pos++] = 'M'; out[pos] = '\0';
 }
-
-static void build_date_time_text(char *out) {
-    SceDateTime time;
-    int pos = 0;
-
-    sceRtcGetCurrentClockLocalTime(&time);
-
-    pos = append_2digit_number(out, pos, time.month);
-    out[pos++] = '/';
-    pos = append_2digit_number(out, pos, time.day);
-    out[pos++] = ' ';
-    pos = append_2digit_number(out, pos, time.hour);
-    out[pos++] = ':';
-    pos = append_2digit_number(out, pos, time.minute);
-    out[pos] = '\0';
-}
-
 
 /*
  * Vita A8B8G8R8 values.
@@ -1898,16 +1922,6 @@ static unsigned int color_value(int color_id, unsigned int fallback) {
     }
 }
 
-static unsigned int apply_opacity_to_color(unsigned int color, int opacity_index) {
-    int percent = opacity_percent_for(opacity_index);
-    unsigned int a = color & 0xFF000000;
-    unsigned int b = ((color >> 16) & 0xFF) * percent / 100;
-    unsigned int g = ((color >> 8) & 0xFF) * percent / 100;
-    unsigned int r = (color & 0xFF) * percent / 100;
-    return a | (b << 16) | (g << 8) | r;
-}
-
-
 static unsigned int get_menu_bg_for(int bg_id) {
     switch (bg_id) {
         case BG_GRAY:        return 0xCC404040;
@@ -1930,8 +1944,21 @@ static unsigned int get_menu_bg_for(int bg_id) {
     }
 }
 
+static unsigned int apply_opacity_to_color(unsigned int color, int opacity_id) {
+    unsigned int alpha = 0xFF000000;
+    if (opacity_id == OPACITY_75) alpha = 0xCC000000;
+    if (opacity_id == OPACITY_50) alpha = 0x88000000;
+    if (opacity_id == OPACITY_25) alpha = 0x44000000;
+    if ((color & 0xFF000000) == 0) return color;
+    return (color & 0x00FFFFFF) | alpha;
+}
+
 static unsigned int get_menu_bg(void) {
-    return get_menu_bg_for(menu_bg_color);
+    return apply_opacity_to_color(get_menu_bg_for(menu_bg_color), menu_opacity);
+}
+
+static unsigned int get_hud_box_bg(void) {
+    return apply_opacity_to_color(get_menu_bg_for(hud_box_bg_color), hud_opacity);
 }
 
 static unsigned int get_battery_color(int battery) {
@@ -2316,7 +2343,7 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
     }
 
     if (charging) {
-        unsigned int bolt = apply_opacity_to_color(hud_icon_color == COLOR_AUTO ? 0xFF00FFFF : fill, hud_opacity_index);
+        unsigned int bolt = hud_icon_color == COLOR_AUTO ? 0xFF00FFFF : fill;
         int bx = x + (5 * scale);
         int by = y + scale;
 
@@ -2328,7 +2355,7 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
     }
 }
 static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
-    unsigned int white = apply_opacity_to_color(color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF)), hud_opacity_index);
+    unsigned int white = color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
     if (s < 1) s = 1;
@@ -2383,7 +2410,7 @@ static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static int active_extra_icon_color = COLOR_AUTO;
 
 static unsigned int get_extra_icon_color(void) {
-    return apply_opacity_to_color(color_value(active_extra_icon_color, color_value(hud_icon_color, 0xFFFFFFFF)), hud_opacity_index);
+    return color_value(active_extra_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
 }
 
 static void set_active_extra_icon_color(int color_id) {
@@ -2567,6 +2594,18 @@ static const char *onoff_name(int value) {
         case LANG_TR: return value ? "ACIK" : "KAPALI";
         case LANG_PL: return value ? "WL" : "WYL";
         default: return value ? "ON" : "OFF";
+    }
+}
+
+static const char *position_name_for(int id) {
+    switch (id) {
+        case POS_BOTTOM_LEFT:  return "BOTTOM LEFT";
+        case POS_TOP_RIGHT:    return "TOP RIGHT";
+        case POS_TOP_LEFT:     return "TOP LEFT";
+        case POS_TOP_CENTER:   return "TOP CENTER";
+        case POS_BOTTOM_CENTER:return "BOTTOM CENTER";
+        case POS_BOTTOM_RIGHT:
+        default:               return "BOTTOM RIGHT";
     }
 }
 
@@ -2922,16 +2961,35 @@ static const char *profile_name(void) {
     }
 }
 
-static const char *toggle_name(void) {
-    switch (toggle_combo_mode) {
-        case TOGGLE_UP:    return "L+R+UP";
-        case TOGGLE_DOWN:  return "L+R+DOWN";
-        case TOGGLE_LEFT:  return "L+R+LEFT";
+static const char *combo_name_for(int combo_mode) {
+    switch (combo_mode) {
+        case TOGGLE_UP: return "L+R+UP";
+        case TOGGLE_DOWN: return "L+R+DOWN";
+        case TOGGLE_LEFT: return "L+R+LEFT";
         case TOGGLE_RIGHT: return "L+R+RIGHT";
+        case TOGGLE_START: return "L+R+START";
+        case TOGGLE_TRIANGLE: return "L+R+TRIANGLE";
+        case TOGGLE_CIRCLE: return "L+R+CIRCLE";
+        case TOGGLE_SQUARE: return "L+R+SQUARE";
+        case TOGGLE_CROSS: return "L+R+CROSS";
+        case TOGGLE_SELECT_UP: return "SELECT+UP";
+        case TOGGLE_SELECT_DOWN: return "SELECT+DOWN";
+        case TOGGLE_START_UP: return "START+UP";
+        case TOGGLE_START_DOWN: return "START+DOWN";
+        case TOGGLE_L_SELECT: return "L+SELECT";
+        case TOGGLE_R_SELECT: return "R+SELECT";
+        case TOGGLE_L_START: return "L+START";
+        case TOGGLE_R_START: return "R+START";
         case TOGGLE_SELECT:
-        default:           return "L+R+SELECT";
+        default: return "L+R+SELECT";
     }
 }
+
+static const char *toggle_name(void) { return combo_name_for(toggle_combo_mode); }
+static const char *opacity_name_for(int id) { if (id == OPACITY_75) return "75%"; if (id == OPACITY_50) return "50%"; if (id == OPACITY_25) return "25%"; return "100%"; }
+static const char *fps_style_name(void) { if (fps_display_style == FPS_STYLE_NUMBER_ONLY) return "NUMBER ONLY"; if (fps_display_style == FPS_STYLE_ICON_ONLY) return "ICON ONLY"; if (fps_display_style == FPS_STYLE_LABEL_NUMBER) return "FPS + NUMBER"; return "ICON + NUMBER"; }
+static const char *battery_style_name(void) { if (battery_display_style == BATTERY_STYLE_PERCENT_ONLY) return "PERCENT ONLY"; if (battery_display_style == BATTERY_STYLE_ICON_ONLY) return "ICON ONLY"; if (battery_display_style == BATTERY_STYLE_BAR_ONLY) return "BAR ONLY"; return "ICON + PERCENT"; }
+static const char *clock_style_name(void) { if (clock_display_style == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY"; if (clock_display_style == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY"; if (clock_display_style == CLOCK_STYLE_DATE_TIME) return "DATE + TIME"; return "ICON + TIME"; }
 
 static const char *tr_menu_title(void) {
     return "VITAHUD ULTIMATE";
@@ -3091,15 +3149,24 @@ static int item_uses_bg_menu(int item) {
     return item == ITEM_HUD_BOX_BG || item == ITEM_MENUBG;
 }
 
+static int item_uses_combo_menu(int item) {
+    return item == ITEM_TOGGLE_HUD_COMBO || item == ITEM_TOGGLE_MENU_COMBO ||
+           item == ITEM_CYCLE_PROFILE_COMBO || item == ITEM_CYCLE_THEME_COMBO;
+}
+
 static int item_uses_choice_menu(int item) {
     return item == ITEM_LAYOUT || item == ITEM_SIZE || item == ITEM_MENU_SIZE ||
            item == ITEM_FONT || item == ITEM_LANGUAGE || item == ITEM_THEME ||
-           item == ITEM_HUD_THEME || item_uses_color_menu(item) || item_uses_bg_menu(item);
+           item == ITEM_HUD_THEME || item == ITEM_DEBUG_POSITION || item == ITEM_DEBUG_SIZE ||
+           item == ITEM_HUD_OPACITY || item == ITEM_MENU_OPACITY ||
+           item == ITEM_FPS_STYLE || item == ITEM_BATTERY_STYLE || item == ITEM_CLOCK_STYLE ||
+           item_uses_combo_menu(item) || item_uses_color_menu(item) || item_uses_bg_menu(item);
 }
 
 static int choice_count_for_target(int target) {
     if (item_uses_color_menu(target)) return COLOR_COUNT;
     if (item_uses_bg_menu(target)) return BG_COUNT;
+    if (item_uses_combo_menu(target)) return TOGGLE_COUNT;
 
     switch (target) {
         case ITEM_LAYOUT:    return LAYOUT_COUNT;
@@ -3109,6 +3176,13 @@ static int choice_count_for_target(int target) {
         case ITEM_LANGUAGE:  return LANG_COUNT;
         case ITEM_THEME:     return THEME_COUNT;
         case ITEM_HUD_THEME: return HUD_THEME_COUNT;
+        case ITEM_DEBUG_POSITION: return POS_COUNT;
+        case ITEM_DEBUG_SIZE: return SIZE_COUNT;
+        case ITEM_HUD_OPACITY: return OPACITY_COUNT;
+        case ITEM_MENU_OPACITY: return OPACITY_COUNT;
+        case ITEM_FPS_STYLE: return FPS_STYLE_COUNT;
+        case ITEM_BATTERY_STYLE: return BATTERY_STYLE_COUNT;
+        case ITEM_CLOCK_STYLE: return CLOCK_STYLE_COUNT;
         default:             return 1;
     }
 }
@@ -3138,6 +3212,13 @@ static int choice_current_index_for_target(int target) {
         return target == ITEM_HUD_BOX_BG ? hud_box_bg_color : menu_bg_color;
     }
 
+    if (item_uses_combo_menu(target)) {
+        if (target == ITEM_TOGGLE_HUD_COMBO) return toggle_combo_mode;
+        if (target == ITEM_TOGGLE_MENU_COMBO) return menu_toggle_combo_mode;
+        if (target == ITEM_CYCLE_PROFILE_COMBO) return cycle_profile_combo_mode;
+        if (target == ITEM_CYCLE_THEME_COMBO) return cycle_theme_combo_mode;
+    }
+
     switch (target) {
         case ITEM_LAYOUT:    return hud_layout;
         case ITEM_SIZE:      return hud_size;
@@ -3146,11 +3227,25 @@ static int choice_current_index_for_target(int target) {
         case ITEM_LANGUAGE:  return hud_language;
         case ITEM_THEME:     return theme_id;
         case ITEM_HUD_THEME: return hud_theme_id;
+        case ITEM_DEBUG_POSITION: return debug_position;
+        case ITEM_DEBUG_SIZE: return debug_size;
+        case ITEM_HUD_OPACITY: return hud_opacity;
+        case ITEM_MENU_OPACITY: return menu_opacity;
+        case ITEM_FPS_STYLE: return fps_display_style;
+        case ITEM_BATTERY_STYLE: return battery_display_style;
+        case ITEM_CLOCK_STYLE: return clock_display_style;
         default:             return 0;
     }
 }
 
 static const char *choice_name_for_target(int target, int index) {
+    if (item_uses_combo_menu(target)) return combo_name_for(index);
+    if (target == ITEM_DEBUG_POSITION) return position_name_for(index);
+    if (target == ITEM_DEBUG_SIZE) return size_name_for(index);
+    if (target == ITEM_HUD_OPACITY || target == ITEM_MENU_OPACITY) return opacity_name_for(index);
+    if (target == ITEM_FPS_STYLE) { if (index == FPS_STYLE_NUMBER_ONLY) return "NUMBER ONLY"; if (index == FPS_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == FPS_STYLE_LABEL_NUMBER) return "FPS + NUMBER"; return "ICON + NUMBER"; }
+    if (target == ITEM_BATTERY_STYLE) { if (index == BATTERY_STYLE_PERCENT_ONLY) return "PERCENT ONLY"; if (index == BATTERY_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == BATTERY_STYLE_BAR_ONLY) return "BAR ONLY"; return "ICON + PERCENT"; }
+    if (target == ITEM_CLOCK_STYLE) { if (index == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY"; if (index == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == CLOCK_STYLE_DATE_TIME) return "DATE + TIME"; return "ICON + TIME"; }
     if (item_uses_color_menu(target)) return color_name_generic(index);
     if (item_uses_bg_menu(target)) return menu_bg_name_for(index);
 
@@ -3199,6 +3294,16 @@ static void set_choice_for_target(int target, int index) {
         return;
     }
 
+    if (item_uses_combo_menu(target)) {
+        if (index < 0) index = 0;
+        if (index >= TOGGLE_COUNT) index = TOGGLE_COUNT - 1;
+        if (target == ITEM_TOGGLE_HUD_COMBO) toggle_combo_mode = index;
+        if (target == ITEM_TOGGLE_MENU_COMBO) menu_toggle_combo_mode = index;
+        if (target == ITEM_CYCLE_PROFILE_COMBO) cycle_profile_combo_mode = index;
+        if (target == ITEM_CYCLE_THEME_COMBO) cycle_theme_combo_mode = index;
+        return;
+    }
+
     switch (target) {
         case ITEM_LAYOUT:
             hud_layout = index;
@@ -3237,6 +3342,13 @@ static void set_choice_for_target(int target, int index) {
             if (hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_COUNT - 1;
             apply_hud_theme();
             break;
+        case ITEM_DEBUG_POSITION: debug_position = index; break;
+        case ITEM_DEBUG_SIZE: debug_size = index; break;
+        case ITEM_HUD_OPACITY: hud_opacity = index; break;
+        case ITEM_MENU_OPACITY: menu_opacity = index; break;
+        case ITEM_FPS_STYLE: fps_display_style = index; break;
+        case ITEM_BATTERY_STYLE: battery_display_style = index; break;
+        case ITEM_CLOCK_STYLE: clock_display_style = index; break;
         default:
             break;
     }
@@ -3279,6 +3391,9 @@ static void save_current_menu_page_state(void) {
     } else if (menu_page == MENU_PAGE_DEBUG) {
         saved_debug_index = menu_index;
         saved_debug_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_TOGGLE_COMBOS) {
+        saved_toggle_index = menu_index;
+        saved_toggle_scroll = menu_scroll;
     }
 }
 
@@ -3326,7 +3441,9 @@ static int current_menu_count(void) {
         case MENU_PAGE_RESET_OPTIONS:
             return 5;
         case MENU_PAGE_DEBUG:
-            return 3;
+            return 9;
+        case MENU_PAGE_TOGGLE_COMBOS:
+            return 6;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_OVERLAYS:
@@ -3439,10 +3556,25 @@ static int current_menu_item_at(int index) {
         ITEM_RESET_ALL_DEFAULTS
     };
 
-    static const int debug_items[3] = {
+    static const int debug_items[9] = {
         ITEM_DEBUG_HUD,
+        ITEM_DEBUG_POSITION,
+        ITEM_DEBUG_X_OFFSET,
+        ITEM_DEBUG_Y_OFFSET,
+        ITEM_DEBUG_SIZE,
         ITEM_DEBUG_FRAMEBUF,
-        ITEM_DEBUG_CACHE
+        ITEM_DEBUG_CACHE,
+        ITEM_DEBUG_INPUT,
+        ITEM_DEBUG_SYSTEM
+    };
+
+    static const int toggle_items[6] = {
+        ITEM_TOGGLE_HUD_COMBO,
+        ITEM_TOGGLE_MENU_COMBO,
+        ITEM_CYCLE_PROFILE_ENABLE,
+        ITEM_CYCLE_PROFILE_COMBO,
+        ITEM_CYCLE_THEME_ENABLE,
+        ITEM_CYCLE_THEME_COMBO
     };
 
     if (index < 0) index = 0;
@@ -3503,8 +3635,13 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_DEBUG) {
-        if (index >= 3) index = 2;
+        if (index >= 9) index = 8;
         return debug_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_TOGGLE_COMBOS) {
+        if (index >= 6) index = 5;
+        return toggle_items[index];
     }
 
     if (index >= 16) index = 15;
@@ -3558,6 +3695,9 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_DEBUG) {
         menu_index = saved_debug_index;
         menu_scroll = saved_debug_scroll;
+    } else if (page == MENU_PAGE_TOGGLE_COMBOS) {
+        menu_index = saved_toggle_index;
+        menu_scroll = saved_toggle_scroll;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -3583,6 +3723,17 @@ static const char *choice_title_for_target(void) {
         case ITEM_SIZE: return "HUD SIZE";
         case ITEM_MENU_SIZE: return "MAIN MENU SIZE";
         case ITEM_FONT: return "FONT";
+        case ITEM_HUD_OPACITY: return "HUD OPACITY";
+        case ITEM_MENU_OPACITY: return "MENU OPACITY";
+        case ITEM_FPS_STYLE: return "FPS STYLE";
+        case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
+        case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
+        case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
+        case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+        case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+        case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+        case ITEM_CYCLE_PROFILE_COMBO: return "PROFILE COMBO";
+        case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
         case ITEM_LANGUAGE: return "LANGUAGE";
         case ITEM_THEME: return "THEME PRESET";
         case ITEM_HUD_THEME: return "HUD THEME";
@@ -3623,9 +3774,11 @@ static const char *current_menu_title(void) {
 
     if (menu_page == MENU_PAGE_PERFORMANCE) return "PERFORMANCE ALERTS";
 
+    if (menu_page == MENU_PAGE_RESET_OPTIONS) return "RESET OPTIONS";
+
     if (menu_page == MENU_PAGE_DEBUG) return "DEBUG MENU";
 
-    if (menu_page == MENU_PAGE_RESET_OPTIONS) return "RESET OPTIONS";
+    if (menu_page == MENU_PAGE_TOGGLE_COMBOS) return "TOGGLE COMBOS";
 
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
@@ -3677,7 +3830,6 @@ static const char *menu_label(int item) {
             case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
             case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
             case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS";
-        case ITEM_DEBUG_MENU: return "DEBUG MENU";
             case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
             case ITEM_MENU_HUD_SIZE_MENU: return "DISPLAY STYLES / MENU / HUD SIZES";
             case ITEM_THEME:        return "TEMA PRESET";
@@ -3704,7 +3856,28 @@ static const char *menu_label(int item) {
             case ITEM_PROFILE:      return "RANURA PERFIL";
             case ITEM_LANGUAGE:     return "IDIOMA";
             case ITEM_AUTO_HIDE:    return "AUTO OCULTAR";
-            case ITEM_TOGGLE:       return "ATAJO HUD";
+            case ITEM_TOGGLE:       return "COMBOS";
+            case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+            case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+            case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFILE";
+            case ITEM_CYCLE_PROFILE_COMBO: return "PROFILE COMBO";
+            case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+            case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+            case ITEM_DEBUG_MENU: return "DEBUG MENU";
+            case ITEM_DEBUG_HUD: return "DEBUG HUD";
+            case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
+            case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+            case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+            case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+            case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+            case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+            case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+            case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+            case ITEM_HUD_OPACITY: return "HUD OPACITY";
+            case ITEM_MENU_OPACITY: return "MENU OPACITY";
+            case ITEM_FPS_STYLE: return "FPS STYLE";
+            case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
+            case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
             case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL";
             case ITEM_LOAD_PROFILE: return "CARGAR PERFIL";
             case ITEM_CPU_HUD:      return "HUD CPU";
@@ -3746,7 +3919,6 @@ static const char *menu_label(int item) {
         case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
         case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
         case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS";
-        case ITEM_DEBUG_MENU: return "DEBUG MENU";
         case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALL HUD OVERLAYS";
         case ITEM_MENU_HUD_SIZE_MENU: return "DISPLAY STYLES / MENU / HUD SIZES";
         case ITEM_THEME:        return "THEME PRESET";
@@ -3774,6 +3946,27 @@ static const char *menu_label(int item) {
         case ITEM_LANGUAGE:     return "LANGUAGE";
         case ITEM_AUTO_HIDE:    return "AUTO HIDE";
         case ITEM_TOGGLE:       return "TOGGLE COMBOS";
+        case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+        case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+        case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFILE";
+        case ITEM_CYCLE_PROFILE_COMBO: return "PROFILE COMBO";
+        case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+        case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+        case ITEM_DEBUG_MENU: return "DEBUG MENU";
+        case ITEM_DEBUG_HUD: return "DEBUG HUD";
+        case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
+        case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+        case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+        case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+        case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+        case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+        case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+        case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+        case ITEM_HUD_OPACITY: return "HUD OPACITY";
+        case ITEM_MENU_OPACITY: return "MENU OPACITY";
+        case ITEM_FPS_STYLE: return "FPS STYLE";
+        case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
+        case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
         case ITEM_CPU_HUD:      return "CPU HUD";
@@ -3787,14 +3980,6 @@ static const char *menu_label(int item) {
         case ITEM_BATTERY_WARNING: return "BATTERY WARNING";
         case ITEM_BATTERY_LOW_LIMIT: return "BATTERY LOW LIMIT";
         case ITEM_RAM_WARNING:  return "RAM WARNING";
-        case ITEM_DEBUG_HUD: return "DEBUG HUD";
-        case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
-        case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
-        case ITEM_HUD_OPACITY: return "HUD OPACITY";
-        case ITEM_MENU_OPACITY: return "MENU OPACITY";
-        case ITEM_FPS_STYLE: return "FPS STYLE";
-        case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
-        case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
         case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITION";
         case ITEM_RESET_COLORS: return "RESET COLORS";
         case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
@@ -3848,9 +4033,9 @@ static const char *menu_value(int item) {
         case ITEM_MENU_COLORS_MENU: return word_open();
         case ITEM_ICON_COLORS_MENU: return word_open();
         case ITEM_PERFORMANCE_ALERTS_MENU: return word_open();
-        case ITEM_DEBUG_MENU: return word_open();
         case ITEM_ALL_HUD_OVERLAYS_MENU: return word_open();
         case ITEM_MENU_HUD_SIZE_MENU: return word_open();
+        case ITEM_DEBUG_MENU: return word_open();
         case ITEM_THEME:        return theme_name();
         case ITEM_HUD_THEME:    return hud_theme_name();
         case ITEM_PROFILE_MENU: return word_open();
@@ -3858,7 +4043,25 @@ static const char *menu_value(int item) {
         case ITEM_PROFILE:      return profile_name();
         case ITEM_LANGUAGE:     return language_name();
         case ITEM_AUTO_HIDE:    return auto_hide_name();
-        case ITEM_TOGGLE:       return toggle_name();
+        case ITEM_TOGGLE:       return word_open();
+        case ITEM_TOGGLE_HUD_COMBO: return combo_name_for(toggle_combo_mode);
+        case ITEM_TOGGLE_MENU_COMBO: return combo_name_for(menu_toggle_combo_mode);
+        case ITEM_CYCLE_PROFILE_ENABLE: return onoff_name(cycle_profile_enabled);
+        case ITEM_CYCLE_PROFILE_COMBO: return combo_name_for(cycle_profile_combo_mode);
+        case ITEM_CYCLE_THEME_ENABLE: return onoff_name(cycle_theme_enabled);
+        case ITEM_CYCLE_THEME_COMBO: return combo_name_for(cycle_theme_combo_mode);
+        case ITEM_DEBUG_HUD: return onoff_name(debug_enabled);
+        case ITEM_DEBUG_POSITION: return position_name_for(debug_position);
+        case ITEM_DEBUG_SIZE: return size_name_for(debug_size);
+        case ITEM_DEBUG_FRAMEBUF: return onoff_name(debug_show_framebuf);
+        case ITEM_DEBUG_CACHE: return onoff_name(debug_show_cache);
+        case ITEM_DEBUG_INPUT: return onoff_name(debug_show_input);
+        case ITEM_DEBUG_SYSTEM: return onoff_name(debug_show_system);
+        case ITEM_HUD_OPACITY: return opacity_name_for(hud_opacity);
+        case ITEM_MENU_OPACITY: return opacity_name_for(menu_opacity);
+        case ITEM_FPS_STYLE: return fps_style_name();
+        case ITEM_BATTERY_STYLE: return battery_style_name();
+        case ITEM_CLOCK_STYLE: return clock_style_name();
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? word_saved() : word_press_x();
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? word_loaded() : word_press_x();
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
@@ -3871,14 +4074,6 @@ static const char *menu_value(int item) {
         case ITEM_BATTERY_WARNING: return onoff_name(battery_warning_enabled);
         case ITEM_BATTERY_LOW_LIMIT: return battery_low_limit_name();
         case ITEM_RAM_WARNING:  return onoff_name(ram_warning_enabled);
-        case ITEM_DEBUG_HUD: return onoff_name(debug_hud_enabled);
-        case ITEM_DEBUG_FRAMEBUF: return onoff_name(debug_framebuf_enabled);
-        case ITEM_DEBUG_CACHE: return onoff_name(debug_cache_enabled);
-        case ITEM_HUD_OPACITY: return opacity_name_for(hud_opacity_index);
-        case ITEM_MENU_OPACITY: return opacity_name_for(menu_opacity_index);
-        case ITEM_FPS_STYLE: return fps_style_name();
-        case ITEM_BATTERY_STYLE: return battery_style_name();
-        case ITEM_CLOCK_STYLE: return clock_style_name();
         case ITEM_RESET:        return word_open();
         case ITEM_RESET_HUD_POSITION: return reset_message_frames > 0 ? "RESET" : word_press_x();
         case ITEM_RESET_COLORS: return reset_message_frames > 0 ? "RESET" : word_press_x();
@@ -4114,9 +4309,47 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_TOGGLE:
-            toggle_combo_mode += dir;
-            if (toggle_combo_mode < 0) toggle_combo_mode = TOGGLE_COUNT - 1;
-            if (toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = 0;
+            enter_menu_page(MENU_PAGE_TOGGLE_COMBOS);
+            break;
+
+        case ITEM_CYCLE_PROFILE_ENABLE:
+            cycle_profile_enabled = !cycle_profile_enabled;
+            break;
+
+        case ITEM_CYCLE_THEME_ENABLE:
+            cycle_theme_enabled = !cycle_theme_enabled;
+            break;
+
+        case ITEM_DEBUG_HUD:
+            debug_enabled = !debug_enabled;
+            break;
+
+        case ITEM_DEBUG_X_OFFSET:
+            debug_x_offset += dir * menu_offset_step();
+            if (debug_x_offset < 0) debug_x_offset = 0;
+            if (debug_x_offset > 960) debug_x_offset = 960;
+            break;
+
+        case ITEM_DEBUG_Y_OFFSET:
+            debug_y_offset += dir * menu_offset_step();
+            if (debug_y_offset < 0) debug_y_offset = 0;
+            if (debug_y_offset > 544) debug_y_offset = 544;
+            break;
+
+        case ITEM_DEBUG_FRAMEBUF:
+            debug_show_framebuf = !debug_show_framebuf;
+            break;
+
+        case ITEM_DEBUG_CACHE:
+            debug_show_cache = !debug_show_cache;
+            break;
+
+        case ITEM_DEBUG_INPUT:
+            debug_show_input = !debug_show_input;
+            break;
+
+        case ITEM_DEBUG_SYSTEM:
+            debug_show_system = !debug_show_system;
             break;
 
         case ITEM_THEME:
@@ -4192,48 +4425,6 @@ static void menu_change(int dir) {
             ram_warning_enabled = !ram_warning_enabled;
             break;
 
-        case ITEM_DEBUG_HUD:
-            debug_hud_enabled = !debug_hud_enabled;
-            break;
-
-        case ITEM_DEBUG_FRAMEBUF:
-            debug_framebuf_enabled = !debug_framebuf_enabled;
-            break;
-
-        case ITEM_DEBUG_CACHE:
-            debug_cache_enabled = !debug_cache_enabled;
-            break;
-
-        case ITEM_HUD_OPACITY:
-            hud_opacity_index += dir;
-            if (hud_opacity_index < 0) hud_opacity_index = 3;
-            if (hud_opacity_index > 3) hud_opacity_index = 0;
-            break;
-
-        case ITEM_MENU_OPACITY:
-            menu_opacity_index += dir;
-            if (menu_opacity_index < 0) menu_opacity_index = 3;
-            if (menu_opacity_index > 3) menu_opacity_index = 0;
-            break;
-
-        case ITEM_FPS_STYLE:
-            fps_display_style += dir;
-            if (fps_display_style < 0) fps_display_style = 3;
-            if (fps_display_style > 3) fps_display_style = 0;
-            break;
-
-        case ITEM_BATTERY_STYLE:
-            battery_display_style += dir;
-            if (battery_display_style < 0) battery_display_style = 3;
-            if (battery_display_style > 3) battery_display_style = 0;
-            break;
-
-        case ITEM_CLOCK_STYLE:
-            clock_display_style += dir;
-            if (clock_display_style < 0) clock_display_style = 3;
-            if (clock_display_style > 3) clock_display_style = 0;
-            break;
-
         case ITEM_RESET_HUD_POSITION:
             reset_hud_position_defaults();
             break;
@@ -4269,9 +4460,9 @@ static void draw_menu_line(
     const char *label,
     const char *value
 ) {
-    unsigned int text_col = apply_opacity_to_color(color_value(menu_text_color, 0xFFFFFFFF), menu_opacity_index);
-    unsigned int sel_col = apply_opacity_to_color(color_value(menu_select_color, 0xFF00FFFF), menu_opacity_index);
-    unsigned int accent_col = apply_opacity_to_color(color_value(menu_select_color, 0xFF00FFFF), menu_opacity_index);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
+    unsigned int sel_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int accent_col = color_value(menu_select_color, 0xFF00FFFF);
     unsigned int sep_col = 0xFF2A2A2A;
     int label_x = x + 10;
     int value_w = text_width(value, 1);
@@ -4318,9 +4509,9 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     int title_y;
     int deco;
 
-    unsigned int border = apply_opacity_to_color(color_value(menu_border_color, 0xFFFFFFFF), menu_opacity_index);
-    unsigned int title_col = apply_opacity_to_color(color_value(menu_select_color, 0xFF00FFFF), menu_opacity_index);
-    unsigned int text_col = apply_opacity_to_color(color_value(menu_text_color, 0xFFFFFFFF), menu_opacity_index);
+    unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
+    unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
+    unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
     unsigned int inner_line = 0xFF2A2A2A;
 
     g_menu_text_mode = 1;
@@ -4380,7 +4571,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
      * Default is BLACK, but user can change it with MENU BG.
      */
     if (menu_bg_color != BG_TRANSPARENT) {
-        draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, apply_opacity_to_color(get_menu_bg(), menu_opacity_index));
+        draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, get_menu_bg());
     }
 
     if (menu_picture_bg) {
@@ -4393,7 +4584,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     }
 
     /* Ultimate menu skin: layered header, side rail, corner accents, and inner glow. */
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, apply_opacity_to_color(color_value(top_menu_bar_color, 0xFF000000), menu_opacity_index));
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, color_value(top_menu_bar_color, 0xFF000000));
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + panel_w - 5, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + 5, panel_y + 5, 24, 1, title_col);
@@ -4579,7 +4770,7 @@ static void handle_menu_vertical(unsigned int buttons, unsigned int pressed) {
 
 static int current_item_allows_hold_lr(void) {
     int item = current_menu_item();
-    return item == ITEM_X_OFFSET || item == ITEM_Y_OFFSET;
+    return item == ITEM_X_OFFSET || item == ITEM_Y_OFFSET || item == ITEM_DEBUG_X_OFFSET || item == ITEM_DEBUG_Y_OFFSET;
 }
 
 static void reset_menu_lr_repeat(void) {
@@ -4695,7 +4886,7 @@ static void handle_input(void) {
     toggle_combo = get_toggle_combo();
 
     toggle_down = ((buttons & toggle_combo) == toggle_combo);
-    menu_down = ((buttons & MENU_COMBO) == MENU_COMBO);
+    menu_down = ((buttons & get_menu_combo()) == get_menu_combo());
 
     if (menu_down && !last_menu_down) {
         menu_open = !menu_open;
@@ -4710,6 +4901,29 @@ static void handle_input(void) {
             if (auto_hide_mode == AUTO_HIDE_10S) frames = 600;
             temporary_show_frames = frames;
         }
+    }
+
+    if (!menu_open) {
+        int profile_cycle_down = cycle_profile_enabled && ((buttons & combo_buttons(cycle_profile_combo_mode)) == combo_buttons(cycle_profile_combo_mode));
+        int theme_cycle_down = cycle_theme_enabled && ((buttons & combo_buttons(cycle_theme_combo_mode)) == combo_buttons(cycle_theme_combo_mode));
+
+        if (profile_cycle_down && !last_profile_cycle_down) {
+            profile_id++;
+            if (profile_id >= PROFILE_COUNT) profile_id = 0;
+            load_profile();
+        }
+
+        if (theme_cycle_down && !last_theme_cycle_down) {
+            theme_id++;
+            if (theme_id >= THEME_COUNT) theme_id = 0;
+            apply_theme();
+        }
+
+        last_profile_cycle_down = profile_cycle_down;
+        last_theme_cycle_down = theme_cycle_down;
+    } else {
+        last_profile_cycle_down = 0;
+        last_theme_cycle_down = 0;
     }
 
     if (menu_open) {
@@ -4758,7 +4972,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     char fps_text[16];
     char battery_text[8];
-    char time_text[16];
+    char time_text[24];
     char cpu_text[16];
     char bus_text[16];
     char gpu_text[16];
@@ -4808,15 +5022,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int order_w;
     int draw_y;
     int has_any;
-    int fps_show_icon;
-    int fps_show_text;
-    int battery_show_icon;
-    int battery_show_text;
-    int clock_show_icon;
-    int clock_show_text;
-    int item_gap;
 
-    unsigned int text_color = apply_opacity_to_color(color_value(hud_text_color, 0xFFFFFFFF), hud_opacity_index);
+    unsigned int text_color = color_value(hud_text_color, 0xFFFFFFFF);
     unsigned int fps_text_color = text_color;
     unsigned int battery_text_color = text_color;
     unsigned int ram_text_color = text_color;
@@ -4831,9 +5038,6 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
     build_time_text(time_text);
-    if (clock_display_style == 3) {
-        build_date_time_text(time_text);
-    }
     build_cpu_text(cpu_text);
     build_bus_text(bus_text);
     build_gpu_text(gpu_text);
@@ -4848,29 +5052,22 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     force_stacked = 0;
 
-    fps_show_icon = show_fps && (fps_display_style == 0 || fps_display_style == 2);
-    fps_show_text = show_fps && (fps_display_style == 0 || fps_display_style == 1 || fps_display_style == 3);
-    battery_show_icon = show_battery && (battery_display_style == 0 || battery_display_style == 2 || battery_display_style == 3);
-    battery_show_text = show_battery && (battery_display_style == 0 || battery_display_style == 1);
-    clock_show_icon = show_time && (clock_display_style == 0 || clock_display_style == 2);
-    clock_show_text = show_time && (clock_display_style == 0 || clock_display_style == 1 || clock_display_style == 3);
-
-    fps_w = fps_show_text ? text_width(fps_text, scale) : 0;
-    battery_text_w = battery_show_text ? text_width(battery_text, scale) : 0;
-    time_w = clock_show_text ? text_width(time_text, scale) : 0;
+    fps_w = (show_fps && fps_display_style != FPS_STYLE_ICON_ONLY) ? text_width(fps_text, scale) : 0;
+    battery_text_w = (show_battery && battery_display_style != BATTERY_STYLE_ICON_ONLY && battery_display_style != BATTERY_STYLE_BAR_ONLY) ? text_width(battery_text, scale) : 0;
+    time_w = (show_time && clock_display_style != CLOCK_STYLE_ICON_ONLY) ? text_width(time_text, scale) : 0;
     cpu_w = show_cpu ? text_width(cpu_value_text, scale) : 0;
     bus_w = show_bus ? text_width(bus_value_text, scale) : 0;
     gpu_w = show_gpu ? text_width(gpu_value_text, scale) : 0;
     app_id_w = show_app_id ? text_width(app_id_value_text, scale) : 0;
     ram_w = show_ram ? text_width(ram_value_text, scale) : 0;
 
-    fps_icon_w = fps_show_icon ? (9 * icon_scale) : 0;
+    fps_icon_w = (show_fps && fps_display_style != FPS_STYLE_NUMBER_ONLY && fps_display_style != FPS_STYLE_LABEL_NUMBER) ? (9 * icon_scale) : 0;
     fps_icon_h = 7 * icon_scale;
 
-    battery_icon_w = battery_show_icon ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
+    battery_icon_w = (show_battery && battery_display_style != BATTERY_STYLE_PERCENT_ONLY) ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
     battery_icon_h = 7 * icon_scale;
 
-    clock_icon_w = clock_show_icon ? (7 * icon_scale) : 0;
+    clock_icon_w = (show_time && clock_display_style != CLOCK_STYLE_TIME_ONLY && clock_display_style != CLOCK_STYLE_DATE_TIME) ? (7 * icon_scale) : 0;
     clock_icon_h = 7 * icon_scale;
     extra_icon_w = hud_extra_icon_w(icon_scale);
     extra_icon_h = hud_extra_icon_h(icon_scale);
@@ -4915,13 +5112,13 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             switch (order_id) {
                 case HUD_ORDER_FPS:
-                    if (show_fps) { item_gap = (fps_icon_w > 0 && fps_w > 0) ? gap_small : 0; order_w = fps_icon_w + item_gap + fps_w; }
+                    if (show_fps) order_w = fps_icon_w + fps_w + ((fps_icon_w > 0 && fps_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_BATTERY:
-                    if (show_battery) { item_gap = (battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0; order_w = battery_icon_w + item_gap + battery_text_w; }
+                    if (show_battery) order_w = battery_icon_w + battery_text_w + ((battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_CLOCK:
-                    if (show_time) { item_gap = (clock_icon_w > 0 && time_w > 0) ? gap_small : 0; order_w = clock_icon_w + item_gap + time_w; }
+                    if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_CPU:
                     if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
@@ -4958,13 +5155,13 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             switch (order_id) {
                 case HUD_ORDER_FPS:
-                    if (show_fps) { item_gap = (fps_icon_w > 0 && fps_w > 0) ? gap_small : 0; order_w = fps_icon_w + item_gap + fps_w; }
+                    if (show_fps) order_w = fps_icon_w + fps_w + ((fps_icon_w > 0 && fps_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_BATTERY:
-                    if (show_battery) { item_gap = (battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0; order_w = battery_icon_w + item_gap + battery_text_w; }
+                    if (show_battery) order_w = battery_icon_w + battery_text_w + ((battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_CLOCK:
-                    if (show_time) { item_gap = (clock_icon_w > 0 && time_w > 0) ? gap_small : 0; order_w = clock_icon_w + item_gap + time_w; }
+                    if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
                     break;
                 case HUD_ORDER_CPU:
                     if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
@@ -5037,7 +5234,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     if (hud_box_enabled) {
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, last_hud_clear_h, apply_opacity_to_color(get_menu_bg_for(hud_box_bg_color), hud_opacity_index));
+        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, last_hud_clear_h, get_hud_box_bg());
     }
 
     x = start_x;
@@ -5052,12 +5249,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_FPS:
                     if (show_fps) {
                         int tx = x;
-                        if (fps_show_icon) {
-                            draw_fps_icon(pixels, pitch, tx, draw_y + ((text_h - fps_icon_h) / 2), icon_scale);
-                            tx += fps_icon_w;
-                        }
-                        if (fps_show_icon && fps_show_text) tx += gap_small;
-                        if (fps_show_text) draw_text_shadow(pixels, pitch, tx, draw_y, fps_text, fps_text_color, scale);
+                        if (fps_icon_w > 0) { draw_fps_icon(pixels, pitch, tx, draw_y + ((text_h - fps_icon_h) / 2), icon_scale); tx += fps_icon_w; if (fps_w > 0) tx += gap_small; }
+                        if (fps_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, fps_text, active_fps_alert ? 0xFF0000FF : text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -5065,12 +5258,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_BATTERY:
                     if (show_battery) {
                         int tx = x;
-                        if (battery_show_icon) {
-                            draw_battery_icon(pixels, pitch, tx, draw_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
-                            tx += battery_icon_w;
-                        }
-                        if (battery_show_icon && battery_show_text) tx += gap_small;
-                        if (battery_show_text) draw_text_shadow(pixels, pitch, tx, draw_y, battery_text, battery_text_color, scale);
+                        if (battery_icon_w > 0) { draw_battery_icon(pixels, pitch, tx, draw_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging); tx += battery_icon_w; if (battery_text_w > 0) tx += gap_small; }
+                        if (battery_text_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, battery_text, active_battery_alert ? 0xFF0000FF : text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -5078,12 +5267,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_CLOCK:
                     if (show_time) {
                         int tx = x;
-                        if (clock_show_icon) {
-                            draw_clock_icon(pixels, pitch, tx, draw_y + ((text_h - clock_icon_h) / 2), icon_scale);
-                            tx += clock_icon_w;
-                        }
-                        if (clock_show_icon && clock_show_text) tx += gap_small;
-                        if (clock_show_text) draw_text_shadow(pixels, pitch, tx, draw_y, time_text, text_color, scale);
+                        if (clock_icon_w > 0) { draw_clock_icon(pixels, pitch, tx, draw_y + ((text_h - clock_icon_h) / 2), icon_scale); tx += clock_icon_w; if (time_w > 0) tx += gap_small; }
+                        if (time_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, time_text, text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -5149,13 +5334,13 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         switch (order_id) {
             case HUD_ORDER_FPS:
-                if (show_fps) { item_gap = (fps_icon_w > 0 && fps_w > 0) ? gap_small : 0; order_w = fps_icon_w + item_gap + fps_w; }
+                if (show_fps) order_w = fps_icon_w + fps_w + ((fps_icon_w > 0 && fps_w > 0) ? gap_small : 0);
                 break;
             case HUD_ORDER_BATTERY:
-                if (show_battery) { item_gap = (battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0; order_w = battery_icon_w + item_gap + battery_text_w; }
+                if (show_battery) order_w = battery_icon_w + battery_text_w + ((battery_icon_w > 0 && battery_text_w > 0) ? gap_small : 0);
                 break;
             case HUD_ORDER_CLOCK:
-                if (show_time) { item_gap = (clock_icon_w > 0 && time_w > 0) ? gap_small : 0; order_w = clock_icon_w + item_gap + time_w; }
+                if (show_time) order_w = clock_icon_w + time_w + ((clock_icon_w > 0 && time_w > 0) ? gap_small : 0);
                 break;
             case HUD_ORDER_CPU:
                 if (show_cpu) order_w = extra_icon_w + gap_small + cpu_w;
@@ -5188,39 +5373,18 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         switch (order_id) {
             case HUD_ORDER_FPS:
-                if (fps_show_icon) {
-                    draw_fps_icon(pixels, pitch, x, start_y + ((text_h - fps_icon_h) / 2), icon_scale);
-                    x += fps_icon_w;
-                }
-                if (fps_show_icon && fps_show_text) x += gap_small;
-                if (fps_show_text) {
-                    draw_text_shadow(pixels, pitch, x, start_y, fps_text, fps_text_color, scale);
-                    x += fps_w;
-                }
+                if (fps_icon_w > 0) { draw_fps_icon(pixels, pitch, x, start_y + ((text_h - fps_icon_h) / 2), icon_scale); x += fps_icon_w; if (fps_w > 0) x += gap_small; }
+                if (fps_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, fps_text, active_fps_alert ? 0xFF0000FF : text_color, scale); x += fps_w; }
                 break;
 
             case HUD_ORDER_BATTERY:
-                if (battery_show_icon) {
-                    draw_battery_icon(pixels, pitch, x, start_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
-                    x += battery_icon_w;
-                }
-                if (battery_show_icon && battery_show_text) x += gap_small;
-                if (battery_show_text) {
-                    draw_text_shadow(pixels, pitch, x, start_y, battery_text, battery_text_color, scale);
-                    x += battery_text_w;
-                }
+                if (battery_icon_w > 0) { draw_battery_icon(pixels, pitch, x, start_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging); x += battery_icon_w; if (battery_text_w > 0) x += gap_small; }
+                if (battery_text_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, battery_text, active_battery_alert ? 0xFF0000FF : text_color, scale); x += battery_text_w; }
                 break;
 
             case HUD_ORDER_CLOCK:
-                if (clock_show_icon) {
-                    draw_clock_icon(pixels, pitch, x, start_y + ((text_h - clock_icon_h) / 2), icon_scale);
-                    x += clock_icon_w;
-                }
-                if (clock_show_icon && clock_show_text) x += gap_small;
-                if (clock_show_text) {
-                    draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale);
-                    x += time_w;
-                }
+                if (clock_icon_w > 0) { draw_clock_icon(pixels, pitch, x, start_y + ((text_h - clock_icon_h) / 2), icon_scale); x += clock_icon_w; if (time_w > 0) x += gap_small; }
+                if (time_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale); x += time_w; }
                 break;
 
             case HUD_ORDER_CPU:
@@ -5269,49 +5433,51 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 }
 
+static void debug_append_line(char lines[][32], int *count, const char *label, int value) {
+    int pos = 0;
+    if (*count >= 10) return;
+    pos = append_text(lines[*count], pos, label);
+    pos = append_int(lines[*count], pos, value);
+    lines[*count][pos] = '\0';
+    (*count)++;
+}
+
 static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    char line[48];
-    int pos;
-    int y = 24;
+    char lines[10][32];
+    int count = 0;
+    int scale;
+    int gap_small;
+    int gap_big;
+    int text_h;
+    int max_w = 0;
+    int total_h;
+    int x;
+    int y;
+    int i;
+    int w;
     unsigned int col = 0xFF00FFFF;
 
-    if (!debug_hud_enabled && !debug_framebuf_enabled && !debug_cache_enabled) {
-        return;
-    }
+    if (!debug_enabled) return;
 
-    if (debug_hud_enabled) {
-        pos = 0;
-        pos = append_text(line, pos, "DBG FPS ");
-        pos = append_int(line, pos, (int)fps_value);
-        pos = append_text(line, pos, " MENU ");
-        pos = append_int(line, pos, menu_page);
-        line[pos] = '\0';
-        draw_text_shadow(pixels, pitch, 8, y, line, col, 1);
-        y += 10;
-    }
+    get_hud_metrics(&scale, &gap_small, &gap_big);
+    scale = debug_size + 1;
+    if (scale < 1) scale = 1;
+    text_h = 7 * scale;
 
-    if (debug_framebuf_enabled) {
-        pos = 0;
-        pos = append_text(line, pos, "FB ");
-        pos = append_int(line, pos, screen_w);
-        line[pos++] = 'x';
-        pos = append_int(line, pos, screen_h);
-        pos = append_text(line, pos, " P");
-        pos = append_int(line, pos, pitch);
-        line[pos] = '\0';
-        draw_text_shadow(pixels, pitch, 8, y, line, col, 1);
-        y += 10;
-    }
+    debug_append_line(lines, &count, "DBG FPS ", (int)fps_value);
+    if (debug_show_framebuf) { debug_append_line(lines, &count, "FB W ", screen_w); debug_append_line(lines, &count, "FB H ", screen_h); debug_append_line(lines, &count, "PITCH ", pitch); }
+    if (debug_show_cache) { debug_append_line(lines, &count, "RAM MB ", cached_ram_free_mb); }
+    if (debug_show_input) { debug_append_line(lines, &count, "BTN ", (int)(last_buttons & 0xFFFF)); debug_append_line(lines, &count, "PAGE ", menu_page); }
+    if (debug_show_system) { debug_append_line(lines, &count, "CPU ", scePowerGetArmClockFrequency()); debug_append_line(lines, &count, "GPU ", scePowerGetGpuClockFrequency()); }
 
-    if (debug_cache_enabled) {
-        pos = 0;
-        pos = append_text(line, pos, "CACHE RAM ");
-        pos = append_int(line, pos, cached_ram_free_mb);
-        pos = append_text(line, pos, "M");
-        line[pos] = '\0';
-        draw_text_shadow(pixels, pitch, 8, y, line, col, 1);
-        y += 10;
-    }
+    for (i = 0; i < count; i++) { w = text_width(lines[i], scale); if (w > max_w) max_w = w; }
+    total_h = count * (text_h + gap_small); if (total_h > 0) total_h -= gap_small;
+    x = debug_x_offset; y = debug_y_offset;
+    if (debug_position == POS_BOTTOM_RIGHT || debug_position == POS_TOP_RIGHT) x = screen_w - max_w - debug_x_offset;
+    if (debug_position == POS_TOP_CENTER || debug_position == POS_BOTTOM_CENTER) x = ((screen_w - max_w) / 2) + debug_x_offset;
+    if (debug_position == POS_BOTTOM_RIGHT || debug_position == POS_BOTTOM_LEFT || debug_position == POS_BOTTOM_CENTER) y = screen_h - total_h - debug_y_offset;
+    if (x < 0) x = 0; if (y < 0) y = 0;
+    for (i = 0; i < count; i++) draw_text_shadow(pixels, pitch, x, y + (i * (text_h + gap_small)), lines[i], col, scale);
 }
 
 static void draw_all_from_framebuf(const SceDisplayFrameBuf *fb) {
@@ -5340,9 +5506,6 @@ static void draw_all_from_framebuf(const SceDisplayFrameBuf *fb) {
 
     g_screen_w = screen_w;
     g_screen_h = screen_h;
-    debug_last_fb_w = screen_w;
-    debug_last_fb_h = screen_h;
-    debug_last_fb_pitch = pitch;
 
     if (hud_enabled) {
         if (auto_hide_mode == AUTO_HIDE_OFF) {
@@ -5361,9 +5524,7 @@ static void draw_all_from_framebuf(const SceDisplayFrameBuf *fb) {
         last_hud_clear_h = 0;
     }
 
-    if (debug_hud_enabled || debug_framebuf_enabled || debug_cache_enabled) {
-        draw_debug_overlay(pixels, pitch, screen_w, screen_h);
-    }
+    draw_debug_overlay(pixels, pitch, screen_w, screen_h);
 
     if (menu_open) {
         draw_menu(pixels, pitch, screen_w, screen_h);
