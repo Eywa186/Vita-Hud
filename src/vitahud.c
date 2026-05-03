@@ -1035,14 +1035,7 @@ static void update_fps(void) {
 static void build_fps_text(char *out) {
     int pos = 0;
 
-    if (hud_layout == LAYOUT_COMPACT || hud_layout == LAYOUT_ICONS) {
-        pos = append_2digit_number(out, pos, (int)fps_value);
-        pos = append_text(out, pos, "FPS");
-    } else {
-        pos = append_text(out, pos, "FPS ");
-        pos = append_2digit_number(out, pos, (int)fps_value);
-    }
-
+    pos = append_2digit_number(out, pos, (int)fps_value);
     out[pos] = '\0';
 }
 
@@ -1658,6 +1651,28 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (5 * s), y + (5 * s), s, s, white);
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
+static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
+    unsigned int col = color_value(hud_icon_color, 0xFFFFFFFF);
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    /* Compact speedometer icon for FPS */
+    draw_rect(pixels, pitch, x + (2 * s), y, 3 * s, s, col);
+    draw_rect(pixels, pitch, x + s, y + s, s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + s, s, s, col);
+    draw_rect(pixels, pitch, x, y + (2 * s), s, 2 * s, col);
+    draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 2 * s, col);
+    draw_rect(pixels, pitch, x + s, y + (4 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), s, s, col);
+
+    /* Center hub and needle */
+    draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, 2 * s, col);
+    draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (6 * s), y + s, s, s, col);
+}
+
 static int active_extra_icon_color = COLOR_AUTO;
 
 static unsigned int get_extra_icon_color(void) {
@@ -3663,6 +3678,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int ram_w;
     int force_stacked;
 
+    int fps_icon_w;
+    int fps_icon_h;
     int battery_icon_w;
     int battery_icon_h;
     int clock_icon_w;
@@ -3717,6 +3734,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     app_id_w = show_app_id ? text_width(app_id_value_text, scale) : 0;
     ram_w = show_ram ? text_width(ram_value_text, scale) : 0;
 
+    fps_icon_w = show_fps ? (9 * icon_scale) : 0;
+    fps_icon_h = 7 * icon_scale;
+
     battery_icon_w = show_battery ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
     battery_icon_h = 7 * icon_scale;
 
@@ -3737,7 +3757,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             switch (order_id) {
                 case HUD_ORDER_FPS:
-                    if (show_fps) order_w = fps_w;
+                    if (show_fps) order_w = fps_icon_w + gap_small + fps_w;
                     break;
                 case HUD_ORDER_BATTERY:
                     if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
@@ -3780,7 +3800,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
             switch (order_id) {
                 case HUD_ORDER_FPS:
-                    if (show_fps) order_w = fps_w;
+                    if (show_fps) order_w = fps_icon_w + gap_small + fps_w;
                     break;
                 case HUD_ORDER_BATTERY:
                     if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
@@ -3873,7 +3893,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             switch (order_id) {
                 case HUD_ORDER_FPS:
                     if (show_fps) {
-                        draw_text_shadow(pixels, pitch, x, draw_y, fps_text, text_color, scale);
+                        draw_fps_icon(pixels, pitch, x, draw_y + ((text_h - fps_icon_h) / 2), icon_scale);
+                        draw_text_shadow(pixels, pitch, x + fps_icon_w + gap_small, draw_y, fps_text, text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -3955,7 +3976,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         switch (order_id) {
             case HUD_ORDER_FPS:
-                if (show_fps) order_w = fps_w;
+                if (show_fps) order_w = fps_icon_w + gap_small + fps_w;
                 break;
             case HUD_ORDER_BATTERY:
                 if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
@@ -3994,6 +4015,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
         switch (order_id) {
             case HUD_ORDER_FPS:
+                draw_fps_icon(pixels, pitch, x, start_y + ((text_h - fps_icon_h) / 2), icon_scale);
+                x += fps_icon_w + gap_small;
                 draw_text_shadow(pixels, pitch, x, start_y, fps_text, text_color, scale);
                 x += fps_w;
                 break;
