@@ -1657,20 +1657,29 @@ static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 
     if (s < 1) s = 1;
 
-    /* Compact speedometer icon for FPS */
-    draw_rect(pixels, pitch, x + (2 * s), y, 3 * s, s, col);
+    /* Cleaner speedometer-style FPS icon within a 9x7 grid. */
+    /* Outer arc */
+    draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
     draw_rect(pixels, pitch, x + s, y + s, s, s, col);
-    draw_rect(pixels, pitch, x + (5 * s), y + s, s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + s, s, s, col);
     draw_rect(pixels, pitch, x, y + (2 * s), s, 2 * s, col);
-    draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 2 * s, col);
+    draw_rect(pixels, pitch, x + (8 * s), y + (2 * s), s, 2 * s, col);
     draw_rect(pixels, pitch, x + s, y + (4 * s), s, s, col);
-    draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (4 * s), s, s, col);
 
-    /* Center hub and needle */
+    /* Gauge ticks */
+    draw_rect(pixels, pitch, x + (4 * s), y + s, s, s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
+
+    /* Hub */
     draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, 2 * s, col);
+
+    /* Needle pointing up-right */
     draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
-    draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), s, s, col);
-    draw_rect(pixels, pitch, x + (6 * s), y + s, s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + s, s, s, col);
 }
 
 static int active_extra_icon_color = COLOR_AUTO;
