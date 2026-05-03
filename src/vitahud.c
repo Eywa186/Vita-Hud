@@ -154,7 +154,17 @@
 #define THEME_NEON      4
 #define THEME_RETRO     5
 #define THEME_MINIMAL   6
-#define THEME_COUNT     7
+#define THEME_PLASMA    7
+#define THEME_CYBER     8
+#define THEME_SUNSET    9
+#define THEME_OCEAN     10
+#define THEME_FOREST    11
+#define THEME_ROYAL     12
+#define THEME_CANDY     13
+#define THEME_STEEL     14
+#define THEME_FIRE      15
+#define THEME_GHOST     16
+#define THEME_COUNT     17
 
 #define HUD_THEME_DEFAULT 0
 #define HUD_THEME_STEALTH 1
@@ -694,7 +704,8 @@ static void clamp_settings(void) {
     if (hud_box_bg_color < 0 || hud_box_bg_color >= BG_COUNT) hud_box_bg_color = BG_BLACK;
 
     if (hud_language < 0 || hud_language >= LANG_COUNT) hud_language = LANG_EN;
-    if (auto_hide_mode < 0 || auto_hide_mode >= AUTO_HIDE_COUNT) auto_hide_mode = AUTO_HIDE_OFF;
+    /* Auto Hide removed from the menu and forced off. */
+    auto_hide_mode = AUTO_HIDE_OFF;
     if (toggle_combo_mode < 0 || toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = TOGGLE_SELECT;
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
     if (hud_theme_id < 0 || hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_DEFAULT;
@@ -985,11 +996,153 @@ static void apply_theme(void) {
             hud_text_color = COLOR_WHITE;
             hud_shadow_color = COLOR_BLACK;
             hud_icon_color = COLOR_AUTO;
+            fps_icon_color = COLOR_AUTO;
+            clock_icon_color = COLOR_AUTO;
             menu_text_color = COLOR_WHITE;
             menu_select_color = COLOR_WHITE;
             menu_border_color = COLOR_WHITE;
             menu_bg_color = BG_TRANSPARENT;
             top_menu_bar_color = COLOR_BLACK;
+            hud_box_bg_color = BG_TRANSPARENT;
+            break;
+
+        case THEME_PLASMA:
+            hud_text_color = COLOR_MAGENTA;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_CYAN;
+            fps_icon_color = COLOR_ELECTRIC_BLUE;
+            clock_icon_color = COLOR_MAGENTA;
+            menu_text_color = COLOR_MAGENTA;
+            menu_select_color = COLOR_CYAN;
+            menu_border_color = COLOR_ELECTRIC_BLUE;
+            menu_bg_color = BG_PURPLE;
+            top_menu_bar_color = COLOR_VIOLET;
+            hud_box_bg_color = BG_PURPLE;
+            break;
+
+        case THEME_CYBER:
+            hud_text_color = COLOR_AQUA;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_ELECTRIC_BLUE;
+            fps_icon_color = COLOR_NEON_GREEN;
+            clock_icon_color = COLOR_AQUA;
+            menu_text_color = COLOR_AQUA;
+            menu_select_color = COLOR_NEON_GREEN;
+            menu_border_color = COLOR_ELECTRIC_BLUE;
+            menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_MIDNIGHT;
+            hud_box_bg_color = BG_BLACK;
+            break;
+
+        case THEME_SUNSET:
+            hud_text_color = COLOR_ORANGE;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GOLD;
+            fps_icon_color = COLOR_CRIMSON;
+            clock_icon_color = COLOR_ORANGE;
+            menu_text_color = COLOR_ORANGE;
+            menu_select_color = COLOR_GOLD;
+            menu_border_color = COLOR_CRIMSON;
+            menu_bg_color = BG_MAROON;
+            top_menu_bar_color = COLOR_MAROON;
+            hud_box_bg_color = BG_MAROON;
+            break;
+
+        case THEME_OCEAN:
+            hud_text_color = COLOR_SKY;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_AQUA;
+            fps_icon_color = COLOR_CYAN;
+            clock_icon_color = COLOR_SKY;
+            menu_text_color = COLOR_SKY;
+            menu_select_color = COLOR_WHITE;
+            menu_border_color = COLOR_AQUA;
+            menu_bg_color = BG_NAVY;
+            top_menu_bar_color = COLOR_NAVY;
+            hud_box_bg_color = BG_NAVY;
+            break;
+
+        case THEME_FOREST:
+            hud_text_color = COLOR_LIME;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_FOREST;
+            fps_icon_color = COLOR_EMERALD;
+            clock_icon_color = COLOR_MINT;
+            menu_text_color = COLOR_LIME;
+            menu_select_color = COLOR_MINT;
+            menu_border_color = COLOR_FOREST;
+            menu_bg_color = BG_FOREST;
+            top_menu_bar_color = COLOR_FOREST;
+            hud_box_bg_color = BG_FOREST;
+            break;
+
+        case THEME_ROYAL:
+            hud_text_color = COLOR_LAVENDER;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GOLD;
+            fps_icon_color = COLOR_VIOLET;
+            clock_icon_color = COLOR_GOLD;
+            menu_text_color = COLOR_LAVENDER;
+            menu_select_color = COLOR_GOLD;
+            menu_border_color = COLOR_PURPLE;
+            menu_bg_color = BG_PURPLE;
+            top_menu_bar_color = COLOR_PURPLE;
+            hud_box_bg_color = BG_PURPLE;
+            break;
+
+        case THEME_CANDY:
+            hud_text_color = COLOR_HOT_PINK;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_ROSE;
+            fps_icon_color = COLOR_CYAN;
+            clock_icon_color = COLOR_HOT_PINK;
+            menu_text_color = COLOR_HOT_PINK;
+            menu_select_color = COLOR_CREAM;
+            menu_border_color = COLOR_ROSE;
+            menu_bg_color = BG_MAGENTA;
+            top_menu_bar_color = COLOR_ROSE;
+            hud_box_bg_color = BG_MAGENTA;
+            break;
+
+        case THEME_STEEL:
+            hud_text_color = COLOR_SILVER;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_SLATE;
+            fps_icon_color = COLOR_CYAN;
+            clock_icon_color = COLOR_SILVER;
+            menu_text_color = COLOR_SILVER;
+            menu_select_color = COLOR_WHITE;
+            menu_border_color = COLOR_SLATE;
+            menu_bg_color = BG_SLATE;
+            top_menu_bar_color = COLOR_DARK_GRAY;
+            hud_box_bg_color = BG_SLATE;
+            break;
+
+        case THEME_FIRE:
+            hud_text_color = COLOR_RED;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_ORANGE;
+            fps_icon_color = COLOR_YELLOW;
+            clock_icon_color = COLOR_RED;
+            menu_text_color = COLOR_ORANGE;
+            menu_select_color = COLOR_YELLOW;
+            menu_border_color = COLOR_RED;
+            menu_bg_color = BG_RED;
+            top_menu_bar_color = COLOR_CRIMSON;
+            hud_box_bg_color = BG_RED;
+            break;
+
+        case THEME_GHOST:
+            hud_text_color = COLOR_SNOW;
+            hud_shadow_color = COLOR_DARK_GRAY;
+            hud_icon_color = COLOR_SILVER;
+            fps_icon_color = COLOR_SNOW;
+            clock_icon_color = COLOR_SILVER;
+            menu_text_color = COLOR_SNOW;
+            menu_select_color = COLOR_CYAN;
+            menu_border_color = COLOR_SILVER;
+            menu_bg_color = BG_TRANSPARENT;
+            top_menu_bar_color = COLOR_DARK_GRAY;
             hud_box_bg_color = BG_TRANSPARENT;
             break;
 
@@ -2069,6 +2222,16 @@ static const char *theme_name(void) {
         case THEME_NEON:      return "NEON";
         case THEME_RETRO:     return "RETRO";
         case THEME_MINIMAL:   return "MINIMAL";
+        case THEME_PLASMA:    return "PLASMA";
+        case THEME_CYBER:     return "CYBER";
+        case THEME_SUNSET:    return "SUNSET";
+        case THEME_OCEAN:     return "OCEAN";
+        case THEME_FOREST:    return "FOREST";
+        case THEME_ROYAL:     return "ROYAL";
+        case THEME_CANDY:     return "CANDY";
+        case THEME_STEEL:     return "STEEL";
+        case THEME_FIRE:      return "FIRE";
+        case THEME_GHOST:     return "GHOST";
         case THEME_DEFAULT:
         default:              return "DEFAULT";
     }
@@ -2336,6 +2499,16 @@ static const char *theme_name_for(int id) {
         case THEME_NEON:      return "NEON";
         case THEME_RETRO:     return "RETRO";
         case THEME_MINIMAL:   return "MINIMAL";
+        case THEME_PLASMA:    return "PLASMA";
+        case THEME_CYBER:     return "CYBER";
+        case THEME_SUNSET:    return "SUNSET";
+        case THEME_OCEAN:     return "OCEAN";
+        case THEME_FOREST:    return "FOREST";
+        case THEME_ROYAL:     return "ROYAL";
+        case THEME_CANDY:     return "CANDY";
+        case THEME_STEEL:     return "STEEL";
+        case THEME_FIRE:      return "FIRE";
+        case THEME_GHOST:     return "GHOST";
         case THEME_DEFAULT:
         default:              return "DEFAULT";
     }
@@ -2572,7 +2745,7 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 20;
+            return 19;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_OVERLAYS:
@@ -2583,12 +2756,12 @@ static int current_menu_count(void) {
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 16;
+            return 15;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[16] = {
+    static const int main_items[15] = {
         ITEM_HUD,
         ITEM_THEME_MENU,
         ITEM_ALL_HUD_OVERLAYS_MENU,
@@ -2602,7 +2775,6 @@ static int current_menu_item_at(int index) {
         ITEM_HUD_ORDER_MENU,
         ITEM_TIMEMODE,
         ITEM_LANGUAGE,
-        ITEM_AUTO_HIDE,
         ITEM_TOGGLE,
         ITEM_RESET
     };
@@ -2613,9 +2785,8 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[20] = {
+    static const int theme_items[19] = {
         ITEM_THEME,
-        ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
         ITEM_FPS_ICON,
@@ -2670,7 +2841,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 20) index = 19;
+        if (index >= 19) index = 18;
         return theme_items[index];
     }
 
@@ -2684,7 +2855,7 @@ static int current_menu_item_at(int index) {
         return size_items[index];
     }
 
-    if (index >= 16) index = 15;
+    if (index >= 15) index = 14;
     return main_items[index];
 }
 
@@ -2772,7 +2943,7 @@ static const char *current_menu_title(void) {
 
     if (menu_page == MENU_PAGE_OVERLAYS) return "ALL HUD OVERLAYS";
 
-    if (menu_page == MENU_PAGE_SIZE) return "MENU & HUD SIZE";
+    if (menu_page == MENU_PAGE_SIZE) return "MENU HUD SIZES";
 
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
@@ -2832,7 +3003,7 @@ static const char *menu_label(int item) {
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "TEMA / COLOR";
             case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
-            case ITEM_MENU_HUD_SIZE_MENU: return "TAMANO MENU/HUD";
+            case ITEM_MENU_HUD_SIZE_MENU: return "TAMANO MENU HUD";
             case ITEM_THEME:        return "TEMA PRESET";
             case ITEM_HUD_THEME:    return "TEMA HUD";
             case ITEM_HUD_TEXT:     return "TEXTO HUD";
@@ -2886,7 +3057,7 @@ static const char *menu_label(int item) {
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR";
         case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALL HUD OVERLAYS";
-        case ITEM_MENU_HUD_SIZE_MENU: return "MENU & HUD SIZE";
+        case ITEM_MENU_HUD_SIZE_MENU: return "MENU HUD SIZES";
         case ITEM_THEME:        return "THEME PRESET";
         case ITEM_HUD_THEME:    return "HUD THEME";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
