@@ -204,6 +204,7 @@
 #define ITEM_APP_ID_HUD   14
 #define ITEM_RAM_HUD      15
 #define ITEM_HUD_ORDER_MENU 16
+#define ITEM_ALL_HUD_OVERLAYS_MENU 17
 #define ITEM_TIMEMODE     18
 #define ITEM_THEME_MENU   19
 #define ITEM_THEME        20
@@ -234,7 +235,8 @@
 #define ITEM_AUTO_HIDE    39
 #define ITEM_TOGGLE       40
 #define ITEM_RESET        41
-#define ITEM_COUNT        48
+#define ITEM_MENU_HUD_SIZE_MENU 48
+#define ITEM_COUNT        49
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -309,6 +311,8 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_THEME   2
 #define MENU_PAGE_CHOICE  3
 #define MENU_PAGE_HUD_ORDER 4
+#define MENU_PAGE_OVERLAYS 5
+#define MENU_PAGE_SIZE    6
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -335,6 +339,10 @@ static int saved_theme_index = 0;
 static int saved_theme_scroll = 0;
 static int saved_hud_order_index = 0;
 static int saved_hud_order_scroll = 0;
+static int saved_overlays_index = 0;
+static int saved_overlays_scroll = 0;
+static int saved_size_index = 0;
+static int saved_size_scroll = 0;
 
 static int current_menu_count(void);
 
@@ -2523,6 +2531,12 @@ static void save_current_menu_page_state(void) {
     } else if (menu_page == MENU_PAGE_HUD_ORDER) {
         saved_hud_order_index = menu_index;
         saved_hud_order_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_OVERLAYS) {
+        saved_overlays_index = menu_index;
+        saved_overlays_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_SIZE) {
+        saved_size_index = menu_index;
+        saved_size_scroll = menu_scroll;
     }
 }
 
@@ -2561,36 +2575,32 @@ static int current_menu_count(void) {
             return 20;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
+        case MENU_PAGE_OVERLAYS:
+            return 8;
+        case MENU_PAGE_SIZE:
+            return 2;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 24;
+            return 16;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[24] = {
+    static const int main_items[16] = {
         ITEM_HUD,
+        ITEM_THEME_MENU,
+        ITEM_ALL_HUD_OVERLAYS_MENU,
+        ITEM_PROFILE_MENU,
         ITEM_LAYOUT,
         ITEM_POSITION,
         ITEM_X_OFFSET,
         ITEM_Y_OFFSET,
-        ITEM_SIZE,
-        ITEM_MENU_SIZE,
+        ITEM_MENU_HUD_SIZE_MENU,
         ITEM_FONT,
         ITEM_HUD_ORDER_MENU,
-        ITEM_FPS,
-        ITEM_BATTERY,
-        ITEM_TIME,
-        ITEM_CPU_HUD,
-        ITEM_BUS_HUD,
-        ITEM_GPU_HUD,
-        ITEM_APP_ID_HUD,
-        ITEM_RAM_HUD,
         ITEM_TIMEMODE,
-        ITEM_PROFILE_MENU,
-        ITEM_THEME_MENU,
         ITEM_LANGUAGE,
         ITEM_AUTO_HIDE,
         ITEM_TOGGLE,
@@ -2626,6 +2636,22 @@ static int current_menu_item_at(int index) {
         ITEM_MENU_PICTURE_BG
     };
 
+    static const int overlay_items[8] = {
+        ITEM_FPS,
+        ITEM_BATTERY,
+        ITEM_TIME,
+        ITEM_CPU_HUD,
+        ITEM_BUS_HUD,
+        ITEM_GPU_HUD,
+        ITEM_APP_ID_HUD,
+        ITEM_RAM_HUD
+    };
+
+    static const int size_items[2] = {
+        ITEM_SIZE,
+        ITEM_MENU_SIZE
+    };
+
     if (index < 0) index = 0;
 
     if (menu_page == MENU_PAGE_HUD_ORDER) {
@@ -2644,11 +2670,21 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 19) index = 18;
+        if (index >= 20) index = 19;
         return theme_items[index];
     }
 
-    if (index >= 24) index = 23;
+    if (menu_page == MENU_PAGE_OVERLAYS) {
+        if (index >= 8) index = 7;
+        return overlay_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_SIZE) {
+        if (index >= 2) index = 1;
+        return size_items[index];
+    }
+
+    if (index >= 16) index = 15;
     return main_items[index];
 }
 
@@ -2675,6 +2711,12 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_HUD_ORDER) {
         menu_index = saved_hud_order_index;
         menu_scroll = saved_hud_order_scroll;
+    } else if (page == MENU_PAGE_OVERLAYS) {
+        menu_index = saved_overlays_index;
+        menu_scroll = saved_overlays_scroll;
+    } else if (page == MENU_PAGE_SIZE) {
+        menu_index = saved_size_index;
+        menu_scroll = saved_size_scroll;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -2727,6 +2769,10 @@ static const char *current_menu_title(void) {
     if (menu_page == MENU_PAGE_CHOICE) return choice_title_for_target();
 
     if (menu_page == MENU_PAGE_HUD_ORDER) return "HUD ORDER";
+
+    if (menu_page == MENU_PAGE_OVERLAYS) return "ALL HUD OVERLAYS";
+
+    if (menu_page == MENU_PAGE_SIZE) return "MENU & HUD SIZE";
 
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
@@ -2785,6 +2831,8 @@ static const char *menu_label(int item) {
             case ITEM_TIME:         return "RELOJ HUD";
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "TEMA / COLOR";
+            case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
+            case ITEM_MENU_HUD_SIZE_MENU: return "TAMANO MENU/HUD";
             case ITEM_THEME:        return "TEMA PRESET";
             case ITEM_HUD_THEME:    return "TEMA HUD";
             case ITEM_HUD_TEXT:     return "TEXTO HUD";
@@ -2837,6 +2885,8 @@ static const char *menu_label(int item) {
         case ITEM_TIME:         return "CLOCK HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR";
+        case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALL HUD OVERLAYS";
+        case ITEM_MENU_HUD_SIZE_MENU: return "MENU & HUD SIZE";
         case ITEM_THEME:        return "THEME PRESET";
         case ITEM_HUD_THEME:    return "HUD THEME";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
@@ -2914,6 +2964,8 @@ static const char *menu_value(int item) {
         case ITEM_HUD_BOX:      return onoff_name(hud_box_enabled);
         case ITEM_HUD_BOX_BG:   return menu_bg_name_for(hud_box_bg_color);
         case ITEM_THEME_MENU:   return word_open();
+        case ITEM_ALL_HUD_OVERLAYS_MENU: return word_open();
+        case ITEM_MENU_HUD_SIZE_MENU: return word_open();
         case ITEM_THEME:        return theme_name();
         case ITEM_HUD_THEME:    return hud_theme_name();
         case ITEM_PROFILE_MENU: return word_open();
@@ -2970,8 +3022,16 @@ static void menu_change(int dir) {
             enter_menu_page(MENU_PAGE_THEME);
             break;
 
+        case ITEM_ALL_HUD_OVERLAYS_MENU:
+            enter_menu_page(MENU_PAGE_OVERLAYS);
+            break;
+
         case ITEM_PROFILE_MENU:
             enter_menu_page(MENU_PAGE_PROFILE);
+            break;
+
+        case ITEM_MENU_HUD_SIZE_MENU:
+            enter_menu_page(MENU_PAGE_SIZE);
             break;
 
         case ITEM_HUD_ORDER_MENU:
