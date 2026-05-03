@@ -348,10 +348,12 @@ static char cached_ip_text[20] = "IP OFF";
  * Do NOT query NetCtl constantly from the HUD draw path.
  * IP updates only when IP HUD is ON and only once every 5 seconds.
  */
-#define IP_CACHE_UPDATE_USEC 5000000
+#define IP_CACHE_UPDATE_USEC 10000000
 
 static SceUInt64 last_ip_cache_tick = 0;
 static int g_net_module_failed = 0;
+static int g_ip_query_attempts = 0;
+static int g_ip_query_disabled = 0;
 
 typedef struct VitaHUD_PSVSClockFrequency {
     SceInt32 cpu;
@@ -388,27 +390,15 @@ static int resolve_psvs_clock_export(void) {
 }
 
 static void ensure_net_module_ready(void) {
-    int ret;
-
-    if (g_net_module_checked) {
-        return;
-    }
-
-    g_net_module_checked = 1;
-
-    ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
-
     /*
-     * 0x8002D013 is commonly returned when the sysmodule is already loaded.
-     * Treat that as OK. Any real failure disables IP calls so it cannot break HUD/menu.
+     * IMPORTANT:
+     * Do NOT load NET from VitaHUD anymore.
+     * Loading SCE_SYSMODULE_NET from this shell overlay plugin made the menu freeze/dead
+     * on some systems. NetCtl is queried directly and safely throttled instead.
      */
-    if (ret >= 0 || ret == (int)0x8002D013) {
-        g_net_module_ready = 1;
-        g_net_module_failed = 0;
-    } else {
-        g_net_module_ready = 0;
-        g_net_module_failed = 1;
-    }
+    g_net_module_checked = 1;
+    g_net_module_ready = 1;
+    g_net_module_failed = 0;
 }
 
 static int g_screen_w = 960;
@@ -1142,10 +1132,29 @@ static void update_ip_cache_safe(void) {
     int pos;
 
     /*
-     * If IP HUD is OFF, never touch NetCtl.
-     * This keeps normal HUD/menu use completely isolated from network calls.
+     * SAFE IP RULES:
+     * - If IP HUD is OFF, do not touch NetCtl.
+     * - If the menu is open, do not touch NetCtl. This keeps navigation alive.
+     * - Never load NET here or in module_start.
+     * - Query only every 10 seconds.
+     * - If it fails a few times, stop querying until IP is toggled off/on or reboot.
      */
     if (!show_ip) {
+        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        last_ip_cache_tick = 0;
+        g_ip_query_attempts = 0;
+        g_ip_query_disabled = 0;
+        return;
+    }
+
+    if (menu_open) {
+        if (cached_ip_text[0] == '\0' || cached_ip_text[3] == 'O') {
+            copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP WAIT");
+        }
+        return;
+    }
+
+    if (g_ip_query_disabled) {
         copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
         return;
     }
@@ -1159,18 +1168,6 @@ static void update_ip_cache_safe(void) {
 
     last_ip_cache_tick = now;
 
-    if (g_net_module_failed) {
-        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-        return;
-    }
-
-    ensure_net_module_ready();
-
-    if (!g_net_module_ready) {
-        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-        return;
-    }
-
     for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
         ((char *)&net_info)[i] = 0;
     }
@@ -1178,9 +1175,17 @@ static void update_ip_cache_safe(void) {
     ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
 
     if (ret < 0 || net_info.ip_address[0] == '\0') {
+        g_ip_query_attempts++;
         copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+
+        if (g_ip_query_attempts >= 3) {
+            g_ip_query_disabled = 1;
+        }
+
         return;
     }
+
+    g_ip_query_attempts = 0;
 
     pos = 0;
     pos = append_text(cached_ip_text, pos, "IP ");
@@ -1192,7 +1197,6 @@ static void update_ip_cache_safe(void) {
 
     cached_ip_text[pos] = '\0';
 }
-
 static void update_system_cache(void) {
     SceRtcTick tick;
     SceUInt64 now;
@@ -4147,25 +4151,19 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
 }
 
 int module_start(SceSize args, void *argp) {
-    int net_ret;
-
     (void)args;
     (void)argp;
 
     /*
-     * Prepare NET once at startup. This is intentionally outside the render hook.
-     * If it fails, IP HUD safely falls back to IP OFF.
+     * Do NOT load NET here.
+     * IP is now queried safely only when IP HUD is ON, menu is closed,
+     * and the 10-second cache timer allows it.
      */
-    net_ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
-    g_net_module_checked = 1;
-
-    if (net_ret >= 0 || net_ret == (int)0x8002D013) {
-        g_net_module_ready = 1;
-        g_net_module_failed = 0;
-    } else {
-        g_net_module_ready = 0;
-        g_net_module_failed = 1;
-    }
+    g_net_module_checked = 0;
+    g_net_module_ready = 0;
+    g_net_module_failed = 0;
+    g_ip_query_attempts = 0;
+    g_ip_query_disabled = 0;
 
     load_profile();
 
