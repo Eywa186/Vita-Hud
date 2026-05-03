@@ -178,7 +178,8 @@
 #define HUD_ORDER_GPU     4
 #define HUD_ORDER_APP_ID  5
 #define HUD_ORDER_RAM     6
-#define HUD_ORDER_COUNT   7
+#define HUD_ORDER_FPS     7
+#define HUD_ORDER_COUNT   8
 
 /*
  * MENU ORDER ONLY.
@@ -257,6 +258,7 @@ static int show_ram = 0;
 static int use_24h_time = 0;
 
 static int hud_order[HUD_ORDER_COUNT] = {
+    HUD_ORDER_FPS,
     HUD_ORDER_BATTERY,
     HUD_ORDER_CLOCK,
     HUD_ORDER_CPU,
@@ -508,13 +510,14 @@ static int get_config_int(const char *buf, const char *key, int default_value) {
 
 
 static void reset_hud_order_defaults(void) {
-    hud_order[0] = HUD_ORDER_BATTERY;
-    hud_order[1] = HUD_ORDER_CLOCK;
-    hud_order[2] = HUD_ORDER_CPU;
-    hud_order[3] = HUD_ORDER_BUS;
-    hud_order[4] = HUD_ORDER_GPU;
-    hud_order[5] = HUD_ORDER_APP_ID;
-    hud_order[6] = HUD_ORDER_RAM;
+    hud_order[0] = HUD_ORDER_FPS;
+    hud_order[1] = HUD_ORDER_BATTERY;
+    hud_order[2] = HUD_ORDER_CLOCK;
+    hud_order[3] = HUD_ORDER_CPU;
+    hud_order[4] = HUD_ORDER_BUS;
+    hud_order[5] = HUD_ORDER_GPU;
+    hud_order[6] = HUD_ORDER_APP_ID;
+    hud_order[7] = HUD_ORDER_RAM;
 }
 
 static void clamp_hud_order(void) {
@@ -540,13 +543,14 @@ static void clamp_hud_order(void) {
 
 static const char *hud_order_name_for(int id) {
     switch (id) {
-        case HUD_ORDER_BATTERY: return "BATTERY";
-        case HUD_ORDER_CLOCK:   return "CLOCK";
+        case HUD_ORDER_BATTERY: return "BATTERY HUD";
+        case HUD_ORDER_CLOCK:   return "CLOCK HUD";
         case HUD_ORDER_CPU:     return "CPU";
         case HUD_ORDER_BUS:     return "BUS";
         case HUD_ORDER_GPU:     return "GPU";
         case HUD_ORDER_APP_ID:  return "APP ID";
         case HUD_ORDER_RAM:     return "RAM";
+        case HUD_ORDER_FPS:     return "FPS HUD";
         default:                return "UNKNOWN";
     }
 }
@@ -723,6 +727,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "hud_order4", hud_order[4]);
     write_config_line(fd, "hud_order5", hud_order[5]);
     write_config_line(fd, "hud_order6", hud_order[6]);
+    write_config_line(fd, "hud_order7", hud_order[7]);
 
     write_config_line(fd, "hud_text_color", hud_text_color);
     write_config_line(fd, "hud_shadow_color", hud_shadow_color);
@@ -776,6 +781,7 @@ static void load_settings_from_buffer(char *buf) {
     hud_order[4] = get_config_int(buf, "hud_order4", hud_order[4]);
     hud_order[5] = get_config_int(buf, "hud_order5", hud_order[5]);
     hud_order[6] = get_config_int(buf, "hud_order6", hud_order[6]);
+    hud_order[7] = get_config_int(buf, "hud_order7", hud_order[7]);
 
     hud_text_color = get_config_int(buf, "hud_text_color", hud_text_color);
     hud_shadow_color = get_config_int(buf, "hud_shadow_color", hud_shadow_color);
@@ -2533,6 +2539,7 @@ static int current_menu_item_at(int index) {
         ITEM_SIZE,
         ITEM_MENU_SIZE,
         ITEM_FONT,
+        ITEM_HUD_ORDER_MENU,
         ITEM_FPS,
         ITEM_BATTERY,
         ITEM_TIME,
@@ -2541,7 +2548,6 @@ static int current_menu_item_at(int index) {
         ITEM_GPU_HUD,
         ITEM_APP_ID_HUD,
         ITEM_RAM_HUD,
-        ITEM_HUD_ORDER_MENU,
         ITEM_TIMEMODE,
         ITEM_PROFILE_MENU,
         ITEM_THEME_MENU,
@@ -2732,9 +2738,9 @@ static const char *menu_label(int item) {
             case ITEM_SIZE:         return "TAMANO HUD";
             case ITEM_MENU_SIZE:    return "TAMANO MENU";
             case ITEM_FONT:         return "FUENTE";
-            case ITEM_FPS:          return "FPS";
-            case ITEM_BATTERY:      return "BATERIA";
-            case ITEM_TIME:         return "RELOJ";
+            case ITEM_FPS:          return "FPS HUD";
+            case ITEM_BATTERY:      return "BATERIA HUD";
+            case ITEM_TIME:         return "RELOJ HUD";
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "TEMA / COLOR";
             case ITEM_THEME:        return "TEMA PRESET";
@@ -2783,9 +2789,9 @@ static const char *menu_label(int item) {
         case ITEM_SIZE:         return "HUD SIZE";
         case ITEM_MENU_SIZE:    return "MAIN MENU SIZE";
         case ITEM_FONT:         return "FONT";
-        case ITEM_FPS:          return "FPS";
-        case ITEM_BATTERY:      return "BATTERY";
-        case ITEM_TIME:         return "CLOCK";
+        case ITEM_FPS:          return "FPS HUD";
+        case ITEM_BATTERY:      return "BATTERY HUD";
+        case ITEM_TIME:         return "CLOCK HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR";
         case ITEM_THEME:        return "THEME PRESET";
@@ -2827,7 +2833,7 @@ static const char *menu_label(int item) {
 
 static const char *menu_value(int item) {
     if (item >= ITEM_HUD_ORDER_BASE) {
-        return "X MOVE";
+        return "L/R MOVE";
     }
 
     if (item >= ITEM_CHOICE_BASE) {
@@ -3329,15 +3335,27 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         line_y += 12;
     }
 
-    draw_text_shadow(
-        pixels,
-        pitch,
-        x,
-        y + h - 22,
-        tr_footer(),
-        text_col,
-        1
-    );
+    if (menu_page == MENU_PAGE_HUD_ORDER) {
+        draw_text_shadow(
+            pixels,
+            pitch,
+            x,
+            y + h - 22,
+            "UP/DOWN SELECT  LEFT/RIGHT MOVE  O BACK",
+            text_col,
+            1
+        );
+    } else {
+        draw_text_shadow(
+            pixels,
+            pitch,
+            x,
+            y + h - 22,
+            tr_footer(),
+            text_col,
+            1
+        );
+    }
 
     g_menu_text_mode = 0;
 }
@@ -3579,7 +3597,7 @@ static void handle_input(void) {
 
         handle_menu_horizontal(buttons, pressed);
 
-        if (pressed & SCE_CTRL_CROSS) {
+        if ((pressed & SCE_CTRL_CROSS) && menu_page != MENU_PAGE_HUD_ORDER) {
             menu_change(1);
         }
 
@@ -3713,16 +3731,14 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         total_w = 0;
         total_h = 0;
 
-        if (show_fps) {
-            total_w = fps_w;
-            total_h += text_h + gap_small;
-        }
-
         for (order_i = 0; order_i < HUD_ORDER_COUNT; order_i++) {
             order_id = hud_order[order_i];
             order_w = 0;
 
             switch (order_id) {
+                case HUD_ORDER_FPS:
+                    if (show_fps) order_w = fps_w;
+                    break;
                 case HUD_ORDER_BATTERY:
                     if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
                     break;
@@ -3758,15 +3774,14 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     } else {
         total_w = 0;
 
-        if (show_fps) {
-            total_w += fps_w;
-        }
-
         for (order_i = 0; order_i < HUD_ORDER_COUNT; order_i++) {
             order_id = hud_order[order_i];
             order_w = 0;
 
             switch (order_id) {
+                case HUD_ORDER_FPS:
+                    if (show_fps) order_w = fps_w;
+                    break;
                 case HUD_ORDER_BATTERY:
                     if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
                     break;
@@ -3851,16 +3866,18 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     y = start_y;
 
     if (hud_layout == LAYOUT_STACKED || force_stacked) {
-        if (show_fps) {
-            draw_text_shadow(pixels, pitch, x, y, fps_text, text_color, scale);
-            y += text_h + gap_small;
-        }
-
         for (order_i = 0; order_i < HUD_ORDER_COUNT; order_i++) {
             order_id = hud_order[order_i];
             draw_y = y;
 
             switch (order_id) {
+                case HUD_ORDER_FPS:
+                    if (show_fps) {
+                        draw_text_shadow(pixels, pitch, x, draw_y, fps_text, text_color, scale);
+                        y += text_h + gap_small;
+                    }
+                    break;
+
                 case HUD_ORDER_BATTERY:
                     if (show_battery) {
                         draw_battery_icon(pixels, pitch, x, draw_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
@@ -3932,11 +3949,6 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     has_any = 0;
 
-    if (show_fps) {
-        x += add_text_block(pixels, pitch, x, start_y, fps_text, text_color, scale);
-        has_any = 1;
-    }
-
     for (order_i = 0; order_i < HUD_ORDER_COUNT; order_i++) {
         order_id = hud_order[order_i];
         order_w = 0;
@@ -3978,6 +3990,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         has_any = 1;
 
         switch (order_id) {
+            case HUD_ORDER_FPS:
+                draw_text_shadow(pixels, pitch, x, start_y, fps_text, text_color, scale);
+                x += fps_w;
+                break;
+
             case HUD_ORDER_BATTERY:
                 draw_battery_icon(pixels, pitch, x, start_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
                 x += battery_icon_w + gap_small;
