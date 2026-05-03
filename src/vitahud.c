@@ -1,5 +1,9 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/kernel/sysmem.h>
+#include <psp2/sysmodule.h>
+#include <psp2/net/netctl.h>
+#include <stdint.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
@@ -202,23 +206,29 @@
 #define ITEM_HUD_SHADOW   23
 #define ITEM_HUD_ICON     24
 #define ITEM_CLOCK_ICON   25
-#define ITEM_HUD_BOX      26
-#define ITEM_HUD_BOX_BG   27
-#define ITEM_MENU_TEXT    28
-#define ITEM_MENU_SELECT  29
-#define ITEM_MENU_BORDER  30
-#define ITEM_MENUBG       31
-#define ITEM_TOP_BAR      32
-#define ITEM_MENU_PICTURE_BG 33
-#define ITEM_PROFILE_MENU 34
-#define ITEM_PROFILE      35
-#define ITEM_SAVE_PROFILE 36
-#define ITEM_LOAD_PROFILE 37
-#define ITEM_LANGUAGE     38
-#define ITEM_AUTO_HIDE    39
-#define ITEM_TOGGLE       40
-#define ITEM_RESET        41
-#define ITEM_COUNT        42
+#define ITEM_CPU_ICON     26
+#define ITEM_BUS_ICON     27
+#define ITEM_GPU_ICON     28
+#define ITEM_APP_ICON     29
+#define ITEM_RAM_ICON     30
+#define ITEM_WIFI_ICON    31
+#define ITEM_HUD_BOX      32
+#define ITEM_HUD_BOX_BG   33
+#define ITEM_MENU_TEXT    34
+#define ITEM_MENU_SELECT  35
+#define ITEM_MENU_BORDER  36
+#define ITEM_MENUBG       37
+#define ITEM_TOP_BAR      38
+#define ITEM_MENU_PICTURE_BG 39
+#define ITEM_PROFILE_MENU 40
+#define ITEM_PROFILE      41
+#define ITEM_SAVE_PROFILE 42
+#define ITEM_LOAD_PROFILE 43
+#define ITEM_LANGUAGE     44
+#define ITEM_AUTO_HIDE    45
+#define ITEM_TOGGLE       46
+#define ITEM_RESET        47
+#define ITEM_COUNT        48
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -248,6 +258,12 @@ static int hud_text_color = COLOR_WHITE;
 static int hud_shadow_color = COLOR_BLACK;
 static int hud_icon_color = COLOR_AUTO;
 static int clock_icon_color = COLOR_AUTO;
+static int cpu_icon_color = COLOR_AUTO;
+static int bus_icon_color = COLOR_AUTO;
+static int gpu_icon_color = COLOR_AUTO;
+static int app_icon_color = COLOR_AUTO;
+static int ram_icon_color = COLOR_AUTO;
+static int wifi_icon_color = COLOR_AUTO;
 static int menu_text_color = COLOR_WHITE;
 static int menu_select_color = COLOR_YELLOW;
 static int menu_border_color = COLOR_WHITE;
@@ -316,7 +332,7 @@ static tai_hook_ref_t g_display_hook;
  * Do NOT call system APIs inside draw_hud().
  * Update cached strings on a timer, then draw cached text only.
  */
-#define SYSTEM_CACHE_UPDATE_USEC 500000
+#define SYSTEM_CACHE_UPDATE_USEC 250000
 
 static SceUInt64 last_system_cache_tick = 0;
 
@@ -326,6 +342,59 @@ static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
+
+
+typedef struct VitaHUD_PSVSClockFrequency {
+    SceInt32 cpu;
+    SceInt32 gpu;
+    SceInt32 xbar;
+    SceInt32 bus;
+} VitaHUD_PSVSClockFrequency;
+
+typedef int (*VitaHUD_PSVSGetClockFrequencyFn)(VitaHUD_PSVSClockFrequency *clocks);
+
+static int g_psvs_clock_checked = 0;
+static VitaHUD_PSVSGetClockFrequencyFn g_psvs_get_clock_frequency = 0;
+static int g_net_module_checked = 0;
+static int g_net_module_ready = 0;
+
+#define PSVSP_LIB_NID_GETCLOCK 0x0366B343
+#define PSVSP_FUNC_NID_GETCLOCK 0x3A7A3A18
+
+static int resolve_psvs_clock_export(void) {
+    uintptr_t func = 0;
+
+    if (g_psvs_clock_checked) {
+        return g_psvs_get_clock_frequency != 0;
+    }
+
+    g_psvs_clock_checked = 1;
+
+    if (taiGetModuleExportFunc("PSVshellPlus_Kernel", PSVSP_LIB_NID_GETCLOCK, PSVSP_FUNC_NID_GETCLOCK, &func) >= 0 && func != 0) {
+        g_psvs_get_clock_frequency = (VitaHUD_PSVSGetClockFrequencyFn)func;
+        return 1;
+    }
+
+    return 0;
+}
+
+static void ensure_net_module_ready(void) {
+    int ret;
+
+    if (g_net_module_checked) {
+        return;
+    }
+
+    g_net_module_checked = 1;
+
+    ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+
+    if (ret >= 0 || ret == (int)0x8002D013) {
+        g_net_module_ready = 1;
+    } else {
+        g_net_module_ready = 1;
+    }
+}
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -514,6 +583,12 @@ static void reset_defaults(void) {
     hud_shadow_color = COLOR_BLACK;
     hud_icon_color = COLOR_AUTO;
     clock_icon_color = COLOR_AUTO;
+    cpu_icon_color = COLOR_AUTO;
+    bus_icon_color = COLOR_AUTO;
+    gpu_icon_color = COLOR_AUTO;
+    app_icon_color = COLOR_AUTO;
+    ram_icon_color = COLOR_AUTO;
+    wifi_icon_color = COLOR_AUTO;
     menu_text_color = COLOR_WHITE;
     menu_select_color = COLOR_YELLOW;
     menu_border_color = COLOR_WHITE;
@@ -562,6 +637,12 @@ static void clamp_settings(void) {
     if (hud_shadow_color < 0 || hud_shadow_color >= COLOR_COUNT) hud_shadow_color = COLOR_BLACK;
     if (hud_icon_color < 0 || hud_icon_color >= COLOR_COUNT) hud_icon_color = COLOR_AUTO;
     if (clock_icon_color < 0 || clock_icon_color >= COLOR_COUNT) clock_icon_color = COLOR_AUTO;
+    if (cpu_icon_color < 0 || cpu_icon_color >= COLOR_COUNT) cpu_icon_color = COLOR_AUTO;
+    if (bus_icon_color < 0 || bus_icon_color >= COLOR_COUNT) bus_icon_color = COLOR_AUTO;
+    if (gpu_icon_color < 0 || gpu_icon_color >= COLOR_COUNT) gpu_icon_color = COLOR_AUTO;
+    if (app_icon_color < 0 || app_icon_color >= COLOR_COUNT) app_icon_color = COLOR_AUTO;
+    if (ram_icon_color < 0 || ram_icon_color >= COLOR_COUNT) ram_icon_color = COLOR_AUTO;
+    if (wifi_icon_color < 0 || wifi_icon_color >= COLOR_COUNT) wifi_icon_color = COLOR_AUTO;
     if (menu_text_color < 0 || menu_text_color >= COLOR_COUNT) menu_text_color = COLOR_WHITE;
     if (menu_select_color < 0 || menu_select_color >= COLOR_COUNT) menu_select_color = COLOR_YELLOW;
     if (menu_border_color < 0 || menu_border_color >= COLOR_COUNT) menu_border_color = COLOR_WHITE;
@@ -603,7 +684,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_fps", show_fps);
     write_config_line(fd, "show_battery", show_battery);
     write_config_line(fd, "show_time", show_time);
-    /* show_charging removed: charging is displayed in the battery icon. */
+    write_config_line(fd, "show_charging", show_charging);
     write_config_line(fd, "show_cpu", show_cpu);
     write_config_line(fd, "show_bus", show_bus);
     write_config_line(fd, "show_gpu", show_gpu);
@@ -616,6 +697,12 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "hud_shadow_color", hud_shadow_color);
     write_config_line(fd, "hud_icon_color", hud_icon_color);
     write_config_line(fd, "clock_icon_color", clock_icon_color);
+    write_config_line(fd, "cpu_icon_color", cpu_icon_color);
+    write_config_line(fd, "bus_icon_color", bus_icon_color);
+    write_config_line(fd, "gpu_icon_color", gpu_icon_color);
+    write_config_line(fd, "app_icon_color", app_icon_color);
+    write_config_line(fd, "ram_icon_color", ram_icon_color);
+    write_config_line(fd, "wifi_icon_color", wifi_icon_color);
     write_config_line(fd, "menu_text_color", menu_text_color);
     write_config_line(fd, "menu_select_color", menu_select_color);
     write_config_line(fd, "menu_border_color", menu_border_color);
@@ -646,8 +733,7 @@ static void load_settings_from_buffer(char *buf) {
     show_fps = get_config_int(buf, "show_fps", show_fps);
     show_battery = get_config_int(buf, "show_battery", show_battery);
     show_time = get_config_int(buf, "show_time", show_time);
-    /* CHARGING text option is removed. Charging is now shown by the battery icon only. */
-    show_charging = 0;
+    show_charging = get_config_int(buf, "show_charging", show_charging);
     show_cpu = get_config_int(buf, "show_cpu", show_cpu);
     show_bus = get_config_int(buf, "show_bus", show_bus);
     show_gpu = get_config_int(buf, "show_gpu", show_gpu);
@@ -660,6 +746,12 @@ static void load_settings_from_buffer(char *buf) {
     hud_shadow_color = get_config_int(buf, "hud_shadow_color", hud_shadow_color);
     hud_icon_color = get_config_int(buf, "hud_icon_color", hud_icon_color);
     clock_icon_color = get_config_int(buf, "clock_icon_color", clock_icon_color);
+    cpu_icon_color = get_config_int(buf, "cpu_icon_color", cpu_icon_color);
+    bus_icon_color = get_config_int(buf, "bus_icon_color", bus_icon_color);
+    gpu_icon_color = get_config_int(buf, "gpu_icon_color", gpu_icon_color);
+    app_icon_color = get_config_int(buf, "app_icon_color", app_icon_color);
+    ram_icon_color = get_config_int(buf, "ram_icon_color", ram_icon_color);
+    wifi_icon_color = get_config_int(buf, "wifi_icon_color", wifi_icon_color);
     menu_text_color = get_config_int(buf, "menu_text_color", menu_text_color);
     menu_select_color = get_config_int(buf, "menu_select_color", menu_select_color);
     menu_border_color = get_config_int(buf, "menu_border_color", menu_border_color);
@@ -1046,19 +1138,94 @@ static void update_system_cache(void) {
      * This matches the safer PSVshellPlus idea: update system data on a timer,
      * then draw cached values.
      */
-    build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", scePowerGetArmClockFrequency());
-    build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", scePowerGetBusClockFrequency());
-    build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", scePowerGetGpuClockFrequency());
+    {
+        VitaHUD_PSVSClockFrequency clocks;
+        int got_psvs_clock = 0;
+
+        clocks.cpu = 0;
+        clocks.gpu = 0;
+        clocks.xbar = 0;
+        clocks.bus = 0;
+
+        if (resolve_psvs_clock_export() && g_psvs_get_clock_frequency) {
+            if (g_psvs_get_clock_frequency(&clocks) >= 0) {
+                got_psvs_clock = 1;
+            }
+        }
+
+        if (got_psvs_clock) {
+            build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", clocks.cpu);
+            build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", clocks.gpu);
+            build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", clocks.xbar);
+        } else {
+            build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", scePowerGetArmClockFrequency());
+            build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", scePowerGetBusClockFrequency());
+            build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", scePowerGetGpuClockFrequency());
+        }
+    }
 
     build_app_id_live_text(temp_app);
     copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
 
     /*
-     * RAM/IP intentionally remain placeholders for now.
-     * Next step: port PSVshellPlus-style kernel RAM provider.
+     * RAM HUD working pass.
+     * Uses VitaSDK user-mode sysmem free-size API.
+     * Keep this cached here, not in draw_hud(), so drawing remains stable.
      */
-    copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM OFF");
-    copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+    {
+        SceKernelFreeMemorySizeInfo mem_info;
+        int ret;
+        int free_bytes;
+        int free_mb;
+        int pos;
+
+        mem_info.size = sizeof(SceKernelFreeMemorySizeInfo);
+        mem_info.size_user = 0;
+        mem_info.size_cdram = 0;
+        mem_info.size_phycont = 0;
+
+        ret = sceKernelGetFreeMemorySize(&mem_info);
+
+        if (ret >= 0) {
+            /*
+             * Total visible free user memory pools.
+             * size_user + size_cdram + size_phycont are returned in bytes.
+             */
+            free_bytes = mem_info.size_user + mem_info.size_cdram + mem_info.size_phycont;
+            free_mb = free_bytes / (1024 * 1024);
+
+            pos = 0;
+            pos = append_text(cached_ram_text, pos, "RAM ");
+            pos = append_int(cached_ram_text, pos, free_mb);
+            pos = append_text(cached_ram_text, pos, "M");
+            cached_ram_text[pos] = '\0';
+        } else {
+            copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM ERR");
+        }
+    }
+
+    {
+        SceNetCtlInfo net_info;
+        int ret;
+        int pos;
+        int i;
+
+        ensure_net_module_ready();
+
+        for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
+            ((char *)&net_info)[i] = 0;
+        }
+
+        ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
+
+        if (g_net_module_ready && ret >= 0 && net_info.ip_address[0] != '\0') {
+            pos = 0;
+            pos = append_text(cached_ip_text, pos, "IP ");
+            copy_cstr(cached_ip_text + pos, sizeof(cached_ip_text) - pos, net_info.ip_address);
+        } else {
+            copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
+        }
+    }
 }
 
 static void build_time_text(char *out) {
@@ -1102,7 +1269,6 @@ static void build_time_text(char *out) {
     put_2digits(&out[pos], time.minute);
     pos += 2;
 
-    out[pos++] = ' ';
     out[pos++] = is_pm ? 'P' : 'A';
     out[pos++] = 'M';
     out[pos] = '\0';
@@ -1475,19 +1641,6 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
     if (fill_w > 0) {
         draw_rect(pixels, pitch, inner_x, inner_y, fill_w, inner_h, fill);
     }
-
-    /* Charger plugged in: show charging state inside the battery icon. */
-    if (scePowerIsBatteryCharging()) {
-        unsigned int bolt = 0xFFFFFFFF;
-        int bx = x + (5 * scale);
-        int by = y + scale;
-
-        draw_rect(pixels, pitch, bx + (2 * scale), by, scale, scale, bolt);
-        draw_rect(pixels, pitch, bx + scale, by + scale, scale, scale, bolt);
-        draw_rect(pixels, pitch, bx, by + (2 * scale), scale, scale, bolt);
-        draw_rect(pixels, pitch, bx + scale, by + (3 * scale), scale, scale, bolt);
-        draw_rect(pixels, pitch, bx, by + (4 * scale), scale, scale, bolt);
-    }
 }
 
 static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
@@ -1512,6 +1665,135 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (5 * s), y + (5 * s), s, s, white);
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
+static unsigned int get_extra_icon_color(int color_id) {
+    return color_value(color_id, color_value(hud_icon_color, 0xFFFFFFFF));
+}
+
+static int hud_extra_icon_w(int scale) {
+    return 9 * scale;
+}
+
+static int hud_extra_icon_h(int scale) {
+    return 7 * scale;
+}
+
+static void strip_hud_label(char *out, int out_size, const char *src, const char *label) {
+    int i = 0;
+    int j = 0;
+
+    if (!out || out_size <= 0) {
+        return;
+    }
+
+    out[0] = '\0';
+
+    if (!src) {
+        return;
+    }
+
+    while (label && label[i] && src[i] == label[i]) {
+        i++;
+    }
+
+    if (label && label[i] == '\0' && src[i] == ' ') {
+        i++;
+    } else {
+        i = 0;
+    }
+
+    while (src[i] && j < out_size - 1) {
+        out[j++] = src[i++];
+    }
+
+    out[j] = '\0';
+}
+
+static void draw_cpu_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int color_id) {
+    unsigned int col = get_extra_icon_color(color_id);
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x + (2 * s), y + (1 * s), 5 * s, 5 * s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000);
+
+    draw_rect(pixels, pitch, x + (1 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (1 * s), y + (4 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (4 * s), s, s, col);
+
+    draw_rect(pixels, pitch, x + (3 * s), y, s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y, s, s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (6 * s), s, s, col);
+}
+
+static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int color_id) {
+    unsigned int col = get_extra_icon_color(color_id);
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x, y + (1 * s), 7 * s, 5 * s, col);
+    draw_rect(pixels, pitch, x + s, y + (2 * s), 5 * s, 3 * s, 0x00000000);
+    draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, 3 * s, col);
+    draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col);
+}
+
+static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int color_id) {
+    unsigned int col = get_extra_icon_color(color_id);
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col);
+    draw_rect(pixels, pitch, x + s, y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + (7 * s), y + (3 * s), s, s, 0x00000000);
+    draw_rect(pixels, pitch, x + s, y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (5 * s), y + (6 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (6 * s), s, s, col);
+}
+
+static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int color_id) {
+    unsigned int col = get_extra_icon_color(color_id);
+    unsigned int cut = 0x00000000;
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    /* Better APP/game icon: small rounded game-card with screen + two controls. */
+    draw_rect(pixels, pitch, x + (1 * s), y, 7 * s, 7 * s, col);
+    draw_rect(pixels, pitch, x + (2 * s), y + (1 * s), 5 * s, 3 * s, cut);
+    draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), 2 * s, s, cut);
+    draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), s, s, cut);
+    draw_rect(pixels, pitch, x + (8 * s), y + (1 * s), s, 5 * s, col);
+}
+
+static void draw_wifi_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int color_id) {
+    unsigned int col = get_extra_icon_color(color_id);
+    int s = scale;
+
+    if (s < 1) s = 1;
+
+    /* Pixel Wi-Fi icon, 9x7. */
+    draw_rect(pixels, pitch, x + (1 * s), y, 7 * s, s, col);
+    draw_rect(pixels, pitch, x, y + (1 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (8 * s), y + (1 * s), s, s, col);
+
+    draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
+    draw_rect(pixels, pitch, x + (1 * s), y + (3 * s), s, s, col);
+    draw_rect(pixels, pitch, x + (7 * s), y + (3 * s), s, s, col);
+
+    draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 3 * s, s, col);
+    draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+}
+
+
 
 static const char *word_open(void) {
     switch (hud_language) {
@@ -2021,7 +2303,9 @@ static const char *hud_theme_name_for(int id) {
 
 static int item_uses_color_menu(int item) {
     return item == ITEM_HUD_TEXT || item == ITEM_HUD_SHADOW || item == ITEM_HUD_ICON ||
-           item == ITEM_CLOCK_ICON || item == ITEM_MENU_TEXT || item == ITEM_MENU_SELECT ||
+           item == ITEM_CLOCK_ICON || item == ITEM_CPU_ICON || item == ITEM_BUS_ICON ||
+           item == ITEM_GPU_ICON || item == ITEM_APP_ICON || item == ITEM_RAM_ICON ||
+           item == ITEM_WIFI_ICON || item == ITEM_MENU_TEXT || item == ITEM_MENU_SELECT ||
            item == ITEM_MENU_BORDER || item == ITEM_TOP_BAR;
 }
 
@@ -2058,6 +2342,12 @@ static int choice_current_index_for_target(int target) {
             case ITEM_HUD_SHADOW:  return hud_shadow_color;
             case ITEM_HUD_ICON:    return hud_icon_color;
             case ITEM_CLOCK_ICON:  return clock_icon_color;
+            case ITEM_CPU_ICON:    return cpu_icon_color;
+            case ITEM_BUS_ICON:    return bus_icon_color;
+            case ITEM_GPU_ICON:    return gpu_icon_color;
+            case ITEM_APP_ICON:    return app_icon_color;
+            case ITEM_RAM_ICON:    return ram_icon_color;
+            case ITEM_WIFI_ICON:   return wifi_icon_color;
             case ITEM_MENU_TEXT:   return menu_text_color;
             case ITEM_MENU_SELECT: return menu_select_color;
             case ITEM_MENU_BORDER: return menu_border_color;
@@ -2108,6 +2398,12 @@ static void set_choice_for_target(int target, int index) {
             case ITEM_HUD_SHADOW:  hud_shadow_color = index; break;
             case ITEM_HUD_ICON:    hud_icon_color = index; break;
             case ITEM_CLOCK_ICON:  clock_icon_color = index; break;
+            case ITEM_CPU_ICON:    cpu_icon_color = index; break;
+            case ITEM_BUS_ICON:    bus_icon_color = index; break;
+            case ITEM_GPU_ICON:    gpu_icon_color = index; break;
+            case ITEM_APP_ICON:    app_icon_color = index; break;
+            case ITEM_RAM_ICON:    ram_icon_color = index; break;
+            case ITEM_WIFI_ICON:   wifi_icon_color = index; break;
             case ITEM_MENU_TEXT:   menu_text_color = index; break;
             case ITEM_MENU_SELECT: menu_select_color = index; break;
             case ITEM_MENU_BORDER: menu_border_color = index; break;
@@ -2213,17 +2509,17 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 14;
+            return 20;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 24;
+            return 25;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[24] = {
+    static const int main_items[25] = {
         ITEM_HUD,
         ITEM_LAYOUT,
         ITEM_POSITION,
@@ -2241,6 +2537,7 @@ static int current_menu_item_at(int index) {
         ITEM_APP_ID_HUD,
         ITEM_RAM_HUD,
         ITEM_IP_HUD,
+        ITEM_CHARGING,
         ITEM_TIMEMODE,
         ITEM_PROFILE_MENU,
         ITEM_THEME_MENU,
@@ -2256,13 +2553,19 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[14] = {
+    static const int theme_items[20] = {
         ITEM_THEME,
         ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
         ITEM_HUD_ICON,
         ITEM_CLOCK_ICON,
+        ITEM_CPU_ICON,
+        ITEM_BUS_ICON,
+        ITEM_GPU_ICON,
+        ITEM_APP_ICON,
+        ITEM_RAM_ICON,
+        ITEM_WIFI_ICON,
         ITEM_HUD_BOX,
         ITEM_HUD_BOX_BG,
         ITEM_MENU_TEXT,
@@ -2290,7 +2593,7 @@ static int current_menu_item_at(int index) {
         return theme_items[index];
     }
 
-    if (index >= 24) index = 23;
+    if (index >= 25) index = 24;
     return main_items[index];
 }
 
@@ -2419,6 +2722,12 @@ static const char *menu_label(int item) {
             case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
             case ITEM_HUD_ICON:     return "ICONO BATERIA";
             case ITEM_CLOCK_ICON:   return "ICONO RELOJ";
+            case ITEM_CPU_ICON:     return "ICONO CPU";
+            case ITEM_BUS_ICON:     return "ICONO BUS";
+            case ITEM_GPU_ICON:     return "ICONO GPU";
+            case ITEM_APP_ICON:     return "ICONO JUEGO";
+            case ITEM_RAM_ICON:     return "ICONO RAM";
+            case ITEM_WIFI_ICON:    return "ICONO WIFI";
             case ITEM_HUD_BOX:      return "CAJA HUD";
             case ITEM_HUD_BOX_BG:   return "FONDO CAJA HUD";
             case ITEM_MENU_TEXT:    return "TEXTO MENU";
@@ -2466,6 +2775,12 @@ static const char *menu_label(int item) {
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "BATTERY ICON";
         case ITEM_CLOCK_ICON:   return "CLOCK ICON";
+        case ITEM_CPU_ICON:     return "CPU ICON";
+        case ITEM_BUS_ICON:     return "BUS ICON";
+        case ITEM_GPU_ICON:     return "GPU ICON";
+        case ITEM_APP_ICON:     return "GAME ICON";
+        case ITEM_RAM_ICON:     return "RAM ICON";
+        case ITEM_WIFI_ICON:    return "WIFI ICON";
         case ITEM_HUD_BOX:      return "HUD BOX";
         case ITEM_HUD_BOX_BG:   return "HUD BOX BACKGROUND";
         case ITEM_MENU_TEXT:    return "MENU TEXT";
@@ -2513,6 +2828,12 @@ static const char *menu_value(int item) {
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
         case ITEM_HUD_ICON:     return color_name_generic(hud_icon_color);
         case ITEM_CLOCK_ICON:   return color_name_generic(clock_icon_color);
+        case ITEM_CPU_ICON:     return color_name_generic(cpu_icon_color);
+        case ITEM_BUS_ICON:     return color_name_generic(bus_icon_color);
+        case ITEM_GPU_ICON:     return color_name_generic(gpu_icon_color);
+        case ITEM_APP_ICON:     return color_name_generic(app_icon_color);
+        case ITEM_RAM_ICON:     return color_name_generic(ram_icon_color);
+        case ITEM_WIFI_ICON:    return color_name_generic(wifi_icon_color);
         case ITEM_MENU_TEXT:    return color_name_generic(menu_text_color);
         case ITEM_MENU_SELECT:  return color_name_generic(menu_select_color);
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
@@ -3283,6 +3604,12 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     char app_id_text[24];
     char ram_text[16];
     char ip_text[20];
+    char cpu_value_text[16];
+    char bus_value_text[16];
+    char gpu_value_text[16];
+    char app_id_value_text[24];
+    char ram_value_text[16];
+    char ip_value_text[20];
 
     int scale;
     int gap_small;
@@ -3305,6 +3632,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int battery_icon_h;
     int clock_icon_w;
     int clock_icon_h;
+    int extra_icon_w;
+    int extra_icon_h;
 
     int total_w = 0;
     int total_h;
@@ -3333,24 +3662,33 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     build_ram_text(ram_text);
     build_ip_text(ip_text);
 
+    strip_hud_label(cpu_value_text, sizeof(cpu_value_text), cpu_text, "CPU");
+    strip_hud_label(bus_value_text, sizeof(bus_value_text), bus_text, "BUS");
+    strip_hud_label(gpu_value_text, sizeof(gpu_value_text), gpu_text, "GPU");
+    strip_hud_label(app_id_value_text, sizeof(app_id_value_text), app_id_text, "APP");
+    strip_hud_label(ram_value_text, sizeof(ram_value_text), ram_text, "RAM");
+    strip_hud_label(ip_value_text, sizeof(ip_value_text), ip_text, "IP");
+
     force_stacked = 0;
 
     fps_w = show_fps ? text_width(fps_text, scale) : 0;
     battery_text_w = show_battery ? text_width(battery_text, scale) : 0;
     time_w = show_time ? text_width(time_text, scale) : 0;
-    charging_w = 0;
-    cpu_w = show_cpu ? text_width(cpu_text, scale) : 0;
-    bus_w = show_bus ? text_width(bus_text, scale) : 0;
-    gpu_w = show_gpu ? text_width(gpu_text, scale) : 0;
-    app_id_w = show_app_id ? text_width(app_id_text, scale) : 0;
-    ram_w = show_ram ? text_width(ram_text, scale) : 0;
-    ip_w = show_ip ? text_width(ip_text, scale) : 0;
+    charging_w = show_charging ? text_width(charging_text, scale) : 0;
+    cpu_w = show_cpu ? text_width(cpu_value_text, scale) : 0;
+    bus_w = show_bus ? text_width(bus_value_text, scale) : 0;
+    gpu_w = show_gpu ? text_width(gpu_value_text, scale) : 0;
+    app_id_w = show_app_id ? text_width(app_id_value_text, scale) : 0;
+    ram_w = show_ram ? text_width(ram_value_text, scale) : 0;
+    ip_w = show_ip ? text_width(ip_value_text, scale) : 0;
 
     battery_icon_w = show_battery ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
     battery_icon_h = 7 * icon_scale;
 
     clock_icon_w = show_time ? (7 * icon_scale) : 0;
     clock_icon_h = 7 * icon_scale;
+    extra_icon_w = hud_extra_icon_w(icon_scale);
+    extra_icon_h = hud_extra_icon_h(icon_scale);
 
     text_h = 7 * scale;
 
@@ -3360,20 +3698,20 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_fps && fps_w > total_w) total_w = fps_w;
         if (show_battery && battery_icon_w + gap_small + battery_text_w > total_w) total_w = battery_icon_w + gap_small + battery_text_w;
         if (show_time && clock_icon_w + gap_small + time_w > total_w) total_w = clock_icon_w + gap_small + time_w;
-        /* CHARGING text removed from HUD; battery icon shows charging state. */
-        if (show_cpu && cpu_w > total_w) total_w = cpu_w;
-        if (show_bus && bus_w > total_w) total_w = bus_w;
-        if (show_gpu && gpu_w > total_w) total_w = gpu_w;
-        if (show_app_id && app_id_w > total_w) total_w = app_id_w;
-        if (show_ram && ram_w > total_w) total_w = ram_w;
-        if (show_ip && ip_w > total_w) total_w = ip_w;
+        if (show_charging && charging_w > total_w) total_w = charging_w;
+        if (show_cpu && extra_icon_w + gap_small + cpu_w > total_w) total_w = extra_icon_w + gap_small + cpu_w;
+        if (show_bus && extra_icon_w + gap_small + bus_w > total_w) total_w = extra_icon_w + gap_small + bus_w;
+        if (show_gpu && extra_icon_w + gap_small + gpu_w > total_w) total_w = extra_icon_w + gap_small + gpu_w;
+        if (show_app_id && extra_icon_w + gap_small + app_id_w > total_w) total_w = extra_icon_w + gap_small + app_id_w;
+        if (show_ram && extra_icon_w + gap_small + ram_w > total_w) total_w = extra_icon_w + gap_small + ram_w;
+        if (show_ip && extra_icon_w + gap_small + ip_w > total_w) total_w = extra_icon_w + gap_small + ip_w;
 
         total_h = 0;
 
         if (show_fps) total_h += text_h + gap_small;
         if (show_battery) total_h += text_h + gap_small;
         if (show_time) total_h += text_h + gap_small;
-        /* CHARGING text removed from HUD; battery icon shows charging state. */
+        if (show_charging) total_h += text_h + gap_small;
         if (show_cpu) total_h += text_h + gap_small;
         if (show_bus) total_h += text_h + gap_small;
         if (show_gpu) total_h += text_h + gap_small;
@@ -3397,36 +3735,39 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             total_w += clock_icon_w + gap_small + time_w;
         }
 
-        /* CHARGING text removed from HUD; battery icon shows charging state. */
+        if (show_charging) {
+            if (total_w > 0) total_w += gap_big;
+            total_w += charging_w;
+        }
 
         if (show_cpu) {
             if (total_w > 0) total_w += gap_big;
-            total_w += cpu_w;
+            total_w += extra_icon_w + gap_small + cpu_w;
         }
 
         if (show_bus) {
             if (total_w > 0) total_w += gap_big;
-            total_w += bus_w;
+            total_w += extra_icon_w + gap_small + bus_w;
         }
 
         if (show_gpu) {
             if (total_w > 0) total_w += gap_big;
-            total_w += gpu_w;
+            total_w += extra_icon_w + gap_small + gpu_w;
         }
 
         if (show_app_id) {
             if (total_w > 0) total_w += gap_big;
-            total_w += app_id_w;
+            total_w += extra_icon_w + gap_small + app_id_w;
         }
 
         if (show_ram) {
             if (total_w > 0) total_w += gap_big;
-            total_w += ram_w;
+            total_w += extra_icon_w + gap_small + ram_w;
         }
 
         if (show_ip) {
             if (total_w > 0) total_w += gap_big;
-            total_w += ip_w;
+            total_w += extra_icon_w + gap_small + ip_w;
         }
 
         total_h = text_h;
@@ -3513,35 +3854,44 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             y += text_h + gap_small;
         }
 
-        /* CHARGING text removed from HUD; battery icon shows charging state. */
+        if (show_charging) {
+            draw_text_shadow(pixels, pitch, x, y, charging_text, text_color, scale);
+            y += text_h + gap_small;
+        }
 
         if (show_cpu) {
-            draw_text_shadow(pixels, pitch, x, y, cpu_text, text_color, scale);
+            draw_cpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, cpu_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, cpu_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_bus) {
-            draw_text_shadow(pixels, pitch, x, y, bus_text, text_color, scale);
+            draw_cpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, bus_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, bus_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_gpu) {
-            draw_text_shadow(pixels, pitch, x, y, gpu_text, text_color, scale);
+            draw_gpu_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, gpu_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, gpu_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_app_id) {
-            draw_text_shadow(pixels, pitch, x, y, app_id_text, text_color, scale);
+            draw_game_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, app_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, app_id_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_ram) {
-            draw_text_shadow(pixels, pitch, x, y, ram_text, text_color, scale);
+            draw_ram_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, ram_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, ram_value_text, text_color, scale);
             y += text_h + gap_small;
         }
 
         if (show_ip) {
-            draw_text_shadow(pixels, pitch, x, y, ip_text, text_color, scale);
+            draw_wifi_icon(pixels, pitch, x, y + ((text_h - extra_icon_h) / 2), icon_scale, wifi_icon_color);
+            draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, y, ip_value_text, text_color, scale);
         }
 
         return;
@@ -3586,41 +3936,57 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         x += time_w;
     }
 
-    /* CHARGING text removed from HUD; battery icon shows charging state. */
+    if (show_charging) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, charging_text, text_color, scale);
+        x += charging_w;
+    }
 
     if (show_cpu) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, cpu_text, text_color, scale);
+        draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, cpu_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, cpu_value_text, text_color, scale);
         x += cpu_w;
     }
 
     if (show_bus) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, bus_text, text_color, scale);
+        draw_cpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, bus_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, bus_value_text, text_color, scale);
         x += bus_w;
     }
 
     if (show_gpu) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, gpu_text, text_color, scale);
+        draw_gpu_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, gpu_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, gpu_value_text, text_color, scale);
         x += gpu_w;
     }
 
     if (show_app_id) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, app_id_text, text_color, scale);
+        draw_game_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, app_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, app_id_value_text, text_color, scale);
         x += app_id_w;
     }
 
     if (show_ram) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, ram_text, text_color, scale);
+        draw_ram_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, ram_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, ram_value_text, text_color, scale);
         x += ram_w;
     }
 
     if (show_ip) {
         if (x != start_x) x += gap_big;
-        draw_text_shadow(pixels, pitch, x, start_y, ip_text, text_color, scale);
+        draw_wifi_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale, wifi_icon_color);
+        x += extra_icon_w + gap_small;
+        draw_text_shadow(pixels, pitch, x, start_y, ip_value_text, text_color, scale);
         x += ip_w;
     }
 }
