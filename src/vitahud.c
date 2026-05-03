@@ -549,8 +549,7 @@ static void clamp_settings(void) {
     if (show_fps < 0 || show_fps > 1) show_fps = 1;
     if (show_battery < 0 || show_battery > 1) show_battery = 1;
     if (show_time < 0 || show_time > 1) show_time = 1;
-    /* CHARGING row removed: charging state is now shown by battery icon only. */
-    show_charging = 0;
+    if (show_charging < 0 || show_charging > 1) show_charging = 0;
     if (show_cpu < 0 || show_cpu > 1) show_cpu = 0;
     if (show_bus < 0 || show_bus > 1) show_bus = 0;
     if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
@@ -604,7 +603,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_fps", show_fps);
     write_config_line(fd, "show_battery", show_battery);
     write_config_line(fd, "show_time", show_time);
-    write_config_line(fd, "show_charging", show_charging);
+    /* show_charging removed: charging is displayed in the battery icon. */
     write_config_line(fd, "show_cpu", show_cpu);
     write_config_line(fd, "show_bus", show_bus);
     write_config_line(fd, "show_gpu", show_gpu);
@@ -647,7 +646,8 @@ static void load_settings_from_buffer(char *buf) {
     show_fps = get_config_int(buf, "show_fps", show_fps);
     show_battery = get_config_int(buf, "show_battery", show_battery);
     show_time = get_config_int(buf, "show_time", show_time);
-    show_charging = get_config_int(buf, "show_charging", show_charging);
+    /* CHARGING text option is removed. Charging is now shown by the battery icon only. */
+    show_charging = 0;
     show_cpu = get_config_int(buf, "show_cpu", show_cpu);
     show_bus = get_config_int(buf, "show_bus", show_bus);
     show_gpu = get_config_int(buf, "show_gpu", show_gpu);
@@ -1476,15 +1476,15 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
         draw_rect(pixels, pitch, inner_x, inner_y, fill_w, inner_h, fill);
     }
 
-    /* Charging indicator: replaces the removed CHARGING HUD text/menu row. */
+    /* Charger plugged in: show charging state inside the battery icon. */
     if (scePowerIsBatteryCharging()) {
-        unsigned int bolt = 0xFF00FFFF;
+        unsigned int bolt = 0xFFFFFFFF;
         int bx = x + (5 * scale);
         int by = y + scale;
 
         draw_rect(pixels, pitch, bx + (2 * scale), by, scale, scale, bolt);
         draw_rect(pixels, pitch, bx + scale, by + scale, scale, scale, bolt);
-        draw_rect(pixels, pitch, bx, by + (2 * scale), 2 * scale, scale, bolt);
+        draw_rect(pixels, pitch, bx, by + (2 * scale), scale, scale, bolt);
         draw_rect(pixels, pitch, bx + scale, by + (3 * scale), scale, scale, bolt);
         draw_rect(pixels, pitch, bx, by + (4 * scale), scale, scale, bolt);
     }
@@ -2507,7 +2507,7 @@ static const char *menu_value(int item) {
         case ITEM_FPS:          return onoff_name(show_fps);
         case ITEM_BATTERY:      return onoff_name(show_battery);
         case ITEM_TIME:         return onoff_name(show_time);
-        case ITEM_CHARGING:     return "";
+        case ITEM_CHARGING:     return onoff_name(show_charging);
         case ITEM_TIMEMODE:     return time_mode_name();
         case ITEM_HUD_TEXT:     return color_name_generic(hud_text_color);
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
@@ -2636,7 +2636,7 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_CHARGING:
-            show_charging = 0;
+            show_charging = !show_charging;
             break;
 
         case ITEM_TIMEMODE:
@@ -3360,6 +3360,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_fps && fps_w > total_w) total_w = fps_w;
         if (show_battery && battery_icon_w + gap_small + battery_text_w > total_w) total_w = battery_icon_w + gap_small + battery_text_w;
         if (show_time && clock_icon_w + gap_small + time_w > total_w) total_w = clock_icon_w + gap_small + time_w;
+        /* CHARGING text removed from HUD; battery icon shows charging state. */
         if (show_cpu && cpu_w > total_w) total_w = cpu_w;
         if (show_bus && bus_w > total_w) total_w = bus_w;
         if (show_gpu && gpu_w > total_w) total_w = gpu_w;
@@ -3372,6 +3373,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         if (show_fps) total_h += text_h + gap_small;
         if (show_battery) total_h += text_h + gap_small;
         if (show_time) total_h += text_h + gap_small;
+        /* CHARGING text removed from HUD; battery icon shows charging state. */
         if (show_cpu) total_h += text_h + gap_small;
         if (show_bus) total_h += text_h + gap_small;
         if (show_gpu) total_h += text_h + gap_small;
@@ -3394,6 +3396,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             if (total_w > 0) total_w += gap_big;
             total_w += clock_icon_w + gap_small + time_w;
         }
+
+        /* CHARGING text removed from HUD; battery icon shows charging state. */
 
         if (show_cpu) {
             if (total_w > 0) total_w += gap_big;
@@ -3509,6 +3513,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             y += text_h + gap_small;
         }
 
+        /* CHARGING text removed from HUD; battery icon shows charging state. */
+
         if (show_cpu) {
             draw_text_shadow(pixels, pitch, x, y, cpu_text, text_color, scale);
             y += text_h + gap_small;
@@ -3579,6 +3585,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         draw_text_shadow(pixels, pitch, x, start_y, time_text, text_color, scale);
         x += time_w;
     }
+
+    /* CHARGING text removed from HUD; battery icon shows charging state. */
 
     if (show_cpu) {
         if (x != start_x) x += gap_big;
