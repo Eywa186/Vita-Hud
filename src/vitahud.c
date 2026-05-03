@@ -455,9 +455,9 @@ static void clamp_settings(void) {
     if (hud_position < 0 || hud_position >= POS_COUNT) hud_position = POS_BOTTOM_RIGHT;
     if (hud_layout < 0 || hud_layout >= LAYOUT_COUNT) hud_layout = LAYOUT_SINGLE;
     if (hud_x_offset < 0) hud_x_offset = 0;
-    if (hud_x_offset > 120) hud_x_offset = 120;
+    if (hud_x_offset > 960) hud_x_offset = 960;
     if (hud_y_offset < 0) hud_y_offset = 0;
-    if (hud_y_offset > 120) hud_y_offset = 120;
+    if (hud_y_offset > 544) hud_y_offset = 544;
     if (hud_size < 0 || hud_size >= SIZE_COUNT) hud_size = SIZE_NORMAL;
     if (font_style < 0 || font_style >= FONT_COUNT) font_style = FONT_DEFAULT;
 
@@ -684,7 +684,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_CYAN;
             menu_border_color = COLOR_CYAN;
             menu_bg_color = BG_BLACK;
-            hud_box_enabled = 1;
             hud_box_bg_color = BG_BLACK;
             font_style = FONT_VITA;
             break;
@@ -697,7 +696,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_GREEN;
             menu_bg_color = BG_BLACK;
-            hud_box_enabled = 1;
             hud_box_bg_color = BG_BLACK;
             font_style = FONT_PSP;
             break;
@@ -710,7 +708,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_WHITE;
             menu_border_color = COLOR_LIME;
             menu_bg_color = BG_BLACK;
-            hud_box_enabled = 1;
             hud_box_bg_color = BG_BLACK;
             font_style = FONT_DIGITAL;
             break;
@@ -723,7 +720,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_MAGENTA;
             menu_border_color = COLOR_CYAN;
             menu_bg_color = BG_NAVY;
-            hud_box_enabled = 1;
             hud_box_bg_color = BG_NAVY;
             font_style = FONT_ARCADE;
             break;
@@ -736,7 +732,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_ORANGE;
             menu_bg_color = BG_PURPLE;
-            hud_box_enabled = 1;
             hud_box_bg_color = BG_PURPLE;
             font_style = FONT_RETRO;
             break;
@@ -749,7 +744,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_WHITE;
             menu_border_color = COLOR_WHITE;
             menu_bg_color = BG_TRANSPARENT;
-            hud_box_enabled = 0;
             hud_box_bg_color = BG_TRANSPARENT;
             font_style = FONT_CLEAN;
             break;
@@ -763,7 +757,6 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_WHITE;
             menu_bg_color = BG_BLACK;
-            hud_box_enabled = 0;
             hud_box_bg_color = BG_BLACK;
             font_style = FONT_DEFAULT;
             break;
@@ -1430,22 +1423,6 @@ static const char *word_loaded(void) {
     }
 }
 
-
-static const char *word_reset(void) {
-    switch (hud_language) {
-        case LANG_ES: return "REINICIAR";
-        case LANG_FR: return "RESET";
-        case LANG_DE: return "RESET";
-        case LANG_IT: return "RESET";
-        case LANG_PT: return "RESETAR";
-        case LANG_NL: return "RESET";
-        case LANG_ID: return "RESET";
-        case LANG_TR: return "SIFIRLA";
-        case LANG_PL: return "RESET";
-        default: return "RESET";
-    }
-}
-
 static const char *onoff_name(int value) {
     switch (hud_language) {
         case LANG_ES: return value ? "SI" : "NO";
@@ -1461,176 +1438,66 @@ static const char *onoff_name(int value) {
     }
 }
 
-
 static const char *position_name(void) {
     switch (hud_position) {
-        case POS_BOTTOM_LEFT:
-            switch (hud_language) {
-                case LANG_ES: return "ABAJO IZQ";
-                case LANG_FR: return "BAS GAUCHE";
-                case LANG_DE: return "UNTEN LINKS";
-                case LANG_IT: return "BASSO SIN";
-                case LANG_PT: return "BAIXO ESQ";
-                case LANG_NL: return "ONDER LINKS";
-                case LANG_ID: return "BAWAH KIRI";
-                case LANG_TR: return "ALT SOL";
-                case LANG_PL: return "DOL LEWO";
-                default: return "BOTTOM LEFT";
-            }
-        case POS_TOP_RIGHT:
-            switch (hud_language) {
-                case LANG_ES: return "ARRIBA DER";
-                case LANG_FR: return "HAUT DROITE";
-                case LANG_DE: return "OBEN RECHTS";
-                case LANG_IT: return "ALTO DESTRA";
-                case LANG_PT: return "CIMA DIR";
-                case LANG_NL: return "BOVEN RECHTS";
-                case LANG_ID: return "ATAS KANAN";
-                case LANG_TR: return "UST SAG";
-                case LANG_PL: return "GORA PRAWO";
-                default: return "TOP RIGHT";
-            }
-        case POS_TOP_LEFT:
-            switch (hud_language) {
-                case LANG_ES: return "ARRIBA IZQ";
-                case LANG_FR: return "HAUT GAUCHE";
-                case LANG_DE: return "OBEN LINKS";
-                case LANG_IT: return "ALTO SIN";
-                case LANG_PT: return "CIMA ESQ";
-                case LANG_NL: return "BOVEN LINKS";
-                case LANG_ID: return "ATAS KIRI";
-                case LANG_TR: return "UST SOL";
-                case LANG_PL: return "GORA LEWO";
-                default: return "TOP LEFT";
-            }
+        case POS_BOTTOM_LEFT:  return "BOTTOM LEFT";
+        case POS_TOP_RIGHT:    return "TOP RIGHT";
+        case POS_TOP_LEFT:     return "TOP LEFT";
         case POS_BOTTOM_RIGHT:
-        default:
-            switch (hud_language) {
-                case LANG_ES: return "ABAJO DER";
-                case LANG_FR: return "BAS DROITE";
-                case LANG_DE: return "UNTEN RECHTS";
-                case LANG_IT: return "BASSO DESTRA";
-                case LANG_PT: return "BAIXO DIR";
-                case LANG_NL: return "ONDER RECHTS";
-                case LANG_ID: return "BAWAH KANAN";
-                case LANG_TR: return "ALT SAG";
-                case LANG_PL: return "DOL PRAWO";
-                default: return "BOTTOM RIGHT";
-            }
+        default:               return "BOTTOM RIGHT";
     }
 }
-
 
 static const char *layout_name(void) {
     switch (hud_layout) {
-        case LAYOUT_COMPACT:
-            switch (hud_language) {
-                case LANG_ES: return "COMPACTO";
-                case LANG_FR: return "COMPACT";
-                case LANG_DE: return "KOMPAKT";
-                case LANG_IT: return "COMPATTO";
-                case LANG_PT: return "COMPACTO";
-                case LANG_NL: return "COMPACT";
-                case LANG_ID: return "RINGKAS";
-                case LANG_TR: return "KOMPAKT";
-                case LANG_PL: return "KOMPAKT";
-                default: return "COMPACT";
-            }
-        case LAYOUT_STACKED:
-            switch (hud_language) {
-                case LANG_ES: return "APILADO";
-                case LANG_FR: return "EMPILER";
-                case LANG_DE: return "GESTAPELT";
-                case LANG_IT: return "IMPILATO";
-                case LANG_PT: return "EMPILHADO";
-                case LANG_NL: return "GESTAPELD";
-                case LANG_ID: return "BERTUMPUK";
-                case LANG_TR: return "YIGIN";
-                case LANG_PL: return "STOS";
-                default: return "STACKED";
-            }
-        case LAYOUT_ICONS:
-            switch (hud_language) {
-                case LANG_ES: return "ICONOS";
-                case LANG_FR: return "ICONES";
-                case LANG_DE: return "SYMBOLE";
-                case LANG_IT: return "ICONE";
-                case LANG_PT: return "ICONES";
-                case LANG_NL: return "ICONEN";
-                case LANG_ID: return "IKON";
-                case LANG_TR: return "SIMGE";
-                case LANG_PL: return "IKONY";
-                default: return "ICONS";
-            }
+        case LAYOUT_COMPACT: return "COMPACT";
+        case LAYOUT_STACKED: return "STACKED";
+        case LAYOUT_ICONS:   return "ICONS";
         case LAYOUT_SINGLE:
-        default:
-            switch (hud_language) {
-                case LANG_ES: return "UNA LINEA";
-                case LANG_FR: return "SIMPLE";
-                case LANG_DE: return "EINZELN";
-                case LANG_IT: return "SINGOLO";
-                case LANG_PT: return "UNICO";
-                case LANG_NL: return "ENKEL";
-                case LANG_ID: return "SATU";
-                case LANG_TR: return "TEK";
-                case LANG_PL: return "JEDEN";
-                default: return "SINGLE";
-            }
+        default:             return "SINGLE";
     }
 }
-
 
 static const char *size_name(void) {
     switch (hud_size) {
-        case SIZE_MICRO:  return hud_language == LANG_ES ? "MICRO" : hud_language == LANG_FR ? "MICRO" : hud_language == LANG_DE ? "MIKRO" : hud_language == LANG_IT ? "MICRO" : hud_language == LANG_PT ? "MICRO" : hud_language == LANG_NL ? "MICRO" : hud_language == LANG_ID ? "MIKRO" : hud_language == LANG_TR ? "MIKRO" : hud_language == LANG_PL ? "MIKRO" : "MICRO";
-        case SIZE_NORMAL: return hud_language == LANG_ES ? "NORMAL" : hud_language == LANG_FR ? "NORMAL" : hud_language == LANG_DE ? "NORMAL" : hud_language == LANG_IT ? "NORMALE" : hud_language == LANG_PT ? "NORMAL" : hud_language == LANG_NL ? "NORMAAL" : hud_language == LANG_ID ? "NORMAL" : hud_language == LANG_TR ? "NORMAL" : hud_language == LANG_PL ? "NORMALNY" : "NORMAL";
+        case SIZE_MICRO:  return "MICRO";
+        case SIZE_NORMAL: return "NORMAL";
         case SIZE_LARGE:
-        default:          return hud_language == LANG_ES ? "GRANDE" : hud_language == LANG_FR ? "GRAND" : hud_language == LANG_DE ? "GROSS" : hud_language == LANG_IT ? "GRANDE" : hud_language == LANG_PT ? "GRANDE" : hud_language == LANG_NL ? "GROOT" : hud_language == LANG_ID ? "BESAR" : hud_language == LANG_TR ? "BUYUK" : hud_language == LANG_PL ? "DUZY" : "LARGE";
+        default:          return "LARGE";
     }
 }
-
 
 static const char *color_name_generic(int color_id) {
     switch (color_id) {
-        case COLOR_AUTO:    return hud_language == LANG_ES ? "AUTO" : hud_language == LANG_FR ? "AUTO" : hud_language == LANG_DE ? "AUTO" : hud_language == LANG_IT ? "AUTO" : hud_language == LANG_PT ? "AUTO" : hud_language == LANG_NL ? "AUTO" : hud_language == LANG_ID ? "AUTO" : hud_language == LANG_TR ? "OTO" : hud_language == LANG_PL ? "AUTO" : "AUTO";
-        case COLOR_WHITE:   return hud_language == LANG_ES ? "BLANCO" : hud_language == LANG_FR ? "BLANC" : hud_language == LANG_DE ? "WEISS" : hud_language == LANG_IT ? "BIANCO" : hud_language == LANG_PT ? "BRANCO" : hud_language == LANG_NL ? "WIT" : hud_language == LANG_ID ? "PUTIH" : hud_language == LANG_TR ? "BEYAZ" : hud_language == LANG_PL ? "BIALY" : "WHITE";
-        case COLOR_GREEN:   return hud_language == LANG_ES ? "VERDE" : hud_language == LANG_FR ? "VERT" : hud_language == LANG_DE ? "GRUEN" : hud_language == LANG_IT ? "VERDE" : hud_language == LANG_PT ? "VERDE" : hud_language == LANG_NL ? "GROEN" : hud_language == LANG_ID ? "HIJAU" : hud_language == LANG_TR ? "YESIL" : hud_language == LANG_PL ? "ZIELONY" : "GREEN";
-        case COLOR_YELLOW:  return hud_language == LANG_ES ? "AMARILLO" : hud_language == LANG_FR ? "JAUNE" : hud_language == LANG_DE ? "GELB" : hud_language == LANG_IT ? "GIALLO" : hud_language == LANG_PT ? "AMARELO" : hud_language == LANG_NL ? "GEEL" : hud_language == LANG_ID ? "KUNING" : hud_language == LANG_TR ? "SARI" : hud_language == LANG_PL ? "ZOLTY" : "YELLOW";
-        case COLOR_RED:     return hud_language == LANG_ES ? "ROJO" : hud_language == LANG_FR ? "ROUGE" : hud_language == LANG_DE ? "ROT" : hud_language == LANG_IT ? "ROSSO" : hud_language == LANG_PT ? "VERMELHO" : hud_language == LANG_NL ? "ROOD" : hud_language == LANG_ID ? "MERAH" : hud_language == LANG_TR ? "KIRMIZI" : hud_language == LANG_PL ? "CZERWONY" : "RED";
-        case COLOR_CYAN:    return hud_language == LANG_ES ? "CIAN" : hud_language == LANG_FR ? "CYAN" : hud_language == LANG_DE ? "CYAN" : hud_language == LANG_IT ? "CIANO" : hud_language == LANG_PT ? "CIANO" : hud_language == LANG_NL ? "CYAAN" : hud_language == LANG_ID ? "SIAN" : hud_language == LANG_TR ? "CAMGOBEGI" : hud_language == LANG_PL ? "CYJAN" : "CYAN";
-        case COLOR_MAGENTA: return hud_language == LANG_ES ? "MAGENTA" : hud_language == LANG_FR ? "MAGENTA" : hud_language == LANG_DE ? "MAGENTA" : hud_language == LANG_IT ? "MAGENTA" : hud_language == LANG_PT ? "MAGENTA" : hud_language == LANG_NL ? "MAGENTA" : hud_language == LANG_ID ? "MAGENTA" : hud_language == LANG_TR ? "MACENTA" : hud_language == LANG_PL ? "MAGENTA" : "MAGENTA";
-        case COLOR_ORANGE:  return hud_language == LANG_ES ? "NARANJA" : hud_language == LANG_FR ? "ORANGE" : hud_language == LANG_DE ? "ORANGE" : hud_language == LANG_IT ? "ARANCIO" : hud_language == LANG_PT ? "LARANJA" : hud_language == LANG_NL ? "ORANJE" : hud_language == LANG_ID ? "ORANYE" : hud_language == LANG_TR ? "TURUNCU" : hud_language == LANG_PL ? "POMARANCZ" : "ORANGE";
-        case COLOR_BLUE:    return hud_language == LANG_ES ? "AZUL" : hud_language == LANG_FR ? "BLEU" : hud_language == LANG_DE ? "BLAU" : hud_language == LANG_IT ? "BLU" : hud_language == LANG_PT ? "AZUL" : hud_language == LANG_NL ? "BLAUW" : hud_language == LANG_ID ? "BIRU" : hud_language == LANG_TR ? "MAVI" : hud_language == LANG_PL ? "NIEBIESKI" : "BLUE";
-        case COLOR_PINK:    return hud_language == LANG_ES ? "ROSA" : hud_language == LANG_FR ? "ROSE" : hud_language == LANG_DE ? "PINK" : hud_language == LANG_IT ? "ROSA" : hud_language == LANG_PT ? "ROSA" : hud_language == LANG_NL ? "ROZE" : hud_language == LANG_ID ? "MERAH MUDA" : hud_language == LANG_TR ? "PEMBE" : hud_language == LANG_PL ? "ROZOWY" : "PINK";
-        case COLOR_LIME:    return hud_language == LANG_ES ? "LIMA" : hud_language == LANG_FR ? "LIME" : hud_language == LANG_DE ? "LIMETTE" : hud_language == LANG_IT ? "LIME" : hud_language == LANG_PT ? "LIMA" : hud_language == LANG_NL ? "LIMOEN" : hud_language == LANG_ID ? "LIME" : hud_language == LANG_TR ? "LIME" : hud_language == LANG_PL ? "LIMONKA" : "LIME";
-        case COLOR_SILVER:  return hud_language == LANG_ES ? "PLATA" : hud_language == LANG_FR ? "ARGENT" : hud_language == LANG_DE ? "SILBER" : hud_language == LANG_IT ? "ARGENTO" : hud_language == LANG_PT ? "PRATA" : hud_language == LANG_NL ? "ZILVER" : hud_language == LANG_ID ? "PERAK" : hud_language == LANG_TR ? "GUMUS" : hud_language == LANG_PL ? "SREBRNY" : "SILVER";
-        case COLOR_BLACK:   return hud_language == LANG_ES ? "NEGRO" : hud_language == LANG_FR ? "NOIR" : hud_language == LANG_DE ? "SCHWARZ" : hud_language == LANG_IT ? "NERO" : hud_language == LANG_PT ? "PRETO" : hud_language == LANG_NL ? "ZWART" : hud_language == LANG_ID ? "HITAM" : hud_language == LANG_TR ? "SIYAH" : hud_language == LANG_PL ? "CZARNY" : "BLACK";
-        default:            return hud_language == LANG_ES ? "BLANCO" : "WHITE";
+        case COLOR_AUTO:    return "AUTO";
+        case COLOR_WHITE:   return "WHITE";
+        case COLOR_GREEN:   return "GREEN";
+        case COLOR_YELLOW:  return "YELLOW";
+        case COLOR_RED:     return "RED";
+        case COLOR_CYAN:    return "CYAN";
+        case COLOR_MAGENTA: return "MAGENTA";
+        case COLOR_ORANGE:  return "ORANGE";
+        case COLOR_BLUE:    return "BLUE";
+        case COLOR_PINK:    return "PINK";
+        case COLOR_LIME:    return "LIME";
+        case COLOR_SILVER:  return "SILVER";
+        case COLOR_BLACK:   return "BLACK";
+        default:            return "WHITE";
     }
 }
 
-
 static const char *menu_bg_name_for(int bg_id) {
     switch (bg_id) {
-        case BG_TRANSPARENT:
-            switch (hud_language) { case LANG_ES: return "TRANSPARENTE"; case LANG_FR: return "TRANSPARENT"; case LANG_DE: return "TRANSPARENT"; case LANG_IT: return "TRASPARENTE"; case LANG_PT: return "TRANSPARENTE"; case LANG_NL: return "TRANSPARANT"; case LANG_ID: return "TRANSPARAN"; case LANG_TR: return "SEFFAF"; case LANG_PL: return "PRZEZROCZ"; default: return "TRANSPARENT"; }
-        case BG_GRAY:
-            switch (hud_language) { case LANG_ES: return "GRIS"; case LANG_FR: return "GRIS"; case LANG_DE: return "GRAU"; case LANG_IT: return "GRIGIO"; case LANG_PT: return "CINZA"; case LANG_NL: return "GRIJS"; case LANG_ID: return "ABU ABU"; case LANG_TR: return "GRI"; case LANG_PL: return "SZARY"; default: return "GRAY"; }
-        case BG_NAVY:
-            switch (hud_language) { case LANG_ES: return "AZUL OSCURO"; case LANG_FR: return "BLEU NUIT"; case LANG_DE: return "MARINE"; case LANG_IT: return "BLU SCURO"; case LANG_PT: return "AZUL ESCURO"; case LANG_NL: return "MARINE"; case LANG_ID: return "BIRU TUA"; case LANG_TR: return "LACIVERT"; case LANG_PL: return "GRANAT"; default: return "NAVY"; }
-        case BG_GREEN:
-            switch (hud_language) { case LANG_ES: return "VERDE"; case LANG_FR: return "VERT"; case LANG_DE: return "GRUEN"; case LANG_IT: return "VERDE"; case LANG_PT: return "VERDE"; case LANG_NL: return "GROEN"; case LANG_ID: return "HIJAU"; case LANG_TR: return "YESIL"; case LANG_PL: return "ZIELONY"; default: return "GREEN"; }
-        case BG_PURPLE:
-            switch (hud_language) { case LANG_ES: return "MORADO"; case LANG_FR: return "VIOLET"; case LANG_DE: return "LILA"; case LANG_IT: return "VIOLA"; case LANG_PT: return "ROXO"; case LANG_NL: return "PAARS"; case LANG_ID: return "UNGU"; case LANG_TR: return "MOR"; case LANG_PL: return "FIOLET"; default: return "PURPLE"; }
-        case BG_TEAL:
-            switch (hud_language) { case LANG_ES: return "TEAL"; case LANG_FR: return "SARCELLE"; case LANG_DE: return "PETROL"; case LANG_IT: return "TEAL"; case LANG_PT: return "VERDE AZUL"; case LANG_NL: return "TEAL"; case LANG_ID: return "TEAL"; case LANG_TR: return "CAMGOBEGI"; case LANG_PL: return "MORSKI"; default: return "TEAL"; }
-        case BG_RED:
-            switch (hud_language) { case LANG_ES: return "ROJO"; case LANG_FR: return "ROUGE"; case LANG_DE: return "ROT"; case LANG_IT: return "ROSSO"; case LANG_PT: return "VERMELHO"; case LANG_NL: return "ROOD"; case LANG_ID: return "MERAH"; case LANG_TR: return "KIRMIZI"; case LANG_PL: return "CZERWONY"; default: return "RED"; }
-        case BG_WHITE:
-            switch (hud_language) { case LANG_ES: return "BLANCO"; case LANG_FR: return "BLANC"; case LANG_DE: return "WEISS"; case LANG_IT: return "BIANCO"; case LANG_PT: return "BRANCO"; case LANG_NL: return "WIT"; case LANG_ID: return "PUTIH"; case LANG_TR: return "BEYAZ"; case LANG_PL: return "BIALY"; default: return "WHITE"; }
+        case BG_TRANSPARENT: return hud_language == LANG_ES ? "TRANSPARENTE" : "TRANSPARENT";
+        case BG_GRAY:        return hud_language == LANG_ES ? "GRIS" : "GRAY";
+        case BG_NAVY:        return hud_language == LANG_ES ? "AZUL OSCURO" : "NAVY";
+        case BG_GREEN:       return hud_language == LANG_ES ? "VERDE" : "GREEN";
+        case BG_PURPLE:      return hud_language == LANG_ES ? "MORADO" : "PURPLE";
+        case BG_TEAL:        return hud_language == LANG_ES ? "TEAL" : "TEAL";
+        case BG_RED:         return hud_language == LANG_ES ? "ROJO" : "RED";
+        case BG_WHITE:       return hud_language == LANG_ES ? "BLANCO" : "WHITE";
         case BG_BLACK:
-        default:
-            switch (hud_language) { case LANG_ES: return "NEGRO"; case LANG_FR: return "NOIR"; case LANG_DE: return "SCHWARZ"; case LANG_IT: return "NERO"; case LANG_PT: return "PRETO"; case LANG_NL: return "ZWART"; case LANG_ID: return "HITAM"; case LANG_TR: return "SIYAH"; case LANG_PL: return "CZARNY"; default: return "BLACK"; }
+        default:             return hud_language == LANG_ES ? "NEGRO" : "BLACK";
     }
 }
 
@@ -1654,30 +1521,29 @@ static const char *menu_bg_name_old_unused(void) {
     }
 }
 
-
 static const char *font_name(void) {
     switch (font_style) {
-        case FONT_BOLD:    return hud_language == LANG_ES ? "NEGRITA" : hud_language == LANG_FR ? "GRAS" : hud_language == LANG_DE ? "FETT" : hud_language == LANG_IT ? "GRASSETTO" : hud_language == LANG_PT ? "NEGRITO" : hud_language == LANG_NL ? "VET" : hud_language == LANG_ID ? "TEBAL" : hud_language == LANG_TR ? "KALIN" : hud_language == LANG_PL ? "POGRUB" : "BOLD";
-        case FONT_THIN:    return hud_language == LANG_ES ? "FINA" : hud_language == LANG_FR ? "FIN" : hud_language == LANG_DE ? "DUENN" : hud_language == LANG_IT ? "SOTTILE" : hud_language == LANG_PT ? "FINA" : hud_language == LANG_NL ? "DUN" : hud_language == LANG_ID ? "TIPIS" : hud_language == LANG_TR ? "INCE" : hud_language == LANG_PL ? "CIENKI" : "THIN";
-        case FONT_WIDE:    return hud_language == LANG_ES ? "ANCHA" : hud_language == LANG_FR ? "LARGE" : hud_language == LANG_DE ? "BREIT" : hud_language == LANG_IT ? "LARGA" : hud_language == LANG_PT ? "LARGA" : hud_language == LANG_NL ? "BREED" : hud_language == LANG_ID ? "LEBAR" : hud_language == LANG_TR ? "GENIS" : hud_language == LANG_PL ? "SZEROKI" : "WIDE";
-        case FONT_TALL:    return hud_language == LANG_ES ? "ALTA" : hud_language == LANG_FR ? "HAUT" : hud_language == LANG_DE ? "HOCH" : hud_language == LANG_IT ? "ALTA" : hud_language == LANG_PT ? "ALTA" : hud_language == LANG_NL ? "HOOG" : hud_language == LANG_ID ? "TINGGI" : hud_language == LANG_TR ? "UZUN" : hud_language == LANG_PL ? "WYSOKI" : "TALL";
-        case FONT_COMPACT: return hud_language == LANG_ES ? "COMPACTA" : hud_language == LANG_FR ? "COMPACT" : hud_language == LANG_DE ? "KOMPAKT" : hud_language == LANG_IT ? "COMPATTA" : hud_language == LANG_PT ? "COMPACTA" : hud_language == LANG_NL ? "COMPACT" : hud_language == LANG_ID ? "RINGKAS" : hud_language == LANG_TR ? "KOMPAKT" : hud_language == LANG_PL ? "KOMPAKT" : "COMPACT";
-        case FONT_DOUBLE:  return hud_language == LANG_ES ? "DOBLE" : hud_language == LANG_FR ? "DOUBLE" : hud_language == LANG_DE ? "DOPPELT" : hud_language == LANG_IT ? "DOPPIO" : hud_language == LANG_PT ? "DUPLO" : hud_language == LANG_NL ? "DUBBEL" : hud_language == LANG_ID ? "GANDA" : hud_language == LANG_TR ? "CIFT" : hud_language == LANG_PL ? "PODWOJNY" : "DOUBLE";
-        case FONT_BLOCK:   return hud_language == LANG_ES ? "BLOQUE" : hud_language == LANG_FR ? "BLOC" : hud_language == LANG_DE ? "BLOCK" : hud_language == LANG_IT ? "BLOCCO" : hud_language == LANG_PT ? "BLOCO" : hud_language == LANG_NL ? "BLOK" : hud_language == LANG_ID ? "BLOK" : hud_language == LANG_TR ? "BLOK" : hud_language == LANG_PL ? "BLOK" : "BLOCK";
-        case FONT_SHADOW:  return hud_language == LANG_ES ? "SOMBRA" : hud_language == LANG_FR ? "OMBRE" : hud_language == LANG_DE ? "SCHATTEN" : hud_language == LANG_IT ? "OMBRA" : hud_language == LANG_PT ? "SOMBRA" : hud_language == LANG_NL ? "SCHADUW" : hud_language == LANG_ID ? "BAYANG" : hud_language == LANG_TR ? "GOLGE" : hud_language == LANG_PL ? "CIEN" : "SHADOW";
-        case FONT_SOFT:    return hud_language == LANG_ES ? "SUAVE" : hud_language == LANG_FR ? "DOUX" : hud_language == LANG_DE ? "WEICH" : hud_language == LANG_IT ? "MORBIDO" : hud_language == LANG_PT ? "SUAVE" : hud_language == LANG_NL ? "ZACHT" : hud_language == LANG_ID ? "LEMBUT" : hud_language == LANG_TR ? "YUMUSAK" : hud_language == LANG_PL ? "MIEKKI" : "SOFT";
-        case FONT_SHARP:   return hud_language == LANG_ES ? "NITIDA" : hud_language == LANG_FR ? "NET" : hud_language == LANG_DE ? "SCHARF" : hud_language == LANG_IT ? "NITIDO" : hud_language == LANG_PT ? "NITIDO" : hud_language == LANG_NL ? "SCHERP" : hud_language == LANG_ID ? "TAJAM" : hud_language == LANG_TR ? "KESKIN" : hud_language == LANG_PL ? "OSTRY" : "SHARP";
+        case FONT_BOLD:    return "BOLD";
+        case FONT_THIN:    return "THIN";
+        case FONT_WIDE:    return "WIDE";
+        case FONT_TALL:    return "TALL";
+        case FONT_COMPACT: return "COMPACT";
+        case FONT_DOUBLE:  return "DOUBLE";
+        case FONT_BLOCK:   return "BLOCK";
+        case FONT_SHADOW:  return "SHADOW";
+        case FONT_SOFT:    return "SOFT";
+        case FONT_SHARP:   return "SHARP";
         case FONT_RETRO:   return "RETRO";
         case FONT_PSP:     return "PSP";
         case FONT_VITA:    return "VITA";
         case FONT_MINI:    return "MINI";
-        case FONT_SQUARE:  return hud_language == LANG_ES ? "CUADRADA" : hud_language == LANG_FR ? "CARRE" : hud_language == LANG_DE ? "QUADRAT" : hud_language == LANG_IT ? "QUADRATA" : hud_language == LANG_PT ? "QUADRADA" : hud_language == LANG_NL ? "VIERKANT" : hud_language == LANG_ID ? "KOTAK" : hud_language == LANG_TR ? "KARE" : hud_language == LANG_PL ? "KWADRAT" : "SQUARE";
-        case FONT_ROUNDED: return hud_language == LANG_ES ? "REDONDA" : hud_language == LANG_FR ? "ARRONDI" : hud_language == LANG_DE ? "RUND" : hud_language == LANG_IT ? "TONDA" : hud_language == LANG_PT ? "REDONDA" : hud_language == LANG_NL ? "ROND" : hud_language == LANG_ID ? "BULAT" : hud_language == LANG_TR ? "YUVARLAK" : hud_language == LANG_PL ? "OKRAGLY" : "ROUNDED";
+        case FONT_SQUARE:  return "SQUARE";
+        case FONT_ROUNDED: return "ROUNDED";
         case FONT_DIGITAL: return "DIGITAL";
         case FONT_ARCADE:  return "ARCADE";
-        case FONT_CLEAN:   return hud_language == LANG_ES ? "LIMPIA" : hud_language == LANG_FR ? "PROPRE" : hud_language == LANG_DE ? "SAUBER" : hud_language == LANG_IT ? "PULITO" : hud_language == LANG_PT ? "LIMPA" : hud_language == LANG_NL ? "SCHOON" : hud_language == LANG_ID ? "BERSIH" : hud_language == LANG_TR ? "TEMIZ" : hud_language == LANG_PL ? "CZYSTY" : "CLEAN";
+        case FONT_CLEAN:   return "CLEAN";
         case FONT_DEFAULT:
-        default:           return hud_language == LANG_ES ? "DEFAULT" : hud_language == LANG_FR ? "DEFAUT" : hud_language == LANG_DE ? "STANDARD" : hud_language == LANG_IT ? "DEFAULT" : hud_language == LANG_PT ? "PADRAO" : hud_language == LANG_NL ? "STANDAARD" : hud_language == LANG_ID ? "BAWAAN" : hud_language == LANG_TR ? "VARSAYILAN" : hud_language == LANG_PL ? "DOMYSLNY" : "DEFAULT";
+        default:           return "DEFAULT";
     }
 }
 
@@ -1701,17 +1567,15 @@ static const char *language_name(void) {
     }
 }
 
-
 static const char *auto_hide_name(void) {
     switch (auto_hide_mode) {
-        case AUTO_HIDE_3S:  return hud_language == LANG_ES ? "3 SEG" : hud_language == LANG_FR ? "3 SEC" : hud_language == LANG_DE ? "3 SEK" : hud_language == LANG_IT ? "3 SEC" : hud_language == LANG_PT ? "3 SEG" : hud_language == LANG_NL ? "3 SEC" : hud_language == LANG_ID ? "3 DTK" : hud_language == LANG_TR ? "3 SN" : hud_language == LANG_PL ? "3 SEK" : "3 SEC";
-        case AUTO_HIDE_5S:  return hud_language == LANG_ES ? "5 SEG" : hud_language == LANG_FR ? "5 SEC" : hud_language == LANG_DE ? "5 SEK" : hud_language == LANG_IT ? "5 SEC" : hud_language == LANG_PT ? "5 SEG" : hud_language == LANG_NL ? "5 SEC" : hud_language == LANG_ID ? "5 DTK" : hud_language == LANG_TR ? "5 SN" : hud_language == LANG_PL ? "5 SEK" : "5 SEC";
-        case AUTO_HIDE_10S: return hud_language == LANG_ES ? "10 SEG" : hud_language == LANG_FR ? "10 SEC" : hud_language == LANG_DE ? "10 SEK" : hud_language == LANG_IT ? "10 SEC" : hud_language == LANG_PT ? "10 SEG" : hud_language == LANG_NL ? "10 SEC" : hud_language == LANG_ID ? "10 DTK" : hud_language == LANG_TR ? "10 SN" : hud_language == LANG_PL ? "10 SEK" : "10 SEC";
+        case AUTO_HIDE_3S:  return "3 SEC";
+        case AUTO_HIDE_5S:  return "5 SEC";
+        case AUTO_HIDE_10S: return "10 SEC";
         case AUTO_HIDE_OFF:
-        default:            return onoff_name(0);
+        default:            return "OFF";
     }
 }
-
 
 static const char *theme_name(void) {
     switch (theme_id) {
@@ -1720,9 +1584,9 @@ static const char *theme_name(void) {
         case THEME_MATRIX:    return "MATRIX";
         case THEME_NEON:      return "NEON";
         case THEME_RETRO:     return "RETRO";
-        case THEME_MINIMAL:   return hud_language == LANG_ES ? "MINIMAL" : hud_language == LANG_FR ? "MINIMAL" : hud_language == LANG_DE ? "MINIMAL" : hud_language == LANG_IT ? "MINIMALE" : hud_language == LANG_PT ? "MINIMAL" : hud_language == LANG_NL ? "MINIMAAL" : hud_language == LANG_ID ? "MINIMAL" : hud_language == LANG_TR ? "MINIMAL" : hud_language == LANG_PL ? "MINIMALNY" : "MINIMAL";
+        case THEME_MINIMAL:   return "MINIMAL";
         case THEME_DEFAULT:
-        default:              return hud_language == LANG_ES ? "DEFAULT" : hud_language == LANG_FR ? "DEFAUT" : hud_language == LANG_DE ? "STANDARD" : hud_language == LANG_IT ? "DEFAULT" : hud_language == LANG_PT ? "PADRAO" : hud_language == LANG_NL ? "STANDAARD" : hud_language == LANG_ID ? "BAWAAN" : hud_language == LANG_TR ? "VARSAYILAN" : hud_language == LANG_PL ? "DOMYSLNY" : "DEFAULT";
+        default:              return "DEFAULT";
     }
 }
 
@@ -1752,20 +1616,19 @@ static const char *tr_menu_title(void) {
 
 static const char *tr_footer(void) {
     switch (hud_language) {
-        case LANG_ES: return "ARRIBA/ABAJO MOVER  IZQ/DER CAMBIAR  O CERRAR";
-        case LANG_FR: return "HAUT/BAS BOUGER  GAUCHE/DROITE CHANGER  O FERMER";
-        case LANG_DE: return "HOCH/RUNTER WAHLEN  LINKS/RECHTS ANDERN  O ZU";
-        case LANG_IT: return "SU/GIU MUOVI  SINISTRA/DESTRA CAMBIA  O CHIUDI";
-        case LANG_PT: return "CIMA/BAIXO MOVER  ESQ/DIR MUDAR  O FECHAR";
-        case LANG_NL: return "OMHOOG/OMLAAG KIES  LINKS/RECHTS WIJZIG  O SLUIT";
-        case LANG_ID: return "ATAS/BAWAH PILIH  KIRI/KANAN UBAH  O TUTUP";
-        case LANG_TR: return "YUKARI/ASAGI SEC  SOL/SAG DEGISTIR  O KAPAT";
-        case LANG_PL: return "GORA/DOL WYBOR  LEWO/PRAWO ZMIEN  O ZAMKNIJ";
+        case LANG_ES: return "ARR/ABAJO NAVEGAR  IZQ/DER CAMBIAR  X ABRIR  O VOLVER";
+        case LANG_FR: return "HAUT/BAS NAVIGUER  GAUCHE/DROITE CHANGER  X OUVRIR  O RETOUR";
+        case LANG_DE: return "HOCH/RUNTER NAVIGIEREN  LINKS/RECHTS ANDERN  X OFFNEN  O ZURUCK";
+        case LANG_IT: return "SU/GIU NAVIGA  SINISTRA/DESTRA CAMBIA  X APRI  O INDIETRO";
+        case LANG_PT: return "CIMA/BAIXO NAVEGAR  ESQ/DIR MUDAR  X ABRIR  O VOLTAR";
+        case LANG_NL: return "OMHOOG/OMLAAG NAVIGEER  LINKS/RECHTS WIJZIG  X OPEN  O TERUG";
+        case LANG_ID: return "ATAS/BAWAH NAVIGASI  KIRI/KANAN UBAH  X BUKA  O KEMBALI";
+        case LANG_TR: return "YUKARI/ASAGI GEZ  SOL/SAG DEGISTIR  X AC  O GERI";
+        case LANG_PL: return "GORA/DOL NAWIGUJ  LEWO/PRAWO ZMIEN  X OTWORZ  O WROC";
         case LANG_EN:
-        default:      return "UP/DOWN MOVE  LEFT/RIGHT CHANGE  O CLOSE";
+        default:      return "UP/DOWN NAVIGATE  LEFT/RIGHT CHANGE  X OPEN/SELECT  O BACK/CLOSE";
     }
 }
-
 
 static int current_menu_count(void) {
     switch (menu_page) {
@@ -1898,50 +1761,89 @@ static const char *current_menu_title(void) {
     return tr_menu_title();
 }
 
-
 static const char *menu_label(int item) {
-    switch (hud_language) {
-        case LANG_ES:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "DISENO"; case ITEM_POSITION: return "POSICION"; case ITEM_X_OFFSET: return "AJUSTE X"; case ITEM_Y_OFFSET: return "AJUSTE Y"; case ITEM_SIZE: return "TAMANO"; case ITEM_FONT: return "FUENTE"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATERIA"; case ITEM_TIME: return "RELOJ"; case ITEM_CPU_HUD: return "HUD CPU"; case ITEM_BUS_HUD: return "HUD BUS"; case ITEM_GPU_HUD: return "HUD GPU"; case ITEM_APP_ID_HUD: return "HUD APP ID"; case ITEM_RAM_HUD: return "HUD RAM"; case ITEM_IP_HUD: return "HUD IP"; case ITEM_CHARGING: return "CARGANDO"; case ITEM_TIMEMODE: return "MODO HORA"; case ITEM_THEME_MENU: return "TEMA / COLOR"; case ITEM_THEME: return "TEMA PRESET"; case ITEM_HUD_TEXT: return "TEXTO HUD"; case ITEM_HUD_SHADOW: return "SOMBRA HUD"; case ITEM_HUD_ICON: return "ICONO BATERIA"; case ITEM_HUD_BOX: return "CAJA HUD"; case ITEM_HUD_BOX_BG: return "FONDO CAJA HUD"; case ITEM_MENU_TEXT: return "TEXTO MENU"; case ITEM_MENU_SELECT: return "SELECCION MENU"; case ITEM_MENU_BORDER: return "BORDE MENU"; case ITEM_MENUBG: return "FONDO MENU"; case ITEM_PROFILE_MENU: return "MENU PERFIL"; case ITEM_PROFILE: return "RANURA PERFIL"; case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL"; case ITEM_LOAD_PROFILE: return "CARGAR PERFIL"; case ITEM_LANGUAGE: return "IDIOMA"; case ITEM_AUTO_HIDE: return "AUTO OCULTAR"; case ITEM_TOGGLE: return "ATAJO HUD"; case ITEM_RESET: return "VALORES DEFAULT"; default: return "";
-            }
-        case LANG_FR:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "AFFICHAGE"; case ITEM_POSITION: return "POSITION"; case ITEM_X_OFFSET: return "DECALAGE X"; case ITEM_Y_OFFSET: return "DECALAGE Y"; case ITEM_SIZE: return "TAILLE"; case ITEM_FONT: return "POLICE"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATTERIE"; case ITEM_TIME: return "HORLOGE"; case ITEM_CPU_HUD: return "HUD CPU"; case ITEM_BUS_HUD: return "HUD BUS"; case ITEM_GPU_HUD: return "HUD GPU"; case ITEM_APP_ID_HUD: return "HUD APP ID"; case ITEM_RAM_HUD: return "HUD RAM"; case ITEM_IP_HUD: return "HUD IP"; case ITEM_CHARGING: return "CHARGE"; case ITEM_TIMEMODE: return "MODE HEURE"; case ITEM_THEME_MENU: return "THEME / COULEUR"; case ITEM_THEME: return "PRESET THEME"; case ITEM_HUD_TEXT: return "TEXTE HUD"; case ITEM_HUD_SHADOW: return "OMBRE HUD"; case ITEM_HUD_ICON: return "ICONE BATTERIE"; case ITEM_HUD_BOX: return "BOITE HUD"; case ITEM_HUD_BOX_BG: return "FOND BOITE HUD"; case ITEM_MENU_TEXT: return "TEXTE MENU"; case ITEM_MENU_SELECT: return "SELECT MENU"; case ITEM_MENU_BORDER: return "BORD MENU"; case ITEM_MENUBG: return "FOND MENU"; case ITEM_PROFILE_MENU: return "MENU PROFIL"; case ITEM_PROFILE: return "EMPLACEMENT PROFIL"; case ITEM_SAVE_PROFILE: return "SAUVER PROFIL"; case ITEM_LOAD_PROFILE: return "CHARGER PROFIL"; case ITEM_LANGUAGE: return "LANGUE"; case ITEM_AUTO_HIDE: return "AUTO MASQUER"; case ITEM_TOGGLE: return "RACCOURCI HUD"; case ITEM_RESET: return "REGLAGES DEFAUT"; default: return "";
-            }
-        case LANG_DE:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "LAYOUT"; case ITEM_POSITION: return "POSITION"; case ITEM_X_OFFSET: return "X VERSATZ"; case ITEM_Y_OFFSET: return "Y VERSATZ"; case ITEM_SIZE: return "GROESSE"; case ITEM_FONT: return "SCHRIFT"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATTERIE"; case ITEM_TIME: return "UHR"; case ITEM_CPU_HUD: return "CPU HUD"; case ITEM_BUS_HUD: return "BUS HUD"; case ITEM_GPU_HUD: return "GPU HUD"; case ITEM_APP_ID_HUD: return "APP ID HUD"; case ITEM_RAM_HUD: return "RAM HUD"; case ITEM_IP_HUD: return "IP HUD"; case ITEM_CHARGING: return "LADEN"; case ITEM_TIMEMODE: return "ZEITMODUS"; case ITEM_THEME_MENU: return "THEMA / FARBE"; case ITEM_THEME: return "THEMA PRESET"; case ITEM_HUD_TEXT: return "HUD TEXT"; case ITEM_HUD_SHADOW: return "HUD SCHATTEN"; case ITEM_HUD_ICON: return "BATTERIE SYMBOL"; case ITEM_HUD_BOX: return "HUD BOX"; case ITEM_HUD_BOX_BG: return "HUD BOX HINTERGR"; case ITEM_MENU_TEXT: return "MENU TEXT"; case ITEM_MENU_SELECT: return "MENU AUSWAHL"; case ITEM_MENU_BORDER: return "MENU RAHMEN"; case ITEM_MENUBG: return "MENU HINTERGR"; case ITEM_PROFILE_MENU: return "PROFIL MENU"; case ITEM_PROFILE: return "PROFIL SLOT"; case ITEM_SAVE_PROFILE: return "PROFIL SPEICHERN"; case ITEM_LOAD_PROFILE: return "PROFIL LADEN"; case ITEM_LANGUAGE: return "SPRACHE"; case ITEM_AUTO_HIDE: return "AUTO AUSBLEND"; case ITEM_TOGGLE: return "HUD TASTE"; case ITEM_RESET: return "STANDARDWERTE"; default: return "";
-            }
-        case LANG_IT:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "LAYOUT"; case ITEM_POSITION: return "POSIZIONE"; case ITEM_X_OFFSET: return "OFFSET X"; case ITEM_Y_OFFSET: return "OFFSET Y"; case ITEM_SIZE: return "DIMENSIONE"; case ITEM_FONT: return "FONT"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATTERIA"; case ITEM_TIME: return "OROLOGIO"; case ITEM_CPU_HUD: return "HUD CPU"; case ITEM_BUS_HUD: return "HUD BUS"; case ITEM_GPU_HUD: return "HUD GPU"; case ITEM_APP_ID_HUD: return "HUD APP ID"; case ITEM_RAM_HUD: return "HUD RAM"; case ITEM_IP_HUD: return "HUD IP"; case ITEM_CHARGING: return "RICARICA"; case ITEM_TIMEMODE: return "MODO ORA"; case ITEM_THEME_MENU: return "TEMA / COLORE"; case ITEM_THEME: return "PRESET TEMA"; case ITEM_HUD_TEXT: return "TESTO HUD"; case ITEM_HUD_SHADOW: return "OMBRA HUD"; case ITEM_HUD_ICON: return "ICONA BATTERIA"; case ITEM_HUD_BOX: return "BOX HUD"; case ITEM_HUD_BOX_BG: return "SFONDO BOX HUD"; case ITEM_MENU_TEXT: return "TESTO MENU"; case ITEM_MENU_SELECT: return "SELEZIONE MENU"; case ITEM_MENU_BORDER: return "BORDO MENU"; case ITEM_MENUBG: return "SFONDO MENU"; case ITEM_PROFILE_MENU: return "MENU PROFILO"; case ITEM_PROFILE: return "SLOT PROFILO"; case ITEM_SAVE_PROFILE: return "SALVA PROFILO"; case ITEM_LOAD_PROFILE: return "CARICA PROFILO"; case ITEM_LANGUAGE: return "LINGUA"; case ITEM_AUTO_HIDE: return "AUTO NASCONDI"; case ITEM_TOGGLE: return "TASTO HUD"; case ITEM_RESET: return "DEFAULT"; default: return "";
-            }
-        case LANG_PT:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "LAYOUT"; case ITEM_POSITION: return "POSICAO"; case ITEM_X_OFFSET: return "AJUSTE X"; case ITEM_Y_OFFSET: return "AJUSTE Y"; case ITEM_SIZE: return "TAMANHO"; case ITEM_FONT: return "FONTE"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATERIA"; case ITEM_TIME: return "RELOGIO"; case ITEM_CPU_HUD: return "HUD CPU"; case ITEM_BUS_HUD: return "HUD BUS"; case ITEM_GPU_HUD: return "HUD GPU"; case ITEM_APP_ID_HUD: return "HUD APP ID"; case ITEM_RAM_HUD: return "HUD RAM"; case ITEM_IP_HUD: return "HUD IP"; case ITEM_CHARGING: return "CARREGANDO"; case ITEM_TIMEMODE: return "MODO HORA"; case ITEM_THEME_MENU: return "TEMA / COR"; case ITEM_THEME: return "PRESET TEMA"; case ITEM_HUD_TEXT: return "TEXTO HUD"; case ITEM_HUD_SHADOW: return "SOMBRA HUD"; case ITEM_HUD_ICON: return "ICONE BATERIA"; case ITEM_HUD_BOX: return "CAIXA HUD"; case ITEM_HUD_BOX_BG: return "FUNDO CAIXA HUD"; case ITEM_MENU_TEXT: return "TEXTO MENU"; case ITEM_MENU_SELECT: return "SELECAO MENU"; case ITEM_MENU_BORDER: return "BORDA MENU"; case ITEM_MENUBG: return "FUNDO MENU"; case ITEM_PROFILE_MENU: return "MENU PERFIL"; case ITEM_PROFILE: return "SLOT PERFIL"; case ITEM_SAVE_PROFILE: return "SALVAR PERFIL"; case ITEM_LOAD_PROFILE: return "CARREGAR PERFIL"; case ITEM_LANGUAGE: return "IDIOMA"; case ITEM_AUTO_HIDE: return "AUTO OCULTAR"; case ITEM_TOGGLE: return "ATALHO HUD"; case ITEM_RESET: return "PADROES"; default: return "";
-            }
-        case LANG_NL:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "LAYOUT"; case ITEM_POSITION: return "POSITIE"; case ITEM_X_OFFSET: return "X OFFSET"; case ITEM_Y_OFFSET: return "Y OFFSET"; case ITEM_SIZE: return "GROOTTE"; case ITEM_FONT: return "LETTERTYPE"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATTERIJ"; case ITEM_TIME: return "KLOK"; case ITEM_CPU_HUD: return "CPU HUD"; case ITEM_BUS_HUD: return "BUS HUD"; case ITEM_GPU_HUD: return "GPU HUD"; case ITEM_APP_ID_HUD: return "APP ID HUD"; case ITEM_RAM_HUD: return "RAM HUD"; case ITEM_IP_HUD: return "IP HUD"; case ITEM_CHARGING: return "LADEN"; case ITEM_TIMEMODE: return "TIJDMODUS"; case ITEM_THEME_MENU: return "THEMA / KLEUR"; case ITEM_THEME: return "THEMA PRESET"; case ITEM_HUD_TEXT: return "HUD TEKST"; case ITEM_HUD_SHADOW: return "HUD SCHADUW"; case ITEM_HUD_ICON: return "BATTERIJ ICOON"; case ITEM_HUD_BOX: return "HUD VAK"; case ITEM_HUD_BOX_BG: return "HUD VAK ACHTERGR"; case ITEM_MENU_TEXT: return "MENU TEKST"; case ITEM_MENU_SELECT: return "MENU SELECT"; case ITEM_MENU_BORDER: return "MENU RAND"; case ITEM_MENUBG: return "MENU ACHTERGR"; case ITEM_PROFILE_MENU: return "PROFIEL MENU"; case ITEM_PROFILE: return "PROFIEL SLOT"; case ITEM_SAVE_PROFILE: return "PROFIEL OPSLAAN"; case ITEM_LOAD_PROFILE: return "PROFIEL LADEN"; case ITEM_LANGUAGE: return "TAAL"; case ITEM_AUTO_HIDE: return "AUTO VERBERG"; case ITEM_TOGGLE: return "HUD TOETS"; case ITEM_RESET: return "STANDAARD"; default: return "";
-            }
-        case LANG_ID:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "TATA LETAK"; case ITEM_POSITION: return "POSISI"; case ITEM_X_OFFSET: return "OFFSET X"; case ITEM_Y_OFFSET: return "OFFSET Y"; case ITEM_SIZE: return "UKURAN"; case ITEM_FONT: return "FONT"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATERAI"; case ITEM_TIME: return "JAM"; case ITEM_CPU_HUD: return "HUD CPU"; case ITEM_BUS_HUD: return "HUD BUS"; case ITEM_GPU_HUD: return "HUD GPU"; case ITEM_APP_ID_HUD: return "HUD APP ID"; case ITEM_RAM_HUD: return "HUD RAM"; case ITEM_IP_HUD: return "HUD IP"; case ITEM_CHARGING: return "MENGISI"; case ITEM_TIMEMODE: return "MODE WAKTU"; case ITEM_THEME_MENU: return "TEMA / WARNA"; case ITEM_THEME: return "PRESET TEMA"; case ITEM_HUD_TEXT: return "TEKS HUD"; case ITEM_HUD_SHADOW: return "BAYANG HUD"; case ITEM_HUD_ICON: return "IKON BATERAI"; case ITEM_HUD_BOX: return "KOTAK HUD"; case ITEM_HUD_BOX_BG: return "LATAR KOTAK HUD"; case ITEM_MENU_TEXT: return "TEKS MENU"; case ITEM_MENU_SELECT: return "PILIHAN MENU"; case ITEM_MENU_BORDER: return "BINGKAI MENU"; case ITEM_MENUBG: return "LATAR MENU"; case ITEM_PROFILE_MENU: return "MENU PROFIL"; case ITEM_PROFILE: return "SLOT PROFIL"; case ITEM_SAVE_PROFILE: return "SIMPAN PROFIL"; case ITEM_LOAD_PROFILE: return "MUAT PROFIL"; case ITEM_LANGUAGE: return "BAHASA"; case ITEM_AUTO_HIDE: return "AUTO SEMBUNYI"; case ITEM_TOGGLE: return "TOMBOL HUD"; case ITEM_RESET: return "DEFAULT"; default: return "";
-            }
-        case LANG_TR:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "DUZEN"; case ITEM_POSITION: return "KONUM"; case ITEM_X_OFFSET: return "X KAYDIR"; case ITEM_Y_OFFSET: return "Y KAYDIR"; case ITEM_SIZE: return "BOYUT"; case ITEM_FONT: return "YAZI"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "PIL"; case ITEM_TIME: return "SAAT"; case ITEM_CPU_HUD: return "CPU HUD"; case ITEM_BUS_HUD: return "BUS HUD"; case ITEM_GPU_HUD: return "GPU HUD"; case ITEM_APP_ID_HUD: return "APP ID HUD"; case ITEM_RAM_HUD: return "RAM HUD"; case ITEM_IP_HUD: return "IP HUD"; case ITEM_CHARGING: return "SARJ"; case ITEM_TIMEMODE: return "SAAT MODU"; case ITEM_THEME_MENU: return "TEMA / RENK"; case ITEM_THEME: return "TEMA HAZIR"; case ITEM_HUD_TEXT: return "HUD YAZI"; case ITEM_HUD_SHADOW: return "HUD GOLGE"; case ITEM_HUD_ICON: return "PIL SIMGESI"; case ITEM_HUD_BOX: return "HUD KUTU"; case ITEM_HUD_BOX_BG: return "HUD KUTU ARKA"; case ITEM_MENU_TEXT: return "MENU YAZI"; case ITEM_MENU_SELECT: return "MENU SECIM"; case ITEM_MENU_BORDER: return "MENU CERCEVE"; case ITEM_MENUBG: return "MENU ARKA"; case ITEM_PROFILE_MENU: return "PROFIL MENU"; case ITEM_PROFILE: return "PROFIL SLOT"; case ITEM_SAVE_PROFILE: return "PROFIL KAYDET"; case ITEM_LOAD_PROFILE: return "PROFIL YUKLE"; case ITEM_LANGUAGE: return "DIL"; case ITEM_AUTO_HIDE: return "AUTO GIZLE"; case ITEM_TOGGLE: return "HUD KISAYOL"; case ITEM_RESET: return "VARSAYILAN"; default: return "";
-            }
-        case LANG_PL:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "UKLAD"; case ITEM_POSITION: return "POZYCJA"; case ITEM_X_OFFSET: return "PRZES X"; case ITEM_Y_OFFSET: return "PRZES Y"; case ITEM_SIZE: return "ROZMIAR"; case ITEM_FONT: return "CZCIONKA"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATERIA"; case ITEM_TIME: return "ZEGAR"; case ITEM_CPU_HUD: return "CPU HUD"; case ITEM_BUS_HUD: return "BUS HUD"; case ITEM_GPU_HUD: return "GPU HUD"; case ITEM_APP_ID_HUD: return "APP ID HUD"; case ITEM_RAM_HUD: return "RAM HUD"; case ITEM_IP_HUD: return "IP HUD"; case ITEM_CHARGING: return "LADOWANIE"; case ITEM_TIMEMODE: return "TRYB CZASU"; case ITEM_THEME_MENU: return "MOTYW / KOLOR"; case ITEM_THEME: return "PRESET MOTYW"; case ITEM_HUD_TEXT: return "TEKST HUD"; case ITEM_HUD_SHADOW: return "CIEN HUD"; case ITEM_HUD_ICON: return "IKONA BATERII"; case ITEM_HUD_BOX: return "RAMKA HUD"; case ITEM_HUD_BOX_BG: return "TLO RAMKI HUD"; case ITEM_MENU_TEXT: return "TEKST MENU"; case ITEM_MENU_SELECT: return "WYBOR MENU"; case ITEM_MENU_BORDER: return "RAMKA MENU"; case ITEM_MENUBG: return "TLO MENU"; case ITEM_PROFILE_MENU: return "MENU PROFILU"; case ITEM_PROFILE: return "SLOT PROFILU"; case ITEM_SAVE_PROFILE: return "ZAPISZ PROFIL"; case ITEM_LOAD_PROFILE: return "WCZYTAJ PROFIL"; case ITEM_LANGUAGE: return "JEZYK"; case ITEM_AUTO_HIDE: return "AUTO UKRYJ"; case ITEM_TOGGLE: return "SKROT HUD"; case ITEM_RESET: return "DOMYSLNE"; default: return "";
-            }
-        case LANG_EN:
-        default:
-            switch (item) {
-                case ITEM_HUD: return "HUD"; case ITEM_LAYOUT: return "LAYOUT"; case ITEM_POSITION: return "POSITION"; case ITEM_X_OFFSET: return "X OFFSET"; case ITEM_Y_OFFSET: return "Y OFFSET"; case ITEM_SIZE: return "SIZE"; case ITEM_FONT: return "FONT"; case ITEM_FPS: return "FPS"; case ITEM_BATTERY: return "BATTERY"; case ITEM_TIME: return "CLOCK"; case ITEM_CPU_HUD: return "CPU HUD"; case ITEM_BUS_HUD: return "BUS HUD"; case ITEM_GPU_HUD: return "GPU HUD"; case ITEM_APP_ID_HUD: return "APP ID HUD"; case ITEM_RAM_HUD: return "RAM HUD"; case ITEM_IP_HUD: return "IP HUD"; case ITEM_CHARGING: return "CHARGING"; case ITEM_TIMEMODE: return "TIME MODE"; case ITEM_THEME_MENU: return "THEME / COLOR"; case ITEM_THEME: return "THEME PRESET"; case ITEM_HUD_TEXT: return "HUD TEXT"; case ITEM_HUD_SHADOW: return "HUD SHADOW"; case ITEM_HUD_ICON: return "BATTERY ICON"; case ITEM_HUD_BOX: return "HUD BOX"; case ITEM_HUD_BOX_BG: return "HUD BOX BACKGROUND"; case ITEM_MENU_TEXT: return "MENU TEXT"; case ITEM_MENU_SELECT: return "MENU SELECT"; case ITEM_MENU_BORDER: return "MENU BORDER"; case ITEM_MENUBG: return "MENU BACKGROUND"; case ITEM_PROFILE_MENU: return "PROFILE MENU"; case ITEM_PROFILE: return "PROFILE SLOT"; case ITEM_SAVE_PROFILE: return "SAVE PROFILE"; case ITEM_LOAD_PROFILE: return "LOAD PROFILE"; case ITEM_LANGUAGE: return "LANGUAGE"; case ITEM_AUTO_HIDE: return "AUTO HIDE"; case ITEM_TOGGLE: return "HUD TOGGLE"; case ITEM_RESET: return "RESET DEFAULTS"; default: return "";
-            }
+    if (hud_language == LANG_ES) {
+        switch (item) {
+            case ITEM_HUD:          return "HUD";
+            case ITEM_LAYOUT:       return "DISENO";
+            case ITEM_POSITION:     return "POSICION";
+            case ITEM_X_OFFSET:     return "AJUSTE X";
+            case ITEM_Y_OFFSET:     return "AJUSTE Y";
+            case ITEM_SIZE:         return "TAMANO";
+            case ITEM_FONT:         return "FUENTE";
+            case ITEM_FPS:          return "FPS";
+            case ITEM_BATTERY:      return "BATERIA";
+            case ITEM_TIME:         return "RELOJ";
+            case ITEM_CHARGING:     return "CARGANDO";
+            case ITEM_TIMEMODE:     return "MODO HORA";
+            case ITEM_THEME_MENU:   return "TEMA / COLOR";
+            case ITEM_THEME:        return "TEMA PRESET";
+            case ITEM_HUD_TEXT:     return "TEXTO HUD";
+            case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
+            case ITEM_HUD_ICON:     return "ICONO BATERIA";
+            case ITEM_HUD_BOX:      return "CAJA HUD";
+            case ITEM_HUD_BOX_BG:   return "FONDO CAJA HUD";
+            case ITEM_MENU_TEXT:    return "TEXTO MENU";
+            case ITEM_MENU_SELECT:  return "SELECCION MENU";
+            case ITEM_MENU_BORDER:  return "BORDE MENU";
+            case ITEM_MENUBG:       return "FONDO MENU";
+            case ITEM_PROFILE_MENU: return "MENU PERFIL";
+            case ITEM_PROFILE:      return "RANURA PERFIL";
+            case ITEM_LANGUAGE:     return "IDIOMA";
+            case ITEM_AUTO_HIDE:    return "AUTO OCULTAR";
+            case ITEM_TOGGLE:       return "ATAJO HUD";
+            case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL";
+            case ITEM_LOAD_PROFILE: return "CARGAR PERFIL";
+            case ITEM_CPU_HUD:      return "HUD CPU";
+            case ITEM_BUS_HUD:      return "HUD BUS";
+            case ITEM_GPU_HUD:      return "HUD GPU";
+            case ITEM_APP_ID_HUD:   return "HUD APP ID";
+            case ITEM_RAM_HUD:      return "HUD RAM";
+            case ITEM_IP_HUD:       return "HUD IP";
+            case ITEM_RESET:        return "VALORES DEFAULT";
+            default:                return "";
+        }
+    }
+
+    switch (item) {
+        case ITEM_HUD:          return "HUD";
+        case ITEM_LAYOUT:       return "LAYOUT";
+        case ITEM_POSITION:     return "POSITION";
+        case ITEM_X_OFFSET:     return "X OFFSET";
+        case ITEM_Y_OFFSET:     return "Y OFFSET";
+        case ITEM_SIZE:         return "SIZE";
+        case ITEM_FONT:         return "FONT";
+        case ITEM_FPS:          return "FPS";
+        case ITEM_BATTERY:      return "BATTERY";
+        case ITEM_TIME:         return "CLOCK";
+        case ITEM_CHARGING:     return "CHARGING";
+        case ITEM_TIMEMODE:     return "TIME MODE";
+        case ITEM_THEME_MENU:   return "THEME / COLOR";
+        case ITEM_THEME:        return "THEME PRESET";
+        case ITEM_HUD_TEXT:     return "HUD TEXT";
+        case ITEM_HUD_SHADOW:   return "HUD SHADOW";
+        case ITEM_HUD_ICON:     return "BATTERY ICON";
+        case ITEM_HUD_BOX:      return "HUD BOX";
+        case ITEM_HUD_BOX_BG:   return "HUD BOX BACKGROUND";
+        case ITEM_MENU_TEXT:    return "MENU TEXT";
+        case ITEM_MENU_SELECT:  return "MENU SELECT";
+        case ITEM_MENU_BORDER:  return "MENU BORDER";
+        case ITEM_MENUBG:       return "MENU BACKGROUND";
+        case ITEM_PROFILE_MENU: return "PROFILE MENU";
+        case ITEM_PROFILE:      return "PROFILE SLOT";
+        case ITEM_LANGUAGE:     return "LANGUAGE";
+        case ITEM_AUTO_HIDE:    return "AUTO HIDE";
+        case ITEM_TOGGLE:       return "HUD TOGGLE";
+        case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
+        case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
+        case ITEM_CPU_HUD:      return "CPU HUD";
+        case ITEM_BUS_HUD:      return "BUS HUD";
+        case ITEM_GPU_HUD:      return "GPU HUD";
+        case ITEM_APP_ID_HUD:   return "APP ID HUD";
+        case ITEM_RAM_HUD:      return "RAM HUD";
+        case ITEM_IP_HUD:       return "IP HUD";
+        case ITEM_RESET:        return "RESET DEFAULTS";
+        default:                return "";
     }
 }
 
@@ -1981,7 +1883,7 @@ static const char *menu_value(int item) {
         case ITEM_APP_ID_HUD:   return onoff_name(show_app_id);
         case ITEM_RAM_HUD:      return onoff_name(show_ram);
         case ITEM_IP_HUD:       return onoff_name(show_ip);
-        case ITEM_RESET:        return reset_message_frames > 0 ? word_reset() : word_press_x();
+        case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : word_press_x();
         default:                return "";
     }
 }
@@ -2017,13 +1919,13 @@ static void menu_change(int dir) {
         case ITEM_X_OFFSET:
             hud_x_offset += dir * 2;
             if (hud_x_offset < 0) hud_x_offset = 0;
-            if (hud_x_offset > 120) hud_x_offset = 120;
+            if (hud_x_offset > 960) hud_x_offset = 960;
             break;
 
         case ITEM_Y_OFFSET:
             hud_y_offset += dir * 2;
             if (hud_y_offset < 0) hud_y_offset = 0;
-            if (hud_y_offset > 120) hud_y_offset = 120;
+            if (hud_y_offset > 544) hud_y_offset = 544;
             break;
 
         case ITEM_SIZE:
@@ -2235,6 +2137,10 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     int panel_h;
     int content_x;
     int row_w;
+    const char *title_text;
+    int title_w;
+    int title_x;
+    int title_y;
 
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
     unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
@@ -2307,7 +2213,16 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     draw_rect(pixels, pitch, panel_x + 2, panel_y + panel_h - 20, panel_w - 4, 1, border);
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 18, panel_w - 4, 1, inner_line);
 
-    draw_text_shadow(pixels, pitch, x, y, current_menu_title(), title_col, 1);
+    title_text = current_menu_title();
+    title_w = text_width(title_text, 1);
+    title_x = panel_x + ((panel_w - title_w) / 2);
+    title_y = panel_y + 5;
+
+    if (title_x < panel_x + 12) {
+        title_x = panel_x + 12;
+    }
+
+    draw_text_shadow(pixels, pitch, title_x, title_y, title_text, title_col, 1);
 
     if (menu_scroll > 0) {
         draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + 1, "^", title_col, 1);
@@ -2770,8 +2685,22 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         start_y = screen_h - total_h - margin_y;
     }
 
-    if (start_x < 0 || start_y < 0) {
-        return;
+    if (start_x < 0) {
+        start_x = 0;
+    }
+
+    if (start_y < 0) {
+        start_y = 0;
+    }
+
+    if (start_x + total_w > screen_w) {
+        start_x = screen_w - total_w;
+        if (start_x < 0) start_x = 0;
+    }
+
+    if (start_y + total_h > screen_h) {
+        start_y = screen_h - total_h;
+        if (start_y < 0) start_y = 0;
     }
 
     /*
@@ -2786,11 +2715,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     if (hud_box_enabled) {
+        /* HUD box background only. No outline. */
         draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, last_hud_clear_h, get_menu_bg_for(hud_box_bg_color));
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, 1, color_value(hud_icon_color, text_color));
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y + last_hud_clear_h - 1, last_hud_clear_w, 1, color_value(hud_icon_color, text_color));
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, 1, last_hud_clear_h, color_value(hud_icon_color, text_color));
-        draw_rect(pixels, pitch, last_hud_clear_x + last_hud_clear_w - 1, last_hud_clear_y, 1, last_hud_clear_h, color_value(hud_icon_color, text_color));
     }
 
     /*
@@ -2900,6 +2826,43 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     if (show_charging) {
         if (x != start_x) x += gap_big;
         draw_text_shadow(pixels, pitch, x, start_y, charging_text, text_color, scale);
+        x += charging_w;
+    }
+
+    if (show_cpu) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, cpu_text, text_color, scale);
+        x += cpu_w;
+    }
+
+    if (show_bus) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, bus_text, text_color, scale);
+        x += bus_w;
+    }
+
+    if (show_gpu) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, gpu_text, text_color, scale);
+        x += gpu_w;
+    }
+
+    if (show_app_id) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, app_id_text, text_color, scale);
+        x += app_id_w;
+    }
+
+    if (show_ram) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, ram_text, text_color, scale);
+        x += ram_w;
+    }
+
+    if (show_ip) {
+        if (x != start_x) x += gap_big;
+        draw_text_shadow(pixels, pitch, x, start_y, ip_text, text_color, scale);
+        x += ip_w;
     }
 }
 
