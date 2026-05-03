@@ -651,6 +651,9 @@ static int fps_low_limit_value(void) {
     switch (fps_low_limit_index) {
         case 1: return 45;
         case 2: return 50;
+        case 3: return 20;
+        case 4: return 15;
+        case 5: return 10;
         case 0:
         default: return 30;
     }
@@ -669,6 +672,9 @@ static const char *fps_low_limit_name(void) {
     switch (fps_low_limit_index) {
         case 1: return "45";
         case 2: return "50";
+        case 3: return "20";
+        case 4: return "15";
+        case 5: return "10";
         case 0:
         default: return "30";
     }
@@ -825,7 +831,7 @@ static void clamp_settings(void) {
     if (show_ram < 0 || show_ram > 1) show_ram = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
     if (fps_warning_enabled < 0 || fps_warning_enabled > 1) fps_warning_enabled = 0;
-    if (fps_low_limit_index < 0 || fps_low_limit_index > 2) fps_low_limit_index = 0;
+    if (fps_low_limit_index < 0 || fps_low_limit_index > 5) fps_low_limit_index = 0;
     if (battery_warning_enabled < 0 || battery_warning_enabled > 1) battery_warning_enabled = 0;
     if (battery_low_limit_index < 0 || battery_low_limit_index > 2) battery_low_limit_index = 0;
     if (ram_warning_enabled < 0 || ram_warning_enabled > 1) ram_warning_enabled = 0;
@@ -1833,10 +1839,21 @@ static int font_extra_spacing(void) {
         case FONT_ARCADE:
             return 2;
 
+        case FONT_SOFT:
+        case FONT_RETRO:
+        case FONT_ROUNDED:
+        case FONT_DIGITAL:
+        case FONT_VITA:
+            return 1;
+
         case FONT_COMPACT:
         case FONT_MINI:
+        case FONT_THIN:
+        case FONT_CLEAN:
             return -1;
 
+        case FONT_TALL:
+        case FONT_SHARP:
         default:
             return 0;
     }
@@ -1847,15 +1864,23 @@ static int font_shadow_style(void) {
     switch (font_style) {
         case FONT_THIN:
         case FONT_CLEAN:
+        case FONT_SHARP:
             return 0;
 
         case FONT_SOFT:
             return 2;
 
-        case FONT_SHADOW:
+        case FONT_DIGITAL:
+            return 3;
+
         case FONT_RETRO:
-        case FONT_PSP:
+            return 4;
+
         case FONT_VITA:
+            return 5;
+
+        case FONT_SHADOW:
+        case FONT_PSP:
         default:
             return 1;
     }
@@ -1868,10 +1893,15 @@ static int font_bold_style(void) {
         case FONT_BLOCK:
         case FONT_SQUARE:
         case FONT_ARCADE:
+        case FONT_ROUNDED:
             return 1;
 
         case FONT_DOUBLE:
             return 2;
+
+        case FONT_THIN:
+        case FONT_CLEAN:
+            return -1;
 
         default:
             return 0;
@@ -1969,24 +1999,79 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
     int sx;
     int px;
     int py;
+    int slant;
     int bold = font_bold_style();
+    int thin = (!g_menu_text_mode && font_style == FONT_THIN);
+    int tall = (!g_menu_text_mode && font_style == FONT_TALL);
+    int soft = (!g_menu_text_mode && font_style == FONT_SOFT);
+    int sharp = (!g_menu_text_mode && font_style == FONT_SHARP);
+    int retro = (!g_menu_text_mode && font_style == FONT_RETRO);
+    int vita = (!g_menu_text_mode && font_style == FONT_VITA);
+    int rounded = (!g_menu_text_mode && font_style == FONT_ROUNDED);
+    int digital = (!g_menu_text_mode && font_style == FONT_DIGITAL);
+    int clean = (!g_menu_text_mode && font_style == FONT_CLEAN);
 
     for (row = 0; row < 7; row++) {
         unsigned char bits = font5x7(c, row);
+
+        if (digital) {
+            /* Digital mode: hard segmented look. */
+            if (row != 0 && row != 3 && row != 6) {
+                bits &= 0x11;
+            }
+        }
 
         for (col = 0; col < 5; col++) {
             if (bits & (1 << (4 - col))) {
                 for (sy = 0; sy < scale; sy++) {
                     for (sx = 0; sx < scale; sx++) {
-                        px = x + col * scale + sx;
+                        if (thin && scale > 1 && sx == scale - 1) {
+                            continue;
+                        }
+
+                        if (clean && scale > 1 && sy == scale - 1 && row != 6) {
+                            continue;
+                        }
+
+                        slant = 0;
+                        if (retro) slant = (6 - row) / 3;
+                        if (vita) slant = row / 4;
+                        if (sharp) slant = (row & 1) ? 0 : 1;
+
+                        px = x + col * scale + sx + slant;
                         py = y + row * scale + sy;
 
                         if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
                             pixels[py * pitch + px] = color;
                         }
 
+                        if (tall) {
+                            py = y + row * scale + sy + 1;
+                            if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
+                                pixels[py * pitch + px] = color;
+                            }
+                        }
+
+                        if (soft && ((sx == 0 && scale > 1) || (sy == 0 && scale > 1))) {
+                            if (px + 1 >= 0 && px + 1 < g_screen_w && py >= 0 && py < g_screen_h) {
+                                pixels[py * pitch + px + 1] = color;
+                            }
+                        }
+
+                        if (rounded && (row == 1 || row == 5) && (col == 0 || col == 4)) {
+                            if (px >= 0 && px < g_screen_w && py + 1 >= 0 && py + 1 < g_screen_h) {
+                                pixels[(py + 1) * pitch + px] = color;
+                            }
+                        }
+
+                        if (digital && (row == 0 || row == 3 || row == 6)) {
+                            if (px + 1 >= 0 && px + 1 < g_screen_w && py >= 0 && py < g_screen_h) {
+                                pixels[py * pitch + px + 1] = color;
+                            }
+                        }
+
                         if (bold >= 1) {
-                            px = x + col * scale + sx + 1;
+                            px = x + col * scale + sx + slant + 1;
                             py = y + row * scale + sy;
 
                             if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
@@ -1995,7 +2080,7 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
                         }
 
                         if (bold >= 2) {
-                            px = x + col * scale + sx;
+                            px = x + col * scale + sx + slant;
                             py = y + row * scale + sy + 1;
 
                             if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
@@ -2042,6 +2127,16 @@ static void draw_text_shadow(unsigned int *pixels, int pitch, int x, int y, cons
     } else if (shadow == 2) {
         draw_text(pixels, pitch, x + 1, y, text, shadow_color, scale);
         draw_text(pixels, pitch, x, y + 1, text, shadow_color, scale);
+    } else if (shadow == 3) {
+        /* DIGITAL: crisp lower rail shadow. */
+        draw_text(pixels, pitch, x, y + 2, text, shadow_color, scale);
+    } else if (shadow == 4) {
+        /* RETRO: offset arcade-style trail. */
+        draw_text(pixels, pitch, x + 2, y + 1, text, shadow_color, scale);
+    } else if (shadow == 5) {
+        /* VITA: bright blue/cyan-style side glow. */
+        draw_text(pixels, pitch, x + 1, y, text, color_value(COLOR_CYAN, shadow_color), scale);
+        draw_text(pixels, pitch, x, y + 1, text, color_value(COLOR_BLUE, shadow_color), scale);
     }
 
     draw_text(pixels, pitch, x, y, text, color, scale);
@@ -3078,7 +3173,7 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 5;
+            return 6;
         case MENU_PAGE_HUD_COLORS:
             return 4;
         case MENU_PAGE_MENU_COLORS:
@@ -3099,12 +3194,12 @@ static int current_menu_count(void) {
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 16;
+            return 15;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[16] = {
+    static const int main_items[15] = {
         ITEM_HUD,
         ITEM_THEME_MENU,
         ITEM_ALL_HUD_OVERLAYS_MENU,
@@ -3115,7 +3210,6 @@ static int current_menu_item_at(int index) {
         ITEM_X_OFFSET,
         ITEM_Y_OFFSET,
         ITEM_MENU_HUD_SIZE_MENU,
-        ITEM_FONT,
         ITEM_HUD_ORDER_MENU,
         ITEM_TIMEMODE,
         ITEM_LANGUAGE,
@@ -3129,8 +3223,9 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[5] = {
+    static const int theme_items[6] = {
         ITEM_THEME,
+        ITEM_FONT,
         ITEM_HUD_COLORS_MENU,
         ITEM_MENU_COLORS_MENU,
         ITEM_ICON_COLORS_MENU,
@@ -3213,7 +3308,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 5) index = 4;
+        if (index >= 6) index = 5;
         return theme_items[index];
     }
 
@@ -3252,7 +3347,7 @@ static int current_menu_item_at(int index) {
         return reset_items[index];
     }
 
-    if (index >= 16) index = 15;
+    if (index >= 15) index = 14;
     return main_items[index];
 }
 
@@ -3383,18 +3478,7 @@ static const char *current_menu_title(void) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        switch (hud_language) {
-            case LANG_ES: return "TEMA / COLOR";
-            case LANG_FR: return "THEME / COULEUR";
-            case LANG_DE: return "THEMA / FARBE";
-            case LANG_IT: return "TEMA / COLORE";
-            case LANG_PT: return "TEMA / COR";
-            case LANG_NL: return "THEMA / KLEUR";
-            case LANG_ID: return "TEMA / WARNA";
-            case LANG_TR: return "TEMA / RENK";
-            case LANG_PL: return "MOTYW / KOLOR";
-            default: return "THEME / COLOR";
-        }
+        return "THEME / COLOR / FONT";
     }
 
     return tr_menu_title();
@@ -3423,7 +3507,7 @@ static const char *menu_label(int item) {
             case ITEM_BATTERY:      return "BATERIA HUD";
             case ITEM_TIME:         return "RELOJ HUD";
             case ITEM_TIMEMODE:     return "MODO HORA";
-            case ITEM_THEME_MENU:   return "TEMA / COLOR";
+            case ITEM_THEME_MENU:   return "THEME / COLOR / FONT";
             case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
             case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
             case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
@@ -3491,7 +3575,7 @@ static const char *menu_label(int item) {
         case ITEM_BATTERY:      return "BATTERY HUD";
         case ITEM_TIME:         return "CLOCK HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
-        case ITEM_THEME_MENU:   return "THEME / COLOR";
+        case ITEM_THEME_MENU:   return "THEME / COLOR / FONT";
         case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
         case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
         case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
@@ -3902,8 +3986,8 @@ static void menu_change(int dir) {
 
         case ITEM_FPS_LOW_LIMIT:
             fps_low_limit_index += dir;
-            if (fps_low_limit_index < 0) fps_low_limit_index = 2;
-            if (fps_low_limit_index > 2) fps_low_limit_index = 0;
+            if (fps_low_limit_index < 0) fps_low_limit_index = 5;
+            if (fps_low_limit_index > 5) fps_low_limit_index = 0;
             break;
 
         case ITEM_BATTERY_WARNING:
