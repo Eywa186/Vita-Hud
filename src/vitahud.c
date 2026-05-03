@@ -1,7 +1,9 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
 #include <psp2/kernel/sysmem.h>
+#include <psp2/sysmodule.h>
 #include <psp2/net/netctl.h>
+#include <stdint.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
@@ -330,7 +332,7 @@ static tai_hook_ref_t g_display_hook;
  * Do NOT call system APIs inside draw_hud().
  * Update cached strings on a timer, then draw cached text only.
  */
-#define SYSTEM_CACHE_UPDATE_USEC 500000
+#define SYSTEM_CACHE_UPDATE_USEC 250000
 
 static SceUInt64 last_system_cache_tick = 0;
 
@@ -340,6 +342,59 @@ static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
 static char cached_ip_text[20] = "IP OFF";
+
+
+typedef struct VitaHUD_PSVSClockFrequency {
+    SceInt32 cpu;
+    SceInt32 gpu;
+    SceInt32 xbar;
+    SceInt32 bus;
+} VitaHUD_PSVSClockFrequency;
+
+typedef int (*VitaHUD_PSVSGetClockFrequencyFn)(VitaHUD_PSVSClockFrequency *clocks);
+
+static int g_psvs_clock_checked = 0;
+static VitaHUD_PSVSGetClockFrequencyFn g_psvs_get_clock_frequency = 0;
+static int g_net_module_checked = 0;
+static int g_net_module_ready = 0;
+
+#define PSVSP_LIB_NID_GETCLOCK 0x0366B343
+#define PSVSP_FUNC_NID_GETCLOCK 0x3A7A3A18
+
+static int resolve_psvs_clock_export(void) {
+    uintptr_t func = 0;
+
+    if (g_psvs_clock_checked) {
+        return g_psvs_get_clock_frequency != 0;
+    }
+
+    g_psvs_clock_checked = 1;
+
+    if (taiGetModuleExportFunc("PSVshellPlus_Kernel", PSVSP_LIB_NID_GETCLOCK, PSVSP_FUNC_NID_GETCLOCK, &func) >= 0 && func != 0) {
+        g_psvs_get_clock_frequency = (VitaHUD_PSVSGetClockFrequencyFn)func;
+        return 1;
+    }
+
+    return 0;
+}
+
+static void ensure_net_module_ready(void) {
+    int ret;
+
+    if (g_net_module_checked) {
+        return;
+    }
+
+    g_net_module_checked = 1;
+
+    ret = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+
+    if (ret >= 0 || ret == (int)0x8002D013) {
+        g_net_module_ready = 1;
+    } else {
+        g_net_module_ready = 1;
+    }
+}
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -1083,9 +1138,31 @@ static void update_system_cache(void) {
      * This matches the safer PSVshellPlus idea: update system data on a timer,
      * then draw cached values.
      */
-    build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", scePowerGetArmClockFrequency());
-    build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", scePowerGetBusClockFrequency());
-    build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", scePowerGetGpuClockFrequency());
+    {
+        VitaHUD_PSVSClockFrequency clocks;
+        int got_psvs_clock = 0;
+
+        clocks.cpu = 0;
+        clocks.gpu = 0;
+        clocks.xbar = 0;
+        clocks.bus = 0;
+
+        if (resolve_psvs_clock_export() && g_psvs_get_clock_frequency) {
+            if (g_psvs_get_clock_frequency(&clocks) >= 0) {
+                got_psvs_clock = 1;
+            }
+        }
+
+        if (got_psvs_clock) {
+            build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", clocks.cpu);
+            build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", clocks.gpu);
+            build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", clocks.xbar);
+        } else {
+            build_mhz_cache_text(cached_cpu_text, sizeof(cached_cpu_text), "CPU", scePowerGetArmClockFrequency());
+            build_mhz_cache_text(cached_bus_text, sizeof(cached_bus_text), "BUS", scePowerGetBusClockFrequency());
+            build_mhz_cache_text(cached_gpu_text, sizeof(cached_gpu_text), "GPU", scePowerGetGpuClockFrequency());
+        }
+    }
 
     build_app_id_live_text(temp_app);
     copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
@@ -1131,10 +1208,17 @@ static void update_system_cache(void) {
         SceNetCtlInfo net_info;
         int ret;
         int pos;
+        int i;
+
+        ensure_net_module_ready();
+
+        for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
+            ((char *)&net_info)[i] = 0;
+        }
 
         ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
 
-        if (ret >= 0 && net_info.ip_address[0] != '\0') {
+        if (g_net_module_ready && ret >= 0 && net_info.ip_address[0] != '\0') {
             pos = 0;
             pos = append_text(cached_ip_text, pos, "IP ");
             copy_cstr(cached_ip_text + pos, sizeof(cached_ip_text) - pos, net_info.ip_address);
