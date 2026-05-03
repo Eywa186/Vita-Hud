@@ -178,22 +178,37 @@
 #define CLOCK_STYLE_DATE_TIME 3
 #define CLOCK_STYLE_COUNT     4
 
-#define ICON_STYLE_ORIGINAL 0
-#define ICON_STYLE_OUTLINE  1
-#define ICON_STYLE_SOLID    2
-#define ICON_STYLE_DIAMOND  3
-#define ICON_STYLE_CROSS    4
-#define ICON_STYLE_DOTS     5
-#define ICON_STYLE_CHEVRON  6
-#define ICON_STYLE_MINI     7
-#define ICON_STYLE_BARS     8
-#define ICON_STYLE_TARGET   9
-#define ICON_STYLE_ALT_1    10
-#define ICON_STYLE_ALT_2    11
-#define ICON_STYLE_ALT_3    12
-#define ICON_STYLE_ALT_4    13
-#define ICON_STYLE_ALT_5    14
-#define ICON_STYLE_COUNT    15
+#define ICON_STYLE_ORIGINAL   0
+#define ICON_STYLE_OUTLINE    1
+#define ICON_STYLE_SOLID      2
+#define ICON_STYLE_DIAMOND    3
+#define ICON_STYLE_CROSS      4
+#define ICON_STYLE_DOTS       5
+#define ICON_STYLE_CHEVRON    6
+#define ICON_STYLE_MINI       7
+#define ICON_STYLE_BARS       8
+#define ICON_STYLE_TARGET     9
+#define ICON_STYLE_STARBIRD   10
+#define ICON_STYLE_IMPERIAL   11
+#define ICON_STYLE_JEDI       12
+#define ICON_STYLE_SITH       13
+#define ICON_STYLE_SABER      14
+#define ICON_STYLE_SKULL      15
+#define ICON_STYLE_CROWN      16
+#define ICON_STYLE_GEM        17
+#define ICON_STYLE_FLAME      18
+#define ICON_STYLE_ORBIT      19
+#define ICON_STYLE_PHOENIX    20
+#define ICON_STYLE_ECLIPSE    21
+#define ICON_STYLE_NEXUS      22
+#define ICON_STYLE_VIPER      23
+#define ICON_STYLE_RUNE       24
+#define ICON_STYLE_HALO       25
+#define ICON_STYLE_PRISM      26
+#define ICON_STYLE_COMET      27
+#define ICON_STYLE_SIGIL      28
+#define ICON_STYLE_VORTEX     29
+#define ICON_STYLE_COUNT      30
 
 #define AUTO_HIDE_OFF 0
 #define AUTO_HIDE_3S  1
@@ -2496,6 +2511,182 @@ static void draw_icon_style_variant(unsigned int *pixels, int pitch, int x, int 
             draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
             draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
             break;
+        case ICON_STYLE_STARBIRD:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + s, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_IMPERIAL:
+            draw_rect(pixels, pitch, x + (3 * s), y, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (8 * s), y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), 5 * s, s, col);
+            break;
+        case ICON_STYLE_JEDI:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 6 * s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
+            break;
+        case ICON_STYLE_SITH:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + s, s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
+            break;
+        case ICON_STYLE_SABER:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), 2 * s, s, col);
+            break;
+        case ICON_STYLE_SKULL:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000);
+            draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_CROWN:
+            draw_rect(pixels, pitch, x, y + (5 * s), 9 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (4 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + (3 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + s, s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 2 * s, col);
+            break;
+        case ICON_STYLE_GEM:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), 5 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_FLAME:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + s, 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_ORBIT:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + s, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
+            break;
+        case ICON_STYLE_PHOENIX:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + (5 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_ECLIPSE:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (2 * s), 5 * s, 3 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + s, 3 * s, 5 * s, 0x00000000);
+            break;
+        case ICON_STYLE_NEXUS:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
+            draw_rect(pixels, pitch, x, y + (3 * s), 9 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, 2 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), 2 * s, s, col);
+            break;
+        case ICON_STYLE_VIPER:
+            draw_rect(pixels, pitch, x + s, y, 7 * s, s, col);
+            draw_rect(pixels, pitch, x, y + s, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + (3 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (5 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (6 * s), 7 * s, s, col);
+            break;
+        case ICON_STYLE_RUNE:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + s, s, 5 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, 2 * s, col);
+            break;
+        case ICON_STYLE_HALO:
+            draw_rect(pixels, pitch, x + (3 * s), y, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, 7 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (8 * s), y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, col);
+            break;
+        case ICON_STYLE_PRISM:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + s, 3 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, 2 * s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 4 * s, 0x00000000);
+            break;
+        case ICON_STYLE_COMET:
+            draw_rect(pixels, pitch, x, y + s, 4 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (3 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (5 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 3 * s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, s, 5 * s, col);
+            break;
+        case ICON_STYLE_SIGIL:
+            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (4 * s), 7 * s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), 5 * s, s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (6 * s), s, s, col);
+            break;
+        case ICON_STYLE_VORTEX:
+            draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + s, s, s, col);
+            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, s, col);
+            draw_rect(pixels, pitch, x, y + (2 * s), s, 3 * s, col);
+            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), 4 * s, s, col);
+            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
+            draw_rect(pixels, pitch, x + (7 * s), y + (4 * s), s, s, col);
+            draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 5 * s, s, col);
+            break;
         case ICON_STYLE_ORIGINAL:
         default:
             draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
@@ -2504,229 +2695,9 @@ static void draw_icon_style_variant(unsigned int *pixels, int pitch, int x, int 
     }
 }
 
-static int icon_alt_index(int style) {
-    if (style < ICON_STYLE_ALT_1) return -1;
-    if (style > ICON_STYLE_ALT_5) return -1;
-    return style - ICON_STYLE_ALT_1;
-}
-
-static void draw_battery_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col, int battery) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    int fill_w;
-
-    if (s < 1) s = 1;
-    if (battery < 0) battery = 0;
-    if (battery > 100) battery = 100;
-
-    switch (alt) {
-        case 0: /* slim battery */
-            draw_rect(pixels, pitch, x, y + (2 * s), 10 * s, 4 * s, col);
-            draw_rect(pixels, pitch, x + (10 * s), y + (3 * s), s, 2 * s, col);
-            fill_w = (8 * s * battery) / 100;
-            if (fill_w > 0) draw_rect(pixels, pitch, x + s, y + (3 * s), fill_w, 2 * s, col);
-            break;
-        case 1: /* vertical cell */
-            draw_rect(pixels, pitch, x + (3 * s), y, 4 * s, 7 * s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y, 2 * s, s, col);
-            fill_w = (5 * s * battery) / 100;
-            if (fill_w > 0) draw_rect(pixels, pitch, x + (4 * s), y + (6 * s) - fill_w, 2 * s, fill_w, col);
-            break;
-        case 2: /* round battery badge */
-            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col);
-            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, 3 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y + (5 * s), 5 * s, s, col);
-            draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col);
-            break;
-        case 3: /* segmented battery */
-            draw_rect(pixels, pitch, x, y + (2 * s), 8 * s, 4 * s, col);
-            draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, 2 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, 4 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 4 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 4 * s, 0x00000000);
-            break;
-        default: /* lightning battery */
-            draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col);
-            draw_rect(pixels, pitch, x + (9 * s), y + (3 * s), s, 2 * s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 2 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), s, 2 * s, 0x00000000);
-            break;
-    }
-}
-
-static void draw_clock_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-
-    switch (alt) {
-        case 0: /* square clock */
-            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 3 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), 2 * s, s, 0x00000000);
-            break;
-        case 1: /* alarm clock */
-            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + s, y, 2 * s, s, col);
-            draw_rect(pixels, pitch, x + (6 * s), y, 2 * s, s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 2 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), 2 * s, s, 0x00000000);
-            break;
-        case 2: /* minimal hands */
-            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
-            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col);
-            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, col);
-            break;
-        case 3: /* digital clock */
-            draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + s, y + (2 * s), 2 * s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000);
-            break;
-        default: /* stopwatch */
-            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y, s, s, col);
-            draw_rect(pixels, pitch, x + (7 * s), y + s, s, s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (2 * s), s, 3 * s, 0x00000000);
-            break;
-    }
-}
-
-static void draw_calendar_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-
-    switch (alt) {
-        case 0: /* page fold */
-            draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col);
-            draw_rect(pixels, pitch, x + (6 * s), y, 2 * s, 2 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), 4 * s, s, 0x00000000);
-            break;
-        case 1: /* twin-ring calendar */
-            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 6 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y, s, 2 * s, col);
-            draw_rect(pixels, pitch, x + (6 * s), y, s, 2 * s, col);
-            draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, 0x00000000);
-            break;
-        case 2: /* mini grid */
-            draw_rect(pixels, pitch, x, y + s, 9 * s, 6 * s, col);
-            draw_rect(pixels, pitch, x, y + (3 * s), 9 * s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (3 * s), y + s, s, 6 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (6 * s), y + s, s, 6 * s, 0x00000000);
-            break;
-        case 3: /* date card */
-            draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col);
-            draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 3 * s, s, 0x00000000);
-            break;
-        default: /* marked day */
-            draw_rect(pixels, pitch, x + s, y + s, 7 * s, 6 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 2 * s, 2 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (5 * s), y + (4 * s), 2 * s, 2 * s, 0x00000000);
-            break;
-    }
-}
-
-static void draw_fps_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-
-    switch (alt) {
-        case 0: /* tachometer */
-            draw_rect(pixels, pitch, x + s, y + (4 * s), 7 * s, 2 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, s, col);
-            draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), 3 * s, s, col);
-            break;
-        case 1: /* speed bars */
-            draw_rect(pixels, pitch, x + s, y + (5 * s), 2 * s, s, col);
-            draw_rect(pixels, pitch, x + (3 * s), y + (4 * s), 2 * s, s, col);
-            draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), 2 * s, s, col);
-            draw_rect(pixels, pitch, x + (7 * s), y + (2 * s), s, s, col);
-            break;
-        case 2: /* frame box */
-            draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + s, y + (2 * s), 6 * s, 3 * s, 0x00000000);
-            draw_rect(pixels, pitch, x + (3 * s), y + (3 * s), 3 * s, s, col);
-            break;
-        case 3: /* needle badge */
-            draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col);
-            draw_rect(pixels, pitch, x + (4 * s), y + (4 * s), s, s, 0x00000000);
-            draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, s, 0x00000000);
-            break;
-        default: /* performance spark */
-            draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col);
-            draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, col);
-            draw_rect(pixels, pitch, x + (6 * s), y + s, 2 * s, s, col);
-            break;
-    }
-}
-
-static void draw_cpu_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-    switch (alt) {
-        case 0: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
-        case 1: draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, 7 * s, col); draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); break;
-        case 2: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y, s, 7 * s, col); draw_rect(pixels, pitch, x + (6 * s), y, s, 7 * s, col); break;
-        case 3: draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, 5 * s, col); draw_rect(pixels, pitch, x + (4 * s), y, s, 7 * s, col); draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, col); break;
-        default: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
-    }
-}
-
-static void draw_gpu_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-    switch (alt) {
-        case 0: draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col); draw_rect(pixels, pitch, x + (8 * s), y + (3 * s), s, s, col); break;
-        case 1: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, 3 * s, 0x00000000); break;
-        case 2: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + s, 5 * s, s, col); draw_rect(pixels, pitch, x + (3 * s), y + (5 * s), 3 * s, s, col); break;
-        case 3: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (3 * s), y + (2 * s), 3 * s, 3 * s, 0x00000000); break;
-        default: draw_rect(pixels, pitch, x, y + s, 8 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (3 * s), s, s, 0x00000000); draw_rect(pixels, pitch, x + (5 * s), y + (3 * s), s, s, 0x00000000); break;
-    }
-}
-
-static void draw_ram_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-    switch (alt) {
-        case 0: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + s, y + (5 * s), s, s, col); draw_rect(pixels, pitch, x + (7 * s), y + (5 * s), s, s, col); break;
-        case 1: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), s, 3 * s, 0x00000000); draw_rect(pixels, pitch, x + (6 * s), y + (2 * s), s, 3 * s, 0x00000000); break;
-        case 2: draw_rect(pixels, pitch, x, y + s, 9 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 5 * s, s, 0x00000000); draw_rect(pixels, pitch, x + (2 * s), y + (4 * s), 5 * s, s, 0x00000000); break;
-        case 3: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x, y + (3 * s), 9 * s, s, col); break;
-        default: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 4 * s, col); draw_rect(pixels, pitch, x + s, y + (3 * s), 7 * s, s, 0x00000000); break;
-    }
-}
-
-static void draw_app_alt_icon(unsigned int *pixels, int pitch, int x, int y, int scale, int style, unsigned int col) {
-    int s = scale;
-    int alt = icon_alt_index(style);
-    if (s < 1) s = 1;
-    switch (alt) {
-        case 0: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + (2 * s), 2 * s, 2 * s, 0x00000000); draw_rect(pixels, pitch, x + (5 * s), y + (2 * s), 2 * s, 2 * s, 0x00000000); break;
-        case 1: draw_rect(pixels, pitch, x + (2 * s), y, 5 * s, 7 * s, col); draw_rect(pixels, pitch, x + s, y + (2 * s), 7 * s, 3 * s, col); break;
-        case 2: draw_rect(pixels, pitch, x + s, y + s, 7 * s, 5 * s, col); draw_rect(pixels, pitch, x + (3 * s), y, 3 * s, s, col); draw_rect(pixels, pitch, x + (3 * s), y + (6 * s), 3 * s, s, col); break;
-        case 3: draw_rect(pixels, pitch, x, y + (2 * s), 9 * s, 3 * s, col); draw_rect(pixels, pitch, x + (2 * s), y + s, s, s, col); draw_rect(pixels, pitch, x + (6 * s), y + (5 * s), s, s, col); break;
-        default: draw_rect(pixels, pitch, x + s, y, 7 * s, 7 * s, col); draw_rect(pixels, pitch, x + (4 * s), y + (3 * s), s, s, 0x00000000); break;
-    }
-}
-
-
 static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int battery, int scale, int charging) {
     unsigned int white = active_battery_alert ? 0xFF0000FF : color_value(hud_icon_color, 0xFFFFFFFF);
     unsigned int fill = active_battery_alert ? 0xFF0000FF : (hud_icon_color == COLOR_AUTO ? get_battery_color(battery) : color_value(hud_icon_color, get_battery_color(battery)));
-
-    if (battery_icon_style >= ICON_STYLE_ALT_1) {
-        draw_battery_alt_icon(pixels, pitch, x, y, scale, battery_icon_style, fill, battery);
-        return;
-    }
 
     if (battery_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, battery_icon_style, fill);
@@ -2780,11 +2751,6 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     unsigned int white = color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
-    if (clock_icon_style >= ICON_STYLE_ALT_1) {
-        draw_clock_alt_icon(pixels, pitch, x, y, scale, clock_icon_style, white);
-        return;
-    }
-
     if (clock_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, clock_icon_style, white);
         return;
@@ -2812,11 +2778,6 @@ static void draw_calendar_icon(unsigned int *pixels, int pitch, int x, int y, in
     unsigned int col = color_value(date_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
-    if (date_icon_style >= ICON_STYLE_ALT_1) {
-        draw_calendar_alt_icon(pixels, pitch, x, y, scale, date_icon_style, col);
-        return;
-    }
-
     if (date_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, date_icon_style, col);
         return;
@@ -2838,11 +2799,6 @@ static void draw_calendar_icon(unsigned int *pixels, int pitch, int x, int y, in
 static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = active_fps_alert ? 0xFF0000FF : color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
-
-    if (fps_icon_style >= ICON_STYLE_ALT_1) {
-        draw_fps_alt_icon(pixels, pitch, x, y, scale, fps_icon_style, col);
-        return;
-    }
 
     if (fps_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, fps_icon_style, col);
@@ -2934,11 +2890,6 @@ static void draw_cpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
-    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
-        draw_cpu_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
-        return;
-    }
-
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
         return;
@@ -2964,11 +2915,6 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
     unsigned int col = get_extra_icon_color();
     int s = scale;
 
-    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
-        draw_gpu_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
-        return;
-    }
-
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
         return;
@@ -2987,11 +2933,6 @@ static void draw_gpu_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = get_extra_icon_color();
     int s = scale;
-
-    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
-        draw_ram_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
-        return;
-    }
 
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
@@ -3014,11 +2955,6 @@ static void draw_ram_icon(unsigned int *pixels, int pitch, int x, int y, int sca
 static void draw_game_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
     unsigned int col = get_extra_icon_color();
     int s = scale;
-
-    if (active_extra_icon_style >= ICON_STYLE_ALT_1) {
-        draw_app_alt_icon(pixels, pitch, x, y, scale, active_extra_icon_style, col);
-        return;
-    }
 
     if (active_extra_icon_style != ICON_STYLE_ORIGINAL) {
         draw_icon_style_variant(pixels, pitch, x, y, scale, active_extra_icon_style, col);
@@ -3512,11 +3448,26 @@ static const char *icon_style_name_for(int id) {
         case ICON_STYLE_MINI: return "MINI";
         case ICON_STYLE_BARS: return "BARS";
         case ICON_STYLE_TARGET: return "TARGET";
-        case ICON_STYLE_ALT_1: return "ALT 1";
-        case ICON_STYLE_ALT_2: return "ALT 2";
-        case ICON_STYLE_ALT_3: return "ALT 3";
-        case ICON_STYLE_ALT_4: return "ALT 4";
-        case ICON_STYLE_ALT_5: return "ALT 5";
+        case ICON_STYLE_STARBIRD: return "STARBIRD";
+        case ICON_STYLE_IMPERIAL: return "IMPERIAL";
+        case ICON_STYLE_JEDI: return "JEDI";
+        case ICON_STYLE_SITH: return "SITH";
+        case ICON_STYLE_SABER: return "LIGHTSABER";
+        case ICON_STYLE_SKULL: return "SKULL";
+        case ICON_STYLE_CROWN: return "CROWN";
+        case ICON_STYLE_GEM: return "GEM";
+        case ICON_STYLE_FLAME: return "FLAME";
+        case ICON_STYLE_ORBIT: return "ORBIT";
+        case ICON_STYLE_PHOENIX: return "PHOENIX";
+        case ICON_STYLE_ECLIPSE: return "ECLIPSE";
+        case ICON_STYLE_NEXUS: return "NEXUS";
+        case ICON_STYLE_VIPER: return "VIPER";
+        case ICON_STYLE_RUNE: return "RUNE";
+        case ICON_STYLE_HALO: return "HALO";
+        case ICON_STYLE_PRISM: return "PRISM";
+        case ICON_STYLE_COMET: return "COMET";
+        case ICON_STYLE_SIGIL: return "SIGIL";
+        case ICON_STYLE_VORTEX: return "VORTEX";
         case ICON_STYLE_ORIGINAL:
         default: return "ORIGINAL";
     }
