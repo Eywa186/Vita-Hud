@@ -4036,6 +4036,9 @@ static const char *menu_label(int item) {
         case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
         case ITEM_RESET_PROFILES: return "RESET PROFILES";
         case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+        case ITEM_HUD_MENU:     return "HUD MENU";
+        case ITEM_DEBUG_FONT:   return "DEBUG FONT";
+        case ITEM_DEBUG_COLOR:  return "DEBUG COLORS";
         case ITEM_RESET:        return "RESET OPTIONS";
         default:                return "";
     }
