@@ -259,7 +259,18 @@
 #define ITEM_HUD_COLORS_MENU 49
 #define ITEM_MENU_COLORS_MENU 50
 #define ITEM_ICON_COLORS_MENU 51
-#define ITEM_COUNT        52
+#define ITEM_PERFORMANCE_ALERTS_MENU 52
+#define ITEM_FPS_WARNING 53
+#define ITEM_FPS_LOW_LIMIT 54
+#define ITEM_BATTERY_WARNING 55
+#define ITEM_BATTERY_LOW_LIMIT 56
+#define ITEM_RAM_WARNING 57
+#define ITEM_RESET_HUD_POSITION 58
+#define ITEM_RESET_COLORS 59
+#define ITEM_RESET_OVERLAYS 60
+#define ITEM_RESET_PROFILES 61
+#define ITEM_RESET_ALL_DEFAULTS 62
+#define ITEM_COUNT        63
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -282,6 +293,12 @@ static int show_gpu = 0;
 static int show_app_id = 0;
 static int show_ram = 0;
 static int use_24h_time = 0;
+
+static int fps_warning_enabled = 0;
+static int fps_low_limit_index = 0;
+static int battery_warning_enabled = 0;
+static int battery_low_limit_index = 0;
+static int ram_warning_enabled = 0;
 
 static int hud_order[HUD_ORDER_COUNT] = {
     HUD_ORDER_FPS,
@@ -339,6 +356,8 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_HUD_COLORS 7
 #define MENU_PAGE_MENU_COLORS 8
 #define MENU_PAGE_ICON_COLORS 9
+#define MENU_PAGE_PERFORMANCE 10
+#define MENU_PAGE_RESET_OPTIONS 11
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -375,6 +394,10 @@ static int saved_menu_colors_index = 0;
 static int saved_menu_colors_scroll = 0;
 static int saved_icon_colors_index = 0;
 static int saved_icon_colors_scroll = 0;
+static int saved_performance_index = 0;
+static int saved_performance_scroll = 0;
+static int saved_reset_options_index = 0;
+static int saved_reset_options_scroll = 0;
 
 static int current_menu_count(void);
 
@@ -400,6 +423,9 @@ static char cached_bus_text[16] = "BUS --M";
 static char cached_gpu_text[16] = "GPU --M";
 static char cached_app_id_text[24] = "APP UNKNOWN";
 static char cached_ram_text[16] = "RAM OFF";
+static int cached_ram_free_mb = -1;
+static int active_fps_alert = 0;
+static int active_battery_alert = 0;
 
 static int g_screen_w = 960;
 static int g_screen_h = 544;
@@ -621,6 +647,94 @@ static void move_hud_order_item(int index, int dir) {
     menu_index = other;
 }
 
+static int fps_low_limit_value(void) {
+    switch (fps_low_limit_index) {
+        case 1: return 45;
+        case 2: return 50;
+        case 0:
+        default: return 30;
+    }
+}
+
+static int battery_low_limit_value(void) {
+    switch (battery_low_limit_index) {
+        case 1: return 15;
+        case 2: return 10;
+        case 0:
+        default: return 20;
+    }
+}
+
+static const char *fps_low_limit_name(void) {
+    switch (fps_low_limit_index) {
+        case 1: return "45";
+        case 2: return "50";
+        case 0:
+        default: return "30";
+    }
+}
+
+static const char *battery_low_limit_name(void) {
+    switch (battery_low_limit_index) {
+        case 1: return "15";
+        case 2: return "10";
+        case 0:
+        default: return "20";
+    }
+}
+
+static void reset_hud_position_defaults(void) {
+    hud_position = POS_BOTTOM_RIGHT;
+    hud_x_offset = 8;
+    hud_y_offset = 8;
+    reset_message_frames = 180;
+}
+
+static void reset_color_defaults(void) {
+    theme_id = THEME_DEFAULT;
+    hud_theme_id = HUD_THEME_DEFAULT;
+    hud_text_color = COLOR_WHITE;
+    hud_shadow_color = COLOR_BLACK;
+    hud_icon_color = COLOR_AUTO;
+    clock_icon_color = COLOR_AUTO;
+    fps_icon_color = COLOR_AUTO;
+    cpu_icon_color = COLOR_AUTO;
+    bus_icon_color = COLOR_AUTO;
+    gpu_icon_color = COLOR_AUTO;
+    app_icon_color = COLOR_AUTO;
+    ram_icon_color = COLOR_AUTO;
+    menu_text_color = COLOR_WHITE;
+    menu_select_color = COLOR_YELLOW;
+    menu_border_color = COLOR_WHITE;
+    menu_bg_color = BG_BLACK;
+    top_menu_bar_color = COLOR_BLACK;
+    menu_picture_bg = 0;
+    hud_box_enabled = 0;
+    hud_box_bg_color = BG_BLACK;
+    reset_message_frames = 180;
+}
+
+static void reset_overlay_defaults(void) {
+    show_fps = 1;
+    show_battery = 1;
+    show_time = 1;
+    show_cpu = 0;
+    show_bus = 0;
+    show_gpu = 0;
+    show_app_id = 0;
+    show_ram = 0;
+    reset_hud_order_defaults();
+    reset_message_frames = 180;
+}
+
+static void reset_profile_files(void) {
+    sceIoRemove("ur0:data/VitaHUD/profile1.txt");
+    sceIoRemove("ur0:data/VitaHUD/profile2.txt");
+    sceIoRemove("ur0:data/VitaHUD/profile3.txt");
+    profile_id = PROFILE_1;
+    reset_message_frames = 180;
+}
+
 static void reset_defaults(void) {
     hud_enabled = 1;
     menu_open = 0;
@@ -652,6 +766,11 @@ static void reset_defaults(void) {
     show_app_id = 0;
     show_ram = 0;
     use_24h_time = 0;
+    fps_warning_enabled = 0;
+    fps_low_limit_index = 0;
+    battery_warning_enabled = 0;
+    battery_low_limit_index = 0;
+    ram_warning_enabled = 0;
     reset_hud_order_defaults();
 
     hud_text_color = COLOR_WHITE;
@@ -705,6 +824,11 @@ static void clamp_settings(void) {
     if (show_app_id < 0 || show_app_id > 1) show_app_id = 0;
     if (show_ram < 0 || show_ram > 1) show_ram = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
+    if (fps_warning_enabled < 0 || fps_warning_enabled > 1) fps_warning_enabled = 0;
+    if (fps_low_limit_index < 0 || fps_low_limit_index > 2) fps_low_limit_index = 0;
+    if (battery_warning_enabled < 0 || battery_warning_enabled > 1) battery_warning_enabled = 0;
+    if (battery_low_limit_index < 0 || battery_low_limit_index > 2) battery_low_limit_index = 0;
+    if (ram_warning_enabled < 0 || ram_warning_enabled > 1) ram_warning_enabled = 0;
     clamp_hud_order();
 
     if (hud_text_color < 0 || hud_text_color >= COLOR_COUNT) hud_text_color = COLOR_WHITE;
@@ -765,6 +889,11 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_app_id", show_app_id);
     write_config_line(fd, "show_ram", show_ram);
     write_config_line(fd, "time_24h", use_24h_time);
+    write_config_line(fd, "fps_warning", fps_warning_enabled);
+    write_config_line(fd, "fps_low_limit", fps_low_limit_index);
+    write_config_line(fd, "battery_warning", battery_warning_enabled);
+    write_config_line(fd, "battery_low_limit", battery_low_limit_index);
+    write_config_line(fd, "ram_warning", ram_warning_enabled);
     write_config_line(fd, "hud_order0", hud_order[0]);
     write_config_line(fd, "hud_order1", hud_order[1]);
     write_config_line(fd, "hud_order2", hud_order[2]);
@@ -820,6 +949,11 @@ static void load_settings_from_buffer(char *buf) {
     show_app_id = get_config_int(buf, "show_app_id", show_app_id);
     show_ram = get_config_int(buf, "show_ram", show_ram);
     use_24h_time = get_config_int(buf, "time_24h", use_24h_time);
+    fps_warning_enabled = get_config_int(buf, "fps_warning", fps_warning_enabled);
+    fps_low_limit_index = get_config_int(buf, "fps_low_limit", fps_low_limit_index);
+    battery_warning_enabled = get_config_int(buf, "battery_warning", battery_warning_enabled);
+    battery_low_limit_index = get_config_int(buf, "battery_low_limit", battery_low_limit_index);
+    ram_warning_enabled = get_config_int(buf, "ram_warning", ram_warning_enabled);
     hud_order[0] = get_config_int(buf, "hud_order0", hud_order[0]);
     hud_order[1] = get_config_int(buf, "hud_order1", hud_order[1]);
     hud_order[2] = get_config_int(buf, "hud_order2", hud_order[2]);
@@ -1519,6 +1653,7 @@ static void update_system_cache(void) {
              */
             free_bytes = mem_info.size_user + mem_info.size_cdram + mem_info.size_phycont;
             free_mb = free_bytes / (1024 * 1024);
+            cached_ram_free_mb = free_mb;
 
             pos = 0;
             pos = append_text(cached_ram_text, pos, "RAM ");
@@ -1526,6 +1661,7 @@ static void update_system_cache(void) {
             pos = append_text(cached_ram_text, pos, "M");
             cached_ram_text[pos] = '\0';
         } else {
+            cached_ram_free_mb = -1;
             copy_cstr(cached_ram_text, sizeof(cached_ram_text), "RAM ERR");
         }
     }
@@ -1912,8 +2048,8 @@ static void draw_text_shadow(unsigned int *pixels, int pitch, int x, int y, cons
 }
 
 static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int battery, int scale, int charging) {
-    unsigned int white = color_value(hud_icon_color, 0xFFFFFFFF);
-    unsigned int fill = hud_icon_color == COLOR_AUTO ? get_battery_color(battery) : color_value(hud_icon_color, get_battery_color(battery));
+    unsigned int white = active_battery_alert ? 0xFF0000FF : color_value(hud_icon_color, 0xFFFFFFFF);
+    unsigned int fill = active_battery_alert ? 0xFF0000FF : (hud_icon_color == COLOR_AUTO ? get_battery_color(battery) : color_value(hud_icon_color, get_battery_color(battery)));
 
     int body_w = 13 * scale;
     int body_h = 7 * scale;
@@ -1981,7 +2117,7 @@ static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int s
     draw_rect(pixels, pitch, x + (2 * s), y + (6 * s), 3 * s, s, white);
 }
 static void draw_fps_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
-    unsigned int col = color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
+    unsigned int col = active_fps_alert ? 0xFF0000FF : color_value(fps_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
     if (s < 1) s = 1;
@@ -2901,6 +3037,12 @@ static void save_current_menu_page_state(void) {
     } else if (menu_page == MENU_PAGE_ICON_COLORS) {
         saved_icon_colors_index = menu_index;
         saved_icon_colors_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_PERFORMANCE) {
+        saved_performance_index = menu_index;
+        saved_performance_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_RESET_OPTIONS) {
+        saved_reset_options_index = menu_index;
+        saved_reset_options_scroll = menu_scroll;
     }
 }
 
@@ -2943,6 +3085,10 @@ static int current_menu_count(void) {
             return 5;
         case MENU_PAGE_ICON_COLORS:
             return 8;
+        case MENU_PAGE_PERFORMANCE:
+            return 5;
+        case MENU_PAGE_RESET_OPTIONS:
+            return 5;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_OVERLAYS:
@@ -2953,15 +3099,16 @@ static int current_menu_count(void) {
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 15;
+            return 16;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[15] = {
+    static const int main_items[16] = {
         ITEM_HUD,
         ITEM_THEME_MENU,
         ITEM_ALL_HUD_OVERLAYS_MENU,
+        ITEM_PERFORMANCE_ALERTS_MENU,
         ITEM_PROFILE_MENU,
         ITEM_LAYOUT,
         ITEM_POSITION,
@@ -3032,6 +3179,22 @@ static int current_menu_item_at(int index) {
         ITEM_MENU_SIZE
     };
 
+    static const int performance_items[5] = {
+        ITEM_FPS_WARNING,
+        ITEM_FPS_LOW_LIMIT,
+        ITEM_BATTERY_WARNING,
+        ITEM_BATTERY_LOW_LIMIT,
+        ITEM_RAM_WARNING
+    };
+
+    static const int reset_items[5] = {
+        ITEM_RESET_HUD_POSITION,
+        ITEM_RESET_COLORS,
+        ITEM_RESET_OVERLAYS,
+        ITEM_RESET_PROFILES,
+        ITEM_RESET_ALL_DEFAULTS
+    };
+
     if (index < 0) index = 0;
 
     if (menu_page == MENU_PAGE_HUD_ORDER) {
@@ -3079,7 +3242,17 @@ static int current_menu_item_at(int index) {
         return size_items[index];
     }
 
-    if (index >= 15) index = 14;
+    if (menu_page == MENU_PAGE_PERFORMANCE) {
+        if (index >= 5) index = 4;
+        return performance_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_RESET_OPTIONS) {
+        if (index >= 5) index = 4;
+        return reset_items[index];
+    }
+
+    if (index >= 16) index = 15;
     return main_items[index];
 }
 
@@ -3121,6 +3294,12 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_ICON_COLORS) {
         menu_index = saved_icon_colors_index;
         menu_scroll = saved_icon_colors_scroll;
+    } else if (page == MENU_PAGE_PERFORMANCE) {
+        menu_index = saved_performance_index;
+        menu_scroll = saved_performance_scroll;
+    } else if (page == MENU_PAGE_RESET_OPTIONS) {
+        menu_index = saved_reset_options_index;
+        menu_scroll = saved_reset_options_scroll;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -3184,6 +3363,10 @@ static const char *current_menu_title(void) {
 
     if (menu_page == MENU_PAGE_ICON_COLORS) return "ICON COLORS";
 
+    if (menu_page == MENU_PAGE_PERFORMANCE) return "PERFORMANCE ALERTS";
+
+    if (menu_page == MENU_PAGE_RESET_OPTIONS) return "RESET OPTIONS";
+
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
             case LANG_ES: return "MENU DE PERFIL";
@@ -3244,6 +3427,7 @@ static const char *menu_label(int item) {
             case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
             case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
             case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
+            case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS";
             case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
             case ITEM_MENU_HUD_SIZE_MENU: return "MENU / HUD SIZES";
             case ITEM_THEME:        return "TEMA PRESET";
@@ -3279,7 +3463,17 @@ static const char *menu_label(int item) {
             case ITEM_APP_ID_HUD:   return "HUD APP ID";
             case ITEM_RAM_HUD:      return "HUD RAM";
             case ITEM_HUD_ORDER_MENU: return "ORDEN HUD";
-            case ITEM_RESET:        return "VALORES DEFAULT";
+            case ITEM_FPS_WARNING:  return "FPS WARNING";
+            case ITEM_FPS_LOW_LIMIT:return "FPS LOW LIMIT";
+            case ITEM_BATTERY_WARNING: return "BATTERY WARNING";
+            case ITEM_BATTERY_LOW_LIMIT: return "BATTERY LOW LIMIT";
+            case ITEM_RAM_WARNING:  return "RAM WARNING";
+            case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITION";
+            case ITEM_RESET_COLORS: return "RESET COLORS";
+            case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+            case ITEM_RESET_PROFILES: return "RESET PROFILES";
+            case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+            case ITEM_RESET:        return "RESET OPTIONS";
             default:                return "";
         }
     }
@@ -3301,6 +3495,7 @@ static const char *menu_label(int item) {
         case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
         case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
         case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
+        case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS";
         case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALL HUD OVERLAYS";
         case ITEM_MENU_HUD_SIZE_MENU: return "MENU / HUD SIZES";
         case ITEM_THEME:        return "THEME PRESET";
@@ -3336,7 +3531,17 @@ static const char *menu_label(int item) {
         case ITEM_APP_ID_HUD:   return "APP ID HUD";
         case ITEM_RAM_HUD:      return "RAM HUD";
         case ITEM_HUD_ORDER_MENU: return "HUD ORDER";
-        case ITEM_RESET:        return "RESET DEFAULTS";
+        case ITEM_FPS_WARNING:  return "FPS WARNING";
+        case ITEM_FPS_LOW_LIMIT:return "FPS LOW LIMIT";
+        case ITEM_BATTERY_WARNING: return "BATTERY WARNING";
+        case ITEM_BATTERY_LOW_LIMIT: return "BATTERY LOW LIMIT";
+        case ITEM_RAM_WARNING:  return "RAM WARNING";
+        case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITION";
+        case ITEM_RESET_COLORS: return "RESET COLORS";
+        case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+        case ITEM_RESET_PROFILES: return "RESET PROFILES";
+        case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+        case ITEM_RESET:        return "RESET OPTIONS";
         default:                return "";
     }
 }
@@ -3383,6 +3588,7 @@ static const char *menu_value(int item) {
         case ITEM_HUD_COLORS_MENU: return word_open();
         case ITEM_MENU_COLORS_MENU: return word_open();
         case ITEM_ICON_COLORS_MENU: return word_open();
+        case ITEM_PERFORMANCE_ALERTS_MENU: return word_open();
         case ITEM_ALL_HUD_OVERLAYS_MENU: return word_open();
         case ITEM_MENU_HUD_SIZE_MENU: return word_open();
         case ITEM_THEME:        return theme_name();
@@ -3400,7 +3606,17 @@ static const char *menu_value(int item) {
         case ITEM_GPU_HUD:      return onoff_name(show_gpu);
         case ITEM_APP_ID_HUD:   return onoff_name(show_app_id);
         case ITEM_RAM_HUD:      return onoff_name(show_ram);
-        case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : word_press_x();
+        case ITEM_FPS_WARNING:  return onoff_name(fps_warning_enabled);
+        case ITEM_FPS_LOW_LIMIT:return fps_low_limit_name();
+        case ITEM_BATTERY_WARNING: return onoff_name(battery_warning_enabled);
+        case ITEM_BATTERY_LOW_LIMIT: return battery_low_limit_name();
+        case ITEM_RAM_WARNING:  return onoff_name(ram_warning_enabled);
+        case ITEM_RESET:        return word_open();
+        case ITEM_RESET_HUD_POSITION: return reset_message_frames > 0 ? "RESET" : word_press_x();
+        case ITEM_RESET_COLORS: return reset_message_frames > 0 ? "RESET" : word_press_x();
+        case ITEM_RESET_OVERLAYS: return reset_message_frames > 0 ? "RESET" : word_press_x();
+        case ITEM_RESET_PROFILES: return reset_message_frames > 0 ? "RESET" : word_press_x();
+        case ITEM_RESET_ALL_DEFAULTS: return reset_message_frames > 0 ? "RESET" : word_press_x();
         default:                return "";
     }
 }
@@ -3457,6 +3673,10 @@ static void menu_change(int dir) {
             enter_menu_page(MENU_PAGE_OVERLAYS);
             break;
 
+        case ITEM_PERFORMANCE_ALERTS_MENU:
+            enter_menu_page(MENU_PAGE_PERFORMANCE);
+            break;
+
         case ITEM_PROFILE_MENU:
             enter_menu_page(MENU_PAGE_PROFILE);
             break;
@@ -3467,6 +3687,10 @@ static void menu_change(int dir) {
 
         case ITEM_HUD_ORDER_MENU:
             enter_menu_page(MENU_PAGE_HUD_ORDER);
+            break;
+
+        case ITEM_RESET:
+            enter_menu_page(MENU_PAGE_RESET_OPTIONS);
             break;
 
         case ITEM_HUD:
@@ -3672,7 +3896,47 @@ static void menu_change(int dir) {
             show_ram = !show_ram;
             break;
 
-        case ITEM_RESET:
+        case ITEM_FPS_WARNING:
+            fps_warning_enabled = !fps_warning_enabled;
+            break;
+
+        case ITEM_FPS_LOW_LIMIT:
+            fps_low_limit_index += dir;
+            if (fps_low_limit_index < 0) fps_low_limit_index = 2;
+            if (fps_low_limit_index > 2) fps_low_limit_index = 0;
+            break;
+
+        case ITEM_BATTERY_WARNING:
+            battery_warning_enabled = !battery_warning_enabled;
+            break;
+
+        case ITEM_BATTERY_LOW_LIMIT:
+            battery_low_limit_index += dir;
+            if (battery_low_limit_index < 0) battery_low_limit_index = 2;
+            if (battery_low_limit_index > 2) battery_low_limit_index = 0;
+            break;
+
+        case ITEM_RAM_WARNING:
+            ram_warning_enabled = !ram_warning_enabled;
+            break;
+
+        case ITEM_RESET_HUD_POSITION:
+            reset_hud_position_defaults();
+            break;
+
+        case ITEM_RESET_COLORS:
+            reset_color_defaults();
+            break;
+
+        case ITEM_RESET_OVERLAYS:
+            reset_overlay_defaults();
+            break;
+
+        case ITEM_RESET_PROFILES:
+            reset_profile_files();
+            break;
+
+        case ITEM_RESET_ALL_DEFAULTS:
             reset_defaults();
             break;
 
@@ -4232,6 +4496,12 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int has_any;
 
     unsigned int text_color = color_value(hud_text_color, 0xFFFFFFFF);
+    unsigned int fps_text_color = text_color;
+    unsigned int battery_text_color = text_color;
+    unsigned int ram_text_color = text_color;
+    int fps_alert_now = 0;
+    int battery_alert_now = 0;
+    int ram_alert_level = 0;
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
@@ -4275,6 +4545,34 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     extra_icon_h = hud_extra_icon_h(icon_scale);
 
     text_h = 7 * scale;
+
+    fps_alert_now = fps_warning_enabled && ((int)fps_value < fps_low_limit_value());
+    battery_alert_now = battery_warning_enabled && (battery <= battery_low_limit_value());
+
+    if (ram_warning_enabled && cached_ram_free_mb >= 0) {
+        if (cached_ram_free_mb < 32) {
+            ram_alert_level = 2;
+        } else if (cached_ram_free_mb < 64) {
+            ram_alert_level = 1;
+        }
+    }
+
+    if (fps_alert_now) {
+        fps_text_color = 0xFF0000FF;
+    }
+
+    if (battery_alert_now) {
+        battery_text_color = 0xFF0000FF;
+    }
+
+    if (ram_alert_level == 2) {
+        ram_text_color = 0xFF0000FF;
+    } else if (ram_alert_level == 1) {
+        ram_text_color = 0xFF00FFFF;
+    }
+
+    active_fps_alert = fps_alert_now;
+    active_battery_alert = battery_alert_now && (((frame_count / 15) % 2) == 0);
 
     if (hud_layout == LAYOUT_STACKED || force_stacked) {
         total_w = 0;
@@ -4423,7 +4721,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_FPS:
                     if (show_fps) {
                         draw_fps_icon(pixels, pitch, x, draw_y + ((text_h - fps_icon_h) / 2), icon_scale);
-                        draw_text_shadow(pixels, pitch, x + fps_icon_w + gap_small, draw_y, fps_text, text_color, scale);
+                        draw_text_shadow(pixels, pitch, x + fps_icon_w + gap_small, draw_y, fps_text, fps_text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -4431,7 +4729,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 case HUD_ORDER_BATTERY:
                     if (show_battery) {
                         draw_battery_icon(pixels, pitch, x, draw_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
-                        draw_text_shadow(pixels, pitch, x + battery_icon_w + gap_small, draw_y, battery_text, text_color, scale);
+                        draw_text_shadow(pixels, pitch, x + battery_icon_w + gap_small, draw_y, battery_text, battery_text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -4482,9 +4780,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
                 case HUD_ORDER_RAM:
                     if (show_ram) {
-                        set_active_extra_icon_color(ram_icon_color);
+                        set_active_extra_icon_color(ram_alert_level == 2 ? COLOR_RED : (ram_alert_level == 1 ? COLOR_YELLOW : ram_icon_color));
                         draw_ram_icon(pixels, pitch, x, draw_y + ((text_h - extra_icon_h) / 2), icon_scale);
-                        draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, ram_value_text, text_color, scale);
+                        draw_text_shadow(pixels, pitch, x + extra_icon_w + gap_small, draw_y, ram_value_text, ram_text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -4546,14 +4844,14 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             case HUD_ORDER_FPS:
                 draw_fps_icon(pixels, pitch, x, start_y + ((text_h - fps_icon_h) / 2), icon_scale);
                 x += fps_icon_w + gap_small;
-                draw_text_shadow(pixels, pitch, x, start_y, fps_text, text_color, scale);
+                draw_text_shadow(pixels, pitch, x, start_y, fps_text, fps_text_color, scale);
                 x += fps_w;
                 break;
 
             case HUD_ORDER_BATTERY:
                 draw_battery_icon(pixels, pitch, x, start_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging);
                 x += battery_icon_w + gap_small;
-                draw_text_shadow(pixels, pitch, x, start_y, battery_text, text_color, scale);
+                draw_text_shadow(pixels, pitch, x, start_y, battery_text, battery_text_color, scale);
                 x += battery_text_w;
                 break;
 
@@ -4597,10 +4895,10 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 break;
 
             case HUD_ORDER_RAM:
-                set_active_extra_icon_color(ram_icon_color);
+                set_active_extra_icon_color(ram_alert_level == 2 ? COLOR_RED : (ram_alert_level == 1 ? COLOR_YELLOW : ram_icon_color));
                 draw_ram_icon(pixels, pitch, x, start_y + ((text_h - extra_icon_h) / 2), icon_scale);
                 x += extra_icon_w + gap_small;
-                draw_text_shadow(pixels, pitch, x, start_y, ram_value_text, text_color, scale);
+                draw_text_shadow(pixels, pitch, x, start_y, ram_value_text, ram_text_color, scale);
                 x += ram_w;
                 break;
 
