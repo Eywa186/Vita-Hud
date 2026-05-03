@@ -164,7 +164,17 @@
 #define THEME_STEEL     14
 #define THEME_FIRE      15
 #define THEME_GHOST     16
-#define THEME_COUNT     17
+#define THEME_VOID      17
+#define THEME_AURORA    18
+#define THEME_OBSIDIAN  19
+#define THEME_NOVA      20
+#define THEME_DRAGON    21
+#define THEME_COSMIC    22
+#define THEME_TOXIC     23
+#define THEME_INFERNO   24
+#define THEME_ABYSS     25
+#define THEME_CHROME    26
+#define THEME_COUNT     27
 
 #define HUD_THEME_DEFAULT 0
 #define HUD_THEME_STEALTH 1
@@ -246,7 +256,10 @@
 #define ITEM_TOGGLE       40
 #define ITEM_RESET        41
 #define ITEM_MENU_HUD_SIZE_MENU 48
-#define ITEM_COUNT        49
+#define ITEM_HUD_COLORS_MENU 49
+#define ITEM_MENU_COLORS_MENU 50
+#define ITEM_ICON_COLORS_MENU 51
+#define ITEM_COUNT        52
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -277,8 +290,8 @@ static int hud_order[HUD_ORDER_COUNT] = {
     HUD_ORDER_CPU,
     HUD_ORDER_BUS,
     HUD_ORDER_GPU,
-    HUD_ORDER_APP_ID,
-    HUD_ORDER_RAM
+    HUD_ORDER_RAM,
+    HUD_ORDER_APP_ID
 };
 
 static int hud_text_color = COLOR_WHITE;
@@ -323,6 +336,9 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_HUD_ORDER 4
 #define MENU_PAGE_OVERLAYS 5
 #define MENU_PAGE_SIZE    6
+#define MENU_PAGE_HUD_COLORS 7
+#define MENU_PAGE_MENU_COLORS 8
+#define MENU_PAGE_ICON_COLORS 9
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -353,6 +369,12 @@ static int saved_overlays_index = 0;
 static int saved_overlays_scroll = 0;
 static int saved_size_index = 0;
 static int saved_size_scroll = 0;
+static int saved_hud_colors_index = 0;
+static int saved_hud_colors_scroll = 0;
+static int saved_menu_colors_index = 0;
+static int saved_menu_colors_scroll = 0;
+static int saved_icon_colors_index = 0;
+static int saved_icon_colors_scroll = 0;
 
 static int current_menu_count(void);
 
@@ -536,8 +558,8 @@ static void reset_hud_order_defaults(void) {
     hud_order[3] = HUD_ORDER_CPU;
     hud_order[4] = HUD_ORDER_BUS;
     hud_order[5] = HUD_ORDER_GPU;
-    hud_order[6] = HUD_ORDER_APP_ID;
-    hud_order[7] = HUD_ORDER_RAM;
+    hud_order[6] = HUD_ORDER_RAM;
+    hud_order[7] = HUD_ORDER_APP_ID;
 }
 
 static void clamp_hud_order(void) {
@@ -1144,6 +1166,146 @@ static void apply_theme(void) {
             menu_bg_color = BG_TRANSPARENT;
             top_menu_bar_color = COLOR_DARK_GRAY;
             hud_box_bg_color = BG_TRANSPARENT;
+            break;
+
+        case THEME_VOID:
+            hud_text_color = COLOR_VIOLET;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_PURPLE;
+            fps_icon_color = COLOR_ELECTRIC_BLUE;
+            clock_icon_color = COLOR_LAVENDER;
+            menu_text_color = COLOR_LAVENDER;
+            menu_select_color = COLOR_ELECTRIC_BLUE;
+            menu_border_color = COLOR_VIOLET;
+            menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_MIDNIGHT;
+            hud_box_bg_color = BG_BLACK;
+            break;
+
+        case THEME_AURORA:
+            hud_text_color = COLOR_MINT;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_AQUA;
+            fps_icon_color = COLOR_ROSE;
+            clock_icon_color = COLOR_SKY;
+            menu_text_color = COLOR_MINT;
+            menu_select_color = COLOR_ROSE;
+            menu_border_color = COLOR_AQUA;
+            menu_bg_color = BG_TEAL;
+            top_menu_bar_color = COLOR_TURQUOISE;
+            hud_box_bg_color = BG_TEAL;
+            break;
+
+        case THEME_OBSIDIAN:
+            hud_text_color = COLOR_SILVER;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_DARK_GRAY;
+            fps_icon_color = COLOR_CRIMSON;
+            clock_icon_color = COLOR_SILVER;
+            menu_text_color = COLOR_SILVER;
+            menu_select_color = COLOR_CRIMSON;
+            menu_border_color = COLOR_DARK_GRAY;
+            menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_BLACK;
+            hud_box_bg_color = BG_BLACK;
+            break;
+
+        case THEME_NOVA:
+            hud_text_color = COLOR_GOLD;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_ORANGE;
+            fps_icon_color = COLOR_ELECTRIC_BLUE;
+            clock_icon_color = COLOR_GOLD;
+            menu_text_color = COLOR_GOLD;
+            menu_select_color = COLOR_ELECTRIC_BLUE;
+            menu_border_color = COLOR_ORANGE;
+            menu_bg_color = BG_NAVY;
+            top_menu_bar_color = COLOR_NAVY;
+            hud_box_bg_color = BG_NAVY;
+            break;
+
+        case THEME_DRAGON:
+            hud_text_color = COLOR_CRIMSON;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GOLD;
+            fps_icon_color = COLOR_ORANGE;
+            clock_icon_color = COLOR_AMBER;
+            menu_text_color = COLOR_CRIMSON;
+            menu_select_color = COLOR_GOLD;
+            menu_border_color = COLOR_ORANGE;
+            menu_bg_color = BG_MAROON;
+            top_menu_bar_color = COLOR_MAROON;
+            hud_box_bg_color = BG_MAROON;
+            break;
+
+        case THEME_COSMIC:
+            hud_text_color = COLOR_LAVENDER;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_MAGENTA;
+            fps_icon_color = COLOR_CYAN;
+            clock_icon_color = COLOR_VIOLET;
+            menu_text_color = COLOR_LAVENDER;
+            menu_select_color = COLOR_CYAN;
+            menu_border_color = COLOR_MAGENTA;
+            menu_bg_color = BG_PURPLE;
+            top_menu_bar_color = COLOR_PURPLE;
+            hud_box_bg_color = BG_PURPLE;
+            break;
+
+        case THEME_TOXIC:
+            hud_text_color = COLOR_NEON_GREEN;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_LIME;
+            fps_icon_color = COLOR_YELLOW;
+            clock_icon_color = COLOR_NEON_GREEN;
+            menu_text_color = COLOR_NEON_GREEN;
+            menu_select_color = COLOR_YELLOW;
+            menu_border_color = COLOR_LIME;
+            menu_bg_color = BG_GREEN;
+            top_menu_bar_color = COLOR_FOREST;
+            hud_box_bg_color = BG_GREEN;
+            break;
+
+        case THEME_INFERNO:
+            hud_text_color = COLOR_ORANGE;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_RED;
+            fps_icon_color = COLOR_GOLD;
+            clock_icon_color = COLOR_ORANGE;
+            menu_text_color = COLOR_ORANGE;
+            menu_select_color = COLOR_GOLD;
+            menu_border_color = COLOR_RED;
+            menu_bg_color = BG_RED;
+            top_menu_bar_color = COLOR_CRIMSON;
+            hud_box_bg_color = BG_RED;
+            break;
+
+        case THEME_ABYSS:
+            hud_text_color = COLOR_SKY;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_NAVY;
+            fps_icon_color = COLOR_AQUA;
+            clock_icon_color = COLOR_SKY;
+            menu_text_color = COLOR_SKY;
+            menu_select_color = COLOR_AQUA;
+            menu_border_color = COLOR_BLUE;
+            menu_bg_color = BG_NAVY;
+            top_menu_bar_color = COLOR_MIDNIGHT;
+            hud_box_bg_color = BG_NAVY;
+            break;
+
+        case THEME_CHROME:
+            hud_text_color = COLOR_SNOW;
+            hud_shadow_color = COLOR_DARK_GRAY;
+            hud_icon_color = COLOR_SILVER;
+            fps_icon_color = COLOR_ELECTRIC_BLUE;
+            clock_icon_color = COLOR_SNOW;
+            menu_text_color = COLOR_SNOW;
+            menu_select_color = COLOR_ELECTRIC_BLUE;
+            menu_border_color = COLOR_SILVER;
+            menu_bg_color = BG_SLATE;
+            top_menu_bar_color = COLOR_DARK_GRAY;
+            hud_box_bg_color = BG_SLATE;
             break;
 
         case THEME_DEFAULT:
@@ -2232,6 +2394,16 @@ static const char *theme_name(void) {
         case THEME_STEEL:     return "STEEL";
         case THEME_FIRE:      return "FIRE";
         case THEME_GHOST:     return "GHOST";
+        case THEME_VOID:      return "VOID";
+        case THEME_AURORA:    return "AURORA";
+        case THEME_OBSIDIAN:  return "OBSIDIAN";
+        case THEME_NOVA:      return "NOVA";
+        case THEME_DRAGON:    return "DRAGON";
+        case THEME_COSMIC:    return "COSMIC";
+        case THEME_TOXIC:     return "TOXIC";
+        case THEME_INFERNO:   return "INFERNO";
+        case THEME_ABYSS:     return "ABYSS";
+        case THEME_CHROME:    return "CHROME";
         case THEME_DEFAULT:
         default:              return "DEFAULT";
     }
@@ -2509,6 +2681,16 @@ static const char *theme_name_for(int id) {
         case THEME_STEEL:     return "STEEL";
         case THEME_FIRE:      return "FIRE";
         case THEME_GHOST:     return "GHOST";
+        case THEME_VOID:      return "VOID";
+        case THEME_AURORA:    return "AURORA";
+        case THEME_OBSIDIAN:  return "OBSIDIAN";
+        case THEME_NOVA:      return "NOVA";
+        case THEME_DRAGON:    return "DRAGON";
+        case THEME_COSMIC:    return "COSMIC";
+        case THEME_TOXIC:     return "TOXIC";
+        case THEME_INFERNO:   return "INFERNO";
+        case THEME_ABYSS:     return "ABYSS";
+        case THEME_CHROME:    return "CHROME";
         case THEME_DEFAULT:
         default:              return "DEFAULT";
     }
@@ -2710,6 +2892,15 @@ static void save_current_menu_page_state(void) {
     } else if (menu_page == MENU_PAGE_SIZE) {
         saved_size_index = menu_index;
         saved_size_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_HUD_COLORS) {
+        saved_hud_colors_index = menu_index;
+        saved_hud_colors_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_MENU_COLORS) {
+        saved_menu_colors_index = menu_index;
+        saved_menu_colors_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_ICON_COLORS) {
+        saved_icon_colors_index = menu_index;
+        saved_icon_colors_scroll = menu_scroll;
     }
 }
 
@@ -2745,7 +2936,13 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 19;
+            return 5;
+        case MENU_PAGE_HUD_COLORS:
+            return 4;
+        case MENU_PAGE_MENU_COLORS:
+            return 5;
+        case MENU_PAGE_ICON_COLORS:
+            return 8;
         case MENU_PAGE_HUD_ORDER:
             return HUD_ORDER_COUNT;
         case MENU_PAGE_OVERLAYS:
@@ -2785,26 +2982,38 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[19] = {
+    static const int theme_items[5] = {
         ITEM_THEME,
+        ITEM_HUD_COLORS_MENU,
+        ITEM_MENU_COLORS_MENU,
+        ITEM_ICON_COLORS_MENU,
+        ITEM_MENU_PICTURE_BG
+    };
+
+    static const int hud_color_items[4] = {
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
+        ITEM_HUD_BOX,
+        ITEM_HUD_BOX_BG
+    };
+
+    static const int menu_color_items[5] = {
+        ITEM_MENU_TEXT,
+        ITEM_MENU_SELECT,
+        ITEM_MENU_BORDER,
+        ITEM_MENUBG,
+        ITEM_TOP_BAR
+    };
+
+    static const int icon_color_items[8] = {
         ITEM_FPS_ICON,
         ITEM_HUD_ICON,
         ITEM_CLOCK_ICON,
         ITEM_CPU_ICON,
         ITEM_BUS_ICON,
         ITEM_GPU_ICON,
-        ITEM_APP_ICON,
         ITEM_RAM_ICON,
-        ITEM_HUD_BOX,
-        ITEM_HUD_BOX_BG,
-        ITEM_MENU_TEXT,
-        ITEM_MENU_SELECT,
-        ITEM_MENU_BORDER,
-        ITEM_MENUBG,
-        ITEM_TOP_BAR,
-        ITEM_MENU_PICTURE_BG
+        ITEM_APP_ICON
     };
 
     static const int overlay_items[8] = {
@@ -2841,8 +3050,23 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 19) index = 18;
+        if (index >= 5) index = 4;
         return theme_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_HUD_COLORS) {
+        if (index >= 4) index = 3;
+        return hud_color_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_MENU_COLORS) {
+        if (index >= 5) index = 4;
+        return menu_color_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_ICON_COLORS) {
+        if (index >= 8) index = 7;
+        return icon_color_items[index];
     }
 
     if (menu_page == MENU_PAGE_OVERLAYS) {
@@ -2888,6 +3112,15 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_SIZE) {
         menu_index = saved_size_index;
         menu_scroll = saved_size_scroll;
+    } else if (page == MENU_PAGE_HUD_COLORS) {
+        menu_index = saved_hud_colors_index;
+        menu_scroll = saved_hud_colors_scroll;
+    } else if (page == MENU_PAGE_MENU_COLORS) {
+        menu_index = saved_menu_colors_index;
+        menu_scroll = saved_menu_colors_scroll;
+    } else if (page == MENU_PAGE_ICON_COLORS) {
+        menu_index = saved_icon_colors_index;
+        menu_scroll = saved_icon_colors_scroll;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -2926,12 +3159,12 @@ static const char *choice_title_for_target(void) {
         case ITEM_GPU_ICON: return "GPU ICON";
         case ITEM_APP_ICON: return "APP ID ICON";
         case ITEM_RAM_ICON: return "RAM ICON";
-        case ITEM_HUD_BOX_BG: return "HUD BOX BACKGROUND";
+        case ITEM_HUD_BOX_BG: return "HUD BACKGROUND";
         case ITEM_MENU_TEXT: return "MENU TEXT";
         case ITEM_MENU_SELECT: return "MENU SELECT";
         case ITEM_MENU_BORDER: return "MENU BORDER";
         case ITEM_MENUBG: return "MENU BACKGROUND";
-        case ITEM_TOP_BAR: return "TOP MENU BAR";
+        case ITEM_TOP_BAR: return "MENU TOP BAR";
         default: return "CHOOSE";
     }
 }
@@ -2943,7 +3176,13 @@ static const char *current_menu_title(void) {
 
     if (menu_page == MENU_PAGE_OVERLAYS) return "ALL HUD OVERLAYS";
 
-    if (menu_page == MENU_PAGE_SIZE) return "MENU HUD SIZES";
+    if (menu_page == MENU_PAGE_SIZE) return "MENU / HUD SIZES";
+
+    if (menu_page == MENU_PAGE_HUD_COLORS) return "HUD COLORS";
+
+    if (menu_page == MENU_PAGE_MENU_COLORS) return "MENU COLORS";
+
+    if (menu_page == MENU_PAGE_ICON_COLORS) return "ICON COLORS";
 
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
@@ -3002,8 +3241,11 @@ static const char *menu_label(int item) {
             case ITEM_TIME:         return "RELOJ HUD";
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "TEMA / COLOR";
+            case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
+            case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
+            case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
             case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
-            case ITEM_MENU_HUD_SIZE_MENU: return "TAMANO MENU HUD";
+            case ITEM_MENU_HUD_SIZE_MENU: return "MENU / HUD SIZES";
             case ITEM_THEME:        return "TEMA PRESET";
             case ITEM_HUD_THEME:    return "TEMA HUD";
             case ITEM_HUD_TEXT:     return "TEXTO HUD";
@@ -3017,12 +3259,12 @@ static const char *menu_label(int item) {
             case ITEM_APP_ICON:     return "ICONO APP ID";
             case ITEM_RAM_ICON:     return "ICONO RAM";
             case ITEM_HUD_BOX:      return "CAJA HUD";
-            case ITEM_HUD_BOX_BG:   return "FONDO CAJA HUD";
+            case ITEM_HUD_BOX_BG:   return "FONDO HUD";
             case ITEM_MENU_TEXT:    return "TEXTO MENU";
             case ITEM_MENU_SELECT:  return "SELECCION MENU";
             case ITEM_MENU_BORDER:  return "BORDE MENU";
             case ITEM_MENUBG:       return "FONDO MENU";
-            case ITEM_TOP_BAR:      return "BARRA SUPERIOR";
+            case ITEM_TOP_BAR:      return "BARRA MENU TOP";
             case ITEM_MENU_PICTURE_BG: return "FONDO IMAGEN";
             case ITEM_PROFILE_MENU: return "MENU PERFIL";
             case ITEM_PROFILE:      return "RANURA PERFIL";
@@ -3056,8 +3298,11 @@ static const char *menu_label(int item) {
         case ITEM_TIME:         return "CLOCK HUD";
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR";
+        case ITEM_HUD_COLORS_MENU: return "HUD COLORS";
+        case ITEM_MENU_COLORS_MENU: return "MENU COLORS";
+        case ITEM_ICON_COLORS_MENU: return "ICON COLORS";
         case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALL HUD OVERLAYS";
-        case ITEM_MENU_HUD_SIZE_MENU: return "MENU HUD SIZES";
+        case ITEM_MENU_HUD_SIZE_MENU: return "MENU / HUD SIZES";
         case ITEM_THEME:        return "THEME PRESET";
         case ITEM_HUD_THEME:    return "HUD THEME";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
@@ -3071,12 +3316,12 @@ static const char *menu_label(int item) {
         case ITEM_APP_ICON:     return "APP ID ICON";
         case ITEM_RAM_ICON:     return "RAM ICON";
         case ITEM_HUD_BOX:      return "HUD BOX";
-        case ITEM_HUD_BOX_BG:   return "HUD BOX BACKGROUND";
+        case ITEM_HUD_BOX_BG:   return "HUD BACKGROUND";
         case ITEM_MENU_TEXT:    return "MENU TEXT";
         case ITEM_MENU_SELECT:  return "MENU SELECT";
         case ITEM_MENU_BORDER:  return "MENU BORDER";
         case ITEM_MENUBG:       return "MENU BACKGROUND";
-        case ITEM_TOP_BAR:      return "TOP MENU BAR";
+        case ITEM_TOP_BAR:      return "MENU TOP BAR";
         case ITEM_MENU_PICTURE_BG: return "PICTURE BACKGROUND";
         case ITEM_PROFILE_MENU: return "PROFILE MENU";
         case ITEM_PROFILE:      return "PROFILE SLOT";
@@ -3135,6 +3380,9 @@ static const char *menu_value(int item) {
         case ITEM_HUD_BOX:      return onoff_name(hud_box_enabled);
         case ITEM_HUD_BOX_BG:   return menu_bg_name_for(hud_box_bg_color);
         case ITEM_THEME_MENU:   return word_open();
+        case ITEM_HUD_COLORS_MENU: return word_open();
+        case ITEM_MENU_COLORS_MENU: return word_open();
+        case ITEM_ICON_COLORS_MENU: return word_open();
         case ITEM_ALL_HUD_OVERLAYS_MENU: return word_open();
         case ITEM_MENU_HUD_SIZE_MENU: return word_open();
         case ITEM_THEME:        return theme_name();
@@ -3191,6 +3439,18 @@ static void menu_change(int dir) {
     switch (item) {
         case ITEM_THEME_MENU:
             enter_menu_page(MENU_PAGE_THEME);
+            break;
+
+        case ITEM_HUD_COLORS_MENU:
+            enter_menu_page(MENU_PAGE_HUD_COLORS);
+            break;
+
+        case ITEM_MENU_COLORS_MENU:
+            enter_menu_page(MENU_PAGE_MENU_COLORS);
+            break;
+
+        case ITEM_ICON_COLORS_MENU:
+            enter_menu_page(MENU_PAGE_ICON_COLORS);
             break;
 
         case ITEM_ALL_HUD_OVERLAYS_MENU:
@@ -3886,6 +4146,8 @@ static void handle_input(void) {
         if (pressed & SCE_CTRL_CIRCLE) {
             if (menu_page == MENU_PAGE_CHOICE) {
                 enter_menu_page(choice_return_page);
+            } else if (menu_page == MENU_PAGE_HUD_COLORS || menu_page == MENU_PAGE_MENU_COLORS || menu_page == MENU_PAGE_ICON_COLORS) {
+                enter_menu_page(MENU_PAGE_THEME);
             } else if (menu_page != MENU_PAGE_MAIN) {
                 enter_menu_page(MENU_PAGE_MAIN);
             } else {
