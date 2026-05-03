@@ -7,6 +7,7 @@
 #include <psp2/appmgr.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+#include <psp2/types.h>
 #include <taihen.h>
 
 #define CONFIG_DIR  "ur0:data/VitaHUD"
@@ -18,12 +19,19 @@
 #define POS_BOTTOM_LEFT  1
 #define POS_TOP_RIGHT    2
 #define POS_TOP_LEFT     3
-#define POS_COUNT        4
+#define POS_TOP_CENTER   4
+#define POS_BOTTOM_CENTER 5
+#define POS_COUNT        6
 
 #define SIZE_MICRO   0
 #define SIZE_NORMAL  1
 #define SIZE_LARGE   2
 #define SIZE_COUNT   3
+
+#define MAIN_MENU_SIZE_COMPACT 0
+#define MAIN_MENU_SIZE_DEFAULT 1
+#define MAIN_MENU_SIZE_LARGE   2
+#define MAIN_MENU_SIZE_COUNT   3
 
 #define LAYOUT_SINGLE  0
 #define LAYOUT_COMPACT 1
@@ -62,7 +70,16 @@
 #define COLOR_SLATE      28
 #define COLOR_GRAY       29
 #define COLOR_DARK_GRAY  30
-#define COLOR_COUNT      31
+#define COLOR_BROWN      31
+#define COLOR_COPPER     32
+#define COLOR_CHOCOLATE  33
+#define COLOR_HOT_PINK   34
+#define COLOR_NEON_GREEN 35
+#define COLOR_ELECTRIC_BLUE 36
+#define COLOR_MIDNIGHT   37
+#define COLOR_SNOW       38
+#define COLOR_CREAM      39
+#define COLOR_COUNT      40
 
 #define BG_TRANSPARENT 0
 #define BG_BLACK       1
@@ -165,41 +182,43 @@
 #define ITEM_X_OFFSET     3
 #define ITEM_Y_OFFSET     4
 #define ITEM_SIZE         5
-#define ITEM_FONT         6
-#define ITEM_FPS          7
-#define ITEM_BATTERY      8
-#define ITEM_TIME         9
-#define ITEM_CPU_HUD      10
-#define ITEM_BUS_HUD      11
-#define ITEM_GPU_HUD      12
-#define ITEM_APP_ID_HUD   13
-#define ITEM_RAM_HUD      14
-#define ITEM_IP_HUD       15
-#define ITEM_CHARGING     16
-#define ITEM_TIMEMODE     17
-#define ITEM_THEME_MENU   18
-#define ITEM_THEME        19
-#define ITEM_HUD_THEME    20
-#define ITEM_HUD_TEXT     21
-#define ITEM_HUD_SHADOW   22
-#define ITEM_HUD_ICON     23
-#define ITEM_CLOCK_ICON   24
-#define ITEM_HUD_BOX      25
-#define ITEM_HUD_BOX_BG   26
-#define ITEM_MENU_TEXT    27
-#define ITEM_MENU_SELECT  28
-#define ITEM_MENU_BORDER  29
-#define ITEM_MENUBG       30
-#define ITEM_TOP_BAR      31
-#define ITEM_PROFILE_MENU 32
-#define ITEM_PROFILE      33
-#define ITEM_SAVE_PROFILE 34
-#define ITEM_LOAD_PROFILE 35
-#define ITEM_LANGUAGE     36
-#define ITEM_AUTO_HIDE    37
-#define ITEM_TOGGLE       38
-#define ITEM_RESET        39
-#define ITEM_COUNT        40
+#define ITEM_MENU_SIZE    6
+#define ITEM_FONT         7
+#define ITEM_FPS          8
+#define ITEM_BATTERY      9
+#define ITEM_TIME         10
+#define ITEM_CPU_HUD      11
+#define ITEM_BUS_HUD      12
+#define ITEM_GPU_HUD      13
+#define ITEM_APP_ID_HUD   14
+#define ITEM_RAM_HUD      15
+#define ITEM_IP_HUD       16
+#define ITEM_CHARGING     17
+#define ITEM_TIMEMODE     18
+#define ITEM_THEME_MENU   19
+#define ITEM_THEME        20
+#define ITEM_HUD_THEME    21
+#define ITEM_HUD_TEXT     22
+#define ITEM_HUD_SHADOW   23
+#define ITEM_HUD_ICON     24
+#define ITEM_CLOCK_ICON   25
+#define ITEM_HUD_BOX      26
+#define ITEM_HUD_BOX_BG   27
+#define ITEM_MENU_TEXT    28
+#define ITEM_MENU_SELECT  29
+#define ITEM_MENU_BORDER  30
+#define ITEM_MENUBG       31
+#define ITEM_TOP_BAR      32
+#define ITEM_MENU_PICTURE_BG 33
+#define ITEM_PROFILE_MENU 34
+#define ITEM_PROFILE      35
+#define ITEM_SAVE_PROFILE 36
+#define ITEM_LOAD_PROFILE 37
+#define ITEM_LANGUAGE     38
+#define ITEM_AUTO_HIDE    39
+#define ITEM_TOGGLE       40
+#define ITEM_RESET        41
+#define ITEM_COUNT        42
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -257,6 +276,8 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_MAIN    0
 #define MENU_PAGE_PROFILE 1
 #define MENU_PAGE_THEME   2
+#define MENU_PAGE_CHOICE  3
+#define ITEM_CHOICE_BASE  1000
 
 static int menu_page = MENU_PAGE_MAIN;
 static int menu_nav_dir = 0;
@@ -266,6 +287,11 @@ static int menu_lr_dir = 0;
 static SceUInt64 menu_lr_hold_start_tick = 0;
 static SceUInt64 menu_lr_next_repeat_tick = 0;
 static int menu_lr_step = 4;
+static int choice_target_item = ITEM_THEME;
+static int choice_return_page = MENU_PAGE_MAIN;
+static int main_menu_size = MAIN_MENU_SIZE_DEFAULT;
+static int menu_picture_bg = 0;
+static int g_menu_text_mode = 0;
 
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
@@ -459,6 +485,7 @@ static void reset_defaults(void) {
     hud_x_offset = 8;
     hud_y_offset = 8;
     hud_size = SIZE_NORMAL;
+    main_menu_size = MAIN_MENU_SIZE_DEFAULT;
     font_style = FONT_DEFAULT;
 
     show_fps = 1;
@@ -482,6 +509,7 @@ static void reset_defaults(void) {
     menu_border_color = COLOR_WHITE;
     menu_bg_color = BG_BLACK;
     top_menu_bar_color = COLOR_BLACK;
+    menu_picture_bg = 0;
     hud_box_enabled = 0;
     hud_box_bg_color = BG_BLACK;
 
@@ -505,6 +533,7 @@ static void clamp_settings(void) {
     if (hud_y_offset < 0) hud_y_offset = 0;
     if (hud_y_offset > 544) hud_y_offset = 544;
     if (hud_size < 0 || hud_size >= SIZE_COUNT) hud_size = SIZE_NORMAL;
+    if (main_menu_size < 0 || main_menu_size >= MAIN_MENU_SIZE_COUNT) main_menu_size = MAIN_MENU_SIZE_DEFAULT;
     if (font_style < 0 || font_style >= FONT_COUNT) font_style = FONT_DEFAULT;
 
     if (show_fps < 0 || show_fps > 1) show_fps = 1;
@@ -558,6 +587,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "x_offset", hud_x_offset);
     write_config_line(fd, "y_offset", hud_y_offset);
     write_config_line(fd, "size", hud_size);
+    write_config_line(fd, "main_menu_size", main_menu_size);
     write_config_line(fd, "font", font_style);
 
     write_config_line(fd, "show_fps", show_fps);
@@ -581,6 +611,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "menu_border_color", menu_border_color);
     write_config_line(fd, "menu_bg", menu_bg_color);
     write_config_line(fd, "top_menu_bar", top_menu_bar_color);
+    write_config_line(fd, "menu_picture_bg", menu_picture_bg);
     write_config_line(fd, "hud_box", hud_box_enabled);
     write_config_line(fd, "hud_box_bg", hud_box_bg_color);
 
@@ -599,6 +630,7 @@ static void load_settings_from_buffer(char *buf) {
     hud_x_offset = get_config_int(buf, "x_offset", hud_x_offset);
     hud_y_offset = get_config_int(buf, "y_offset", hud_y_offset);
     hud_size = get_config_int(buf, "size", hud_size);
+    main_menu_size = get_config_int(buf, "main_menu_size", main_menu_size);
     font_style = get_config_int(buf, "font", font_style);
 
     show_fps = get_config_int(buf, "show_fps", show_fps);
@@ -622,6 +654,7 @@ static void load_settings_from_buffer(char *buf) {
     menu_border_color = get_config_int(buf, "menu_border_color", menu_border_color);
     menu_bg_color = get_config_int(buf, "menu_bg", menu_bg_color);
     top_menu_bar_color = get_config_int(buf, "top_menu_bar", top_menu_bar_color);
+    menu_picture_bg = get_config_int(buf, "menu_picture_bg", menu_picture_bg);
     hud_box_enabled = get_config_int(buf, "hud_box", hud_box_enabled);
     hud_box_bg_color = get_config_int(buf, "hud_box_bg", hud_box_bg_color);
 
@@ -1100,6 +1133,15 @@ static unsigned int color_value(int color_id, unsigned int fallback) {
         case COLOR_SLATE:     return 0xFF908070;
         case COLOR_GRAY:      return 0xFF808080;
         case COLOR_DARK_GRAY: return 0xFF303030;
+        case COLOR_BROWN:    return 0xFF2A2A80;
+        case COLOR_COPPER:   return 0xFF3278B8;
+        case COLOR_CHOCOLATE:return 0xFF1E3C78;
+        case COLOR_HOT_PINK: return 0xFFFF69FF;
+        case COLOR_NEON_GREEN:return 0xFF39FF39;
+        case COLOR_ELECTRIC_BLUE:return 0xFFFF7F00;
+        case COLOR_MIDNIGHT:return 0xFF301000;
+        case COLOR_SNOW:     return 0xFFFFFAFA;
+        case COLOR_CREAM:    return 0xFFDCC8FF;
         case COLOR_AUTO:
         default:              return fallback;
     }
@@ -1167,6 +1209,7 @@ static void get_hud_metrics(int *scale, int *gap_small, int *gap_big) {
 }
 
 static int font_extra_spacing(void) {
+    if (g_menu_text_mode) return 0;
     switch (font_style) {
         case FONT_WIDE:
         case FONT_PSP:
@@ -1183,6 +1226,7 @@ static int font_extra_spacing(void) {
 }
 
 static int font_shadow_style(void) {
+    if (g_menu_text_mode) return 1;
     switch (font_style) {
         case FONT_THIN:
         case FONT_CLEAN:
@@ -1201,6 +1245,7 @@ static int font_shadow_style(void) {
 }
 
 static int font_bold_style(void) {
+    if (g_menu_text_mode) return 0;
     switch (font_style) {
         case FONT_BOLD:
         case FONT_BLOCK:
@@ -1256,6 +1301,7 @@ static unsigned char font5x7(char c, int row) {
         case 'Y': { static const unsigned char g[7] = {0x11,0x0A,0x04,0x04,0x04,0x04,0x04}; return g[row]; }
         case 'Z': { static const unsigned char g[7] = {0x1F,0x01,0x02,0x04,0x08,0x10,0x1F}; return g[row]; }
 
+        case '^': { static const unsigned char g[7] = {0x04,0x0A,0x11,0x00,0x00,0x00,0x00}; return g[row]; }
         case ':': { static const unsigned char g[7] = {0x00,0x04,0x04,0x00,0x04,0x04,0x00}; return g[row]; }
         case '%': { static const unsigned char g[7] = {0x19,0x19,0x02,0x04,0x08,0x13,0x13}; return g[row]; }
         case '-': { static const unsigned char g[7] = {0x00,0x00,0x00,0x1F,0x00,0x00,0x00}; return g[row]; }
@@ -1523,6 +1569,8 @@ static const char *position_name(void) {
         case POS_BOTTOM_LEFT:  return "BOTTOM LEFT";
         case POS_TOP_RIGHT:    return "TOP RIGHT";
         case POS_TOP_LEFT:     return "TOP LEFT";
+        case POS_TOP_CENTER:   return "TOP CENTER";
+        case POS_BOTTOM_CENTER:return "BOTTOM CENTER";
         case POS_BOTTOM_RIGHT:
         default:               return "BOTTOM RIGHT";
     }
@@ -1580,6 +1628,15 @@ static const char *color_name_generic(int color_id) {
         case COLOR_SLATE:     return "SLATE";
         case COLOR_GRAY:      return "GRAY";
         case COLOR_DARK_GRAY: return "DARK GRAY";
+        case COLOR_BROWN:     return "BROWN";
+        case COLOR_COPPER:    return "COPPER";
+        case COLOR_CHOCOLATE: return "CHOCOLATE";
+        case COLOR_HOT_PINK:  return "HOT PINK";
+        case COLOR_NEON_GREEN:return "NEON GREEN";
+        case COLOR_ELECTRIC_BLUE:return "ELECTRIC BLUE";
+        case COLOR_MIDNIGHT:  return "MIDNIGHT";
+        case COLOR_SNOW:      return "SNOW";
+        case COLOR_CREAM:     return "CREAM";
         default:              return "WHITE";
     }
 }
@@ -1832,28 +1889,302 @@ static const char *tr_footer(void) {
     }
 }
 
+static const char *layout_name_for(int id) {
+    switch (id) {
+        case LAYOUT_COMPACT: return "COMPACT";
+        case LAYOUT_STACKED: return "STACKED";
+        case LAYOUT_ICONS:   return "ICONS";
+        case LAYOUT_SINGLE:
+        default:             return "SINGLE";
+    }
+}
+
+static const char *size_name_for(int id) {
+    switch (id) {
+        case SIZE_MICRO:  return "MICRO";
+        case SIZE_NORMAL: return "NORMAL";
+        case SIZE_LARGE:
+        default:          return "LARGE";
+    }
+}
+
+static const char *main_menu_size_name(void) {
+    switch (main_menu_size) {
+        case MAIN_MENU_SIZE_COMPACT: return "COMPACT";
+        case MAIN_MENU_SIZE_LARGE:   return "LARGE";
+        case MAIN_MENU_SIZE_DEFAULT:
+        default:                     return "DEFAULT";
+    }
+}
+
+static const char *main_menu_size_name_for(int id) {
+    switch (id) {
+        case MAIN_MENU_SIZE_COMPACT: return "COMPACT";
+        case MAIN_MENU_SIZE_LARGE:   return "LARGE";
+        case MAIN_MENU_SIZE_DEFAULT:
+        default:                     return "DEFAULT";
+    }
+}
+
+static const char *font_name_for(int id) {
+    switch (id) {
+        case FONT_BOLD:    return "BOLD";
+        case FONT_THIN:    return "THIN";
+        case FONT_WIDE:    return "WIDE";
+        case FONT_TALL:    return "TALL";
+        case FONT_COMPACT: return "COMPACT";
+        case FONT_DOUBLE:  return "DOUBLE";
+        case FONT_BLOCK:   return "BLOCK";
+        case FONT_SHADOW:  return "SHADOW";
+        case FONT_SOFT:    return "SOFT";
+        case FONT_SHARP:   return "SHARP";
+        case FONT_RETRO:   return "RETRO";
+        case FONT_PSP:     return "PSP";
+        case FONT_VITA:    return "VITA";
+        case FONT_MINI:    return "MINI";
+        case FONT_SQUARE:  return "SQUARE";
+        case FONT_ROUNDED: return "ROUNDED";
+        case FONT_DIGITAL: return "DIGITAL";
+        case FONT_ARCADE:  return "ARCADE";
+        case FONT_CLEAN:   return "CLEAN";
+        case FONT_DEFAULT:
+        default:           return "DEFAULT";
+    }
+}
+
+static const char *language_name_for(int id) {
+    switch (id) {
+        case LANG_ES: return "ESPANOL";
+        case LANG_FR: return "FRANCAIS";
+        case LANG_DE: return "DEUTSCH";
+        case LANG_IT: return "ITALIANO";
+        case LANG_PT: return "PORTUGUES";
+        case LANG_NL: return "NEDERLANDS";
+        case LANG_ID: return "INDONESIA";
+        case LANG_TR: return "TURKCE";
+        case LANG_PL: return "POLSKI";
+        case LANG_EN:
+        default:      return "ENGLISH";
+    }
+}
+
+static const char *theme_name_for(int id) {
+    switch (id) {
+        case THEME_VITASHELL: return "VITASHELL";
+        case THEME_PSP:       return "PSP";
+        case THEME_MATRIX:    return "MATRIX";
+        case THEME_NEON:      return "NEON";
+        case THEME_RETRO:     return "RETRO";
+        case THEME_MINIMAL:   return "MINIMAL";
+        case THEME_DEFAULT:
+        default:              return "DEFAULT";
+    }
+}
+
+static const char *hud_theme_name_for(int id) {
+    switch (id) {
+        case HUD_THEME_STEALTH: return "STEALTH";
+        case HUD_THEME_NEON:    return "NEON GLASS";
+        case HUD_THEME_MATRIX:  return "MATRIX";
+        case HUD_THEME_GOLD:    return "GOLD PRO";
+        case HUD_THEME_ICE:     return "ICE BLUE";
+        case HUD_THEME_BLOOD:   return "BLOOD RED";
+        case HUD_THEME_CLEAN:   return "CLEAN WHITE";
+        case HUD_THEME_DEFAULT:
+        default:                return "DEFAULT";
+    }
+}
+
+static int item_uses_color_menu(int item) {
+    return item == ITEM_HUD_TEXT || item == ITEM_HUD_SHADOW || item == ITEM_HUD_ICON ||
+           item == ITEM_CLOCK_ICON || item == ITEM_MENU_TEXT || item == ITEM_MENU_SELECT ||
+           item == ITEM_MENU_BORDER || item == ITEM_TOP_BAR;
+}
+
+static int item_uses_bg_menu(int item) {
+    return item == ITEM_HUD_BOX_BG || item == ITEM_MENUBG;
+}
+
+static int item_uses_choice_menu(int item) {
+    return item == ITEM_LAYOUT || item == ITEM_SIZE || item == ITEM_MENU_SIZE ||
+           item == ITEM_FONT || item == ITEM_LANGUAGE || item == ITEM_THEME ||
+           item == ITEM_HUD_THEME || item_uses_color_menu(item) || item_uses_bg_menu(item);
+}
+
+static int choice_count_for_target(int target) {
+    if (item_uses_color_menu(target)) return COLOR_COUNT;
+    if (item_uses_bg_menu(target)) return BG_COUNT;
+
+    switch (target) {
+        case ITEM_LAYOUT:    return LAYOUT_COUNT;
+        case ITEM_SIZE:      return SIZE_COUNT;
+        case ITEM_MENU_SIZE: return MAIN_MENU_SIZE_COUNT;
+        case ITEM_FONT:      return FONT_COUNT;
+        case ITEM_LANGUAGE:  return LANG_COUNT;
+        case ITEM_THEME:     return THEME_COUNT;
+        case ITEM_HUD_THEME: return HUD_THEME_COUNT;
+        default:             return 1;
+    }
+}
+
+static int choice_current_index_for_target(int target) {
+    if (item_uses_color_menu(target)) {
+        switch (target) {
+            case ITEM_HUD_TEXT:    return hud_text_color;
+            case ITEM_HUD_SHADOW:  return hud_shadow_color;
+            case ITEM_HUD_ICON:    return hud_icon_color;
+            case ITEM_CLOCK_ICON:  return clock_icon_color;
+            case ITEM_MENU_TEXT:   return menu_text_color;
+            case ITEM_MENU_SELECT: return menu_select_color;
+            case ITEM_MENU_BORDER: return menu_border_color;
+            case ITEM_TOP_BAR:     return top_menu_bar_color;
+            default: return 0;
+        }
+    }
+
+    if (item_uses_bg_menu(target)) {
+        return target == ITEM_HUD_BOX_BG ? hud_box_bg_color : menu_bg_color;
+    }
+
+    switch (target) {
+        case ITEM_LAYOUT:    return hud_layout;
+        case ITEM_SIZE:      return hud_size;
+        case ITEM_MENU_SIZE: return main_menu_size;
+        case ITEM_FONT:      return font_style;
+        case ITEM_LANGUAGE:  return hud_language;
+        case ITEM_THEME:     return theme_id;
+        case ITEM_HUD_THEME: return hud_theme_id;
+        default:             return 0;
+    }
+}
+
+static const char *choice_name_for_target(int target, int index) {
+    if (item_uses_color_menu(target)) return color_name_generic(index);
+    if (item_uses_bg_menu(target)) return menu_bg_name_for(index);
+
+    switch (target) {
+        case ITEM_LAYOUT:    return layout_name_for(index);
+        case ITEM_SIZE:      return size_name_for(index);
+        case ITEM_MENU_SIZE: return main_menu_size_name_for(index);
+        case ITEM_FONT:      return font_name_for(index);
+        case ITEM_LANGUAGE:  return language_name_for(index);
+        case ITEM_THEME:     return theme_name_for(index);
+        case ITEM_HUD_THEME: return hud_theme_name_for(index);
+        default:             return "";
+    }
+}
+
+static void set_choice_for_target(int target, int index) {
+    if (item_uses_color_menu(target)) {
+        if (index < 0) index = 0;
+        if (index >= COLOR_COUNT) index = COLOR_COUNT - 1;
+
+        switch (target) {
+            case ITEM_HUD_TEXT:    hud_text_color = index; break;
+            case ITEM_HUD_SHADOW:  hud_shadow_color = index; break;
+            case ITEM_HUD_ICON:    hud_icon_color = index; break;
+            case ITEM_CLOCK_ICON:  clock_icon_color = index; break;
+            case ITEM_MENU_TEXT:   menu_text_color = index; break;
+            case ITEM_MENU_SELECT: menu_select_color = index; break;
+            case ITEM_MENU_BORDER: menu_border_color = index; break;
+            case ITEM_TOP_BAR:     top_menu_bar_color = index; break;
+            default: break;
+        }
+        return;
+    }
+
+    if (item_uses_bg_menu(target)) {
+        if (index < 0) index = 0;
+        if (index >= BG_COUNT) index = BG_COUNT - 1;
+        if (target == ITEM_HUD_BOX_BG) hud_box_bg_color = index;
+        if (target == ITEM_MENUBG) menu_bg_color = index;
+        return;
+    }
+
+    switch (target) {
+        case ITEM_LAYOUT:
+            hud_layout = index;
+            if (hud_layout < 0) hud_layout = 0;
+            if (hud_layout >= LAYOUT_COUNT) hud_layout = LAYOUT_COUNT - 1;
+            break;
+        case ITEM_SIZE:
+            hud_size = index;
+            if (hud_size < 0) hud_size = 0;
+            if (hud_size >= SIZE_COUNT) hud_size = SIZE_COUNT - 1;
+            break;
+        case ITEM_MENU_SIZE:
+            main_menu_size = index;
+            if (main_menu_size < 0) main_menu_size = 0;
+            if (main_menu_size >= MAIN_MENU_SIZE_COUNT) main_menu_size = MAIN_MENU_SIZE_COUNT - 1;
+            break;
+        case ITEM_FONT:
+            font_style = index;
+            if (font_style < 0) font_style = 0;
+            if (font_style >= FONT_COUNT) font_style = FONT_COUNT - 1;
+            break;
+        case ITEM_LANGUAGE:
+            hud_language = index;
+            if (hud_language < 0) hud_language = 0;
+            if (hud_language >= LANG_COUNT) hud_language = LANG_COUNT - 1;
+            break;
+        case ITEM_THEME:
+            theme_id = index;
+            if (theme_id < 0) theme_id = 0;
+            if (theme_id >= THEME_COUNT) theme_id = THEME_COUNT - 1;
+            apply_theme();
+            break;
+        case ITEM_HUD_THEME:
+            hud_theme_id = index;
+            if (hud_theme_id < 0) hud_theme_id = 0;
+            if (hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_COUNT - 1;
+            apply_hud_theme();
+            break;
+        default:
+            break;
+    }
+}
+
+static void enter_choice_menu(int target) {
+    int cur;
+    choice_target_item = target;
+    choice_return_page = menu_page;
+    menu_page = MENU_PAGE_CHOICE;
+    menu_scroll = 0;
+    cur = choice_current_index_for_target(target);
+    if (cur < 0) cur = 0;
+    if (cur >= choice_count_for_target(target)) cur = choice_count_for_target(target) - 1;
+    menu_index = cur;
+    menu_nav_dir = 0;
+    menu_nav_hold_start_tick = 0;
+    menu_nav_next_repeat_tick = 0;
+    menu_lr_dir = 0;
+    menu_lr_hold_start_tick = 0;
+    menu_lr_next_repeat_tick = 0;
+}
+
 static int current_menu_count(void) {
     switch (menu_page) {
         case MENU_PAGE_PROFILE:
             return 3;
-
         case MENU_PAGE_THEME:
-            return 13;
-
+            return 14;
+        case MENU_PAGE_CHOICE:
+            return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
         default:
-            return 24;
+            return 25;
     }
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[24] = {
+    static const int main_items[25] = {
         ITEM_HUD,
         ITEM_LAYOUT,
         ITEM_POSITION,
         ITEM_X_OFFSET,
         ITEM_Y_OFFSET,
         ITEM_SIZE,
+        ITEM_MENU_SIZE,
         ITEM_FONT,
         ITEM_FPS,
         ITEM_BATTERY,
@@ -1880,7 +2211,7 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[13] = {
+    static const int theme_items[14] = {
         ITEM_THEME,
         ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
@@ -1893,11 +2224,15 @@ static int current_menu_item_at(int index) {
         ITEM_MENU_SELECT,
         ITEM_MENU_BORDER,
         ITEM_MENUBG,
-        ITEM_TOP_BAR
+        ITEM_TOP_BAR,
+        ITEM_MENU_PICTURE_BG
     };
 
-    if (index < 0) {
-        index = 0;
+    if (index < 0) index = 0;
+
+    if (menu_page == MENU_PAGE_CHOICE) {
+        if (index >= choice_count_for_target(choice_target_item)) index = choice_count_for_target(choice_target_item) - 1;
+        return ITEM_CHOICE_BASE + index;
     }
 
     if (menu_page == MENU_PAGE_PROFILE) {
@@ -1906,11 +2241,11 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 13) index = 12;
+        if (index >= 14) index = 13;
         return theme_items[index];
     }
 
-    if (index >= 24) index = 23;
+    if (index >= 25) index = 24;
     return main_items[index];
 }
 
@@ -1932,7 +2267,32 @@ static void enter_menu_page(int page) {
     menu_lr_next_repeat_tick = 0;
 }
 
+static const char *choice_title_for_target(void) {
+    switch (choice_target_item) {
+        case ITEM_LAYOUT: return "LAYOUT";
+        case ITEM_SIZE: return "HUD SIZE";
+        case ITEM_MENU_SIZE: return "MAIN MENU SIZE";
+        case ITEM_FONT: return "FONT";
+        case ITEM_LANGUAGE: return "LANGUAGE";
+        case ITEM_THEME: return "THEME PRESET";
+        case ITEM_HUD_THEME: return "HUD THEME";
+        case ITEM_HUD_TEXT: return "HUD TEXT";
+        case ITEM_HUD_SHADOW: return "HUD SHADOW";
+        case ITEM_HUD_ICON: return "BATTERY ICON";
+        case ITEM_CLOCK_ICON: return "CLOCK ICON";
+        case ITEM_HUD_BOX_BG: return "HUD BOX BACKGROUND";
+        case ITEM_MENU_TEXT: return "MENU TEXT";
+        case ITEM_MENU_SELECT: return "MENU SELECT";
+        case ITEM_MENU_BORDER: return "MENU BORDER";
+        case ITEM_MENUBG: return "MENU BACKGROUND";
+        case ITEM_TOP_BAR: return "TOP MENU BAR";
+        default: return "CHOOSE";
+    }
+}
+
 static const char *current_menu_title(void) {
+    if (menu_page == MENU_PAGE_CHOICE) return choice_title_for_target();
+
     if (menu_page == MENU_PAGE_PROFILE) {
         switch (hud_language) {
             case LANG_ES: return "MENU DE PERFIL";
@@ -1967,6 +2327,10 @@ static const char *current_menu_title(void) {
 }
 
 static const char *menu_label(int item) {
+    if (item >= ITEM_CHOICE_BASE) {
+        return choice_name_for_target(choice_target_item, item - ITEM_CHOICE_BASE);
+    }
+
     if (hud_language == LANG_ES) {
         switch (item) {
             case ITEM_HUD:          return "HUD";
@@ -1974,7 +2338,8 @@ static const char *menu_label(int item) {
             case ITEM_POSITION:     return "POSICION";
             case ITEM_X_OFFSET:     return "AJUSTE X";
             case ITEM_Y_OFFSET:     return "AJUSTE Y";
-            case ITEM_SIZE:         return "TAMANO";
+            case ITEM_SIZE:         return "TAMANO HUD";
+            case ITEM_MENU_SIZE:    return "TAMANO MENU";
             case ITEM_FONT:         return "FUENTE";
             case ITEM_FPS:          return "FPS";
             case ITEM_BATTERY:      return "BATERIA";
@@ -1995,6 +2360,7 @@ static const char *menu_label(int item) {
             case ITEM_MENU_BORDER:  return "BORDE MENU";
             case ITEM_MENUBG:       return "FONDO MENU";
             case ITEM_TOP_BAR:      return "BARRA SUPERIOR";
+            case ITEM_MENU_PICTURE_BG: return "FONDO IMAGEN";
             case ITEM_PROFILE_MENU: return "MENU PERFIL";
             case ITEM_PROFILE:      return "RANURA PERFIL";
             case ITEM_LANGUAGE:     return "IDIOMA";
@@ -2019,7 +2385,8 @@ static const char *menu_label(int item) {
         case ITEM_POSITION:     return "POSITION";
         case ITEM_X_OFFSET:     return "X OFFSET";
         case ITEM_Y_OFFSET:     return "Y OFFSET";
-        case ITEM_SIZE:         return "SIZE";
+        case ITEM_SIZE:         return "HUD SIZE";
+        case ITEM_MENU_SIZE:    return "MAIN MENU SIZE";
         case ITEM_FONT:         return "FONT";
         case ITEM_FPS:          return "FPS";
         case ITEM_BATTERY:      return "BATTERY";
@@ -2040,6 +2407,7 @@ static const char *menu_label(int item) {
         case ITEM_MENU_BORDER:  return "MENU BORDER";
         case ITEM_MENUBG:       return "MENU BACKGROUND";
         case ITEM_TOP_BAR:      return "TOP MENU BAR";
+        case ITEM_MENU_PICTURE_BG: return "PICTURE BACKGROUND";
         case ITEM_PROFILE_MENU: return "PROFILE MENU";
         case ITEM_PROFILE:      return "PROFILE SLOT";
         case ITEM_LANGUAGE:     return "LANGUAGE";
@@ -2059,11 +2427,16 @@ static const char *menu_label(int item) {
 }
 
 static const char *menu_value(int item) {
+    if (item >= ITEM_CHOICE_BASE) {
+        return (item - ITEM_CHOICE_BASE) == choice_current_index_for_target(choice_target_item) ? "CURRENT" : "";
+    }
+
     switch (item) {
         case ITEM_HUD:          return onoff_name(hud_enabled);
         case ITEM_LAYOUT:       return layout_name();
         case ITEM_POSITION:     return position_name();
         case ITEM_SIZE:         return size_name();
+        case ITEM_MENU_SIZE:    return main_menu_size_name();
         case ITEM_FONT:         return font_name();
         case ITEM_FPS:          return onoff_name(show_fps);
         case ITEM_BATTERY:      return onoff_name(show_battery);
@@ -2079,6 +2452,7 @@ static const char *menu_value(int item) {
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
         case ITEM_MENUBG:       return menu_bg_name();
         case ITEM_TOP_BAR:      return color_name_generic(top_menu_bar_color);
+        case ITEM_MENU_PICTURE_BG: return onoff_name(menu_picture_bg);
         case ITEM_HUD_BOX:      return onoff_name(hud_box_enabled);
         case ITEM_HUD_BOX_BG:   return menu_bg_name_for(hud_box_bg_color);
         case ITEM_THEME_MENU:   return word_open();
@@ -2107,8 +2481,8 @@ static int menu_offset_step(void) {
         return 2;
     }
 
-    if (menu_lr_step > 32) {
-        return 32;
+    if (menu_lr_step > 64) {
+        return 64;
     }
 
     return menu_lr_step;
@@ -2116,6 +2490,17 @@ static int menu_offset_step(void) {
 
 static void menu_change(int dir) {
     int item = current_menu_item();
+
+    if (item >= ITEM_CHOICE_BASE) {
+        set_choice_for_target(choice_target_item, item - ITEM_CHOICE_BASE);
+        enter_menu_page(choice_return_page);
+        return;
+    }
+
+    if (item_uses_choice_menu(item)) {
+        enter_choice_menu(item);
+        return;
+    }
 
     switch (item) {
         case ITEM_THEME_MENU:
@@ -2158,6 +2543,12 @@ static void menu_change(int dir) {
             hud_size += dir;
             if (hud_size < 0) hud_size = SIZE_COUNT - 1;
             if (hud_size >= SIZE_COUNT) hud_size = 0;
+            break;
+
+        case ITEM_MENU_SIZE:
+            main_menu_size += dir;
+            if (main_menu_size < 0) main_menu_size = MAIN_MENU_SIZE_COUNT - 1;
+            if (main_menu_size >= MAIN_MENU_SIZE_COUNT) main_menu_size = 0;
             break;
 
         case ITEM_FONT:
@@ -2248,6 +2639,10 @@ static void menu_change(int dir) {
             top_menu_bar_color += dir;
             if (top_menu_bar_color < 1) top_menu_bar_color = COLOR_COUNT - 1;
             if (top_menu_bar_color >= COLOR_COUNT) top_menu_bar_color = 1;
+            break;
+
+        case ITEM_MENU_PICTURE_BG:
+            menu_picture_bg = !menu_picture_bg;
             break;
 
         case ITEM_LANGUAGE:
@@ -2387,11 +2782,28 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     int title_w;
     int title_x;
     int title_y;
+    int deco;
 
     unsigned int border = color_value(menu_border_color, 0xFFFFFFFF);
     unsigned int title_col = color_value(menu_select_color, 0xFF00FFFF);
     unsigned int text_col = color_value(menu_text_color, 0xFFFFFFFF);
     unsigned int inner_line = 0xFF2A2A2A;
+
+    g_menu_text_mode = 1;
+
+    if (main_menu_size == MAIN_MENU_SIZE_COMPACT) {
+        x = 56;
+        y = 46;
+        w = 382;
+        h = 222;
+        visible = 13;
+    } else if (main_menu_size == MAIN_MENU_SIZE_LARGE) {
+        x = 20;
+        y = 30;
+        w = 560;
+        h = 322;
+        visible = 21;
+    }
 
     if (screen_w <= 480 || screen_h <= 272) {
         x = 10;
@@ -2437,6 +2849,15 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, get_menu_bg());
     }
 
+    if (menu_picture_bg) {
+        for (deco = 0; deco < panel_w + panel_h; deco += 18) {
+            draw_rect(pixels, pitch, panel_x + deco - panel_h, panel_y + 22, 1, panel_h - 44, 0x33101040);
+            draw_rect(pixels, pitch, panel_x + panel_w - deco, panel_y + 22, 1, panel_h - 44, 0x33401010);
+        }
+        draw_rect(pixels, pitch, panel_x + 8, panel_y + 24, panel_w - 16, 1, 0x664040FF);
+        draw_rect(pixels, pitch, panel_x + 8, panel_y + panel_h - 25, panel_w - 16, 1, 0x6600FFFF);
+    }
+
     /* Ultimate menu skin: layered header, side rail, corner accents, and inner glow. */
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, color_value(top_menu_bar_color, 0xFF000000));
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, 3, panel_h - 4, title_col);
@@ -2470,11 +2891,17 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
 
     draw_text_shadow(pixels, pitch, title_x, title_y, title_text, title_col, 1);
 
+    if (menu_page != MENU_PAGE_MAIN) {
+        draw_text_shadow(pixels, pitch, panel_x + 10, title_y, "< BACK", title_col, 1);
+    }
+
     if (menu_scroll > 0) {
+        draw_text_shadow(pixels, pitch, panel_x + panel_w - 22, y + 1, "^", title_col, 1);
         draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + 1, "^", title_col, 1);
     }
 
     if (menu_scroll + visible < current_menu_count()) {
+        draw_text_shadow(pixels, pitch, panel_x + panel_w - 22, y + h - 36, "V", title_col, 1);
         draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + h - 36, "V", title_col, 1);
     }
 
@@ -2504,6 +2931,8 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         text_col,
         1
     );
+
+    g_menu_text_mode = 0;
 }
 
 static void move_menu_index(int dir) {
@@ -2526,19 +2955,19 @@ static void move_menu_index(int dir) {
 }
 
 static int menu_repeat_interval_usec(SceUInt64 held_usec) {
-    if (held_usec < 1200000) {
-        return 260000;
+    if (held_usec < 700000) {
+        return 140000;
     }
 
-    if (held_usec < 2200000) {
-        return 160000;
+    if (held_usec < 1300000) {
+        return 85000;
     }
 
-    if (held_usec < 3600000) {
-        return 95000;
+    if (held_usec < 2300000) {
+        return 50000;
     }
 
-    return 65000;
+    return 28000;
 }
 
 static void handle_menu_vertical(unsigned int buttons, unsigned int pressed) {
@@ -2570,7 +2999,7 @@ static void handle_menu_vertical(unsigned int buttons, unsigned int pressed) {
         move_menu_index(dir);
         menu_nav_dir = dir;
         menu_nav_hold_start_tick = now;
-        menu_nav_next_repeat_tick = now + 650000;
+        menu_nav_next_repeat_tick = now + 360000;
 
         if (dir < 0) {
             hold_up_frames = 1;
@@ -2585,7 +3014,7 @@ static void handle_menu_vertical(unsigned int buttons, unsigned int pressed) {
 
     if (menu_nav_hold_start_tick == 0) {
         menu_nav_hold_start_tick = now;
-        menu_nav_next_repeat_tick = now + 650000;
+        menu_nav_next_repeat_tick = now + 360000;
         return;
     }
 
@@ -2616,39 +3045,39 @@ static void reset_menu_lr_repeat(void) {
 }
 
 static int menu_lr_repeat_interval_usec(SceUInt64 held_usec) {
-    if (held_usec < 300000) {
-        return 90000;
+    if (held_usec < 250000) {
+        return 60000;
     }
 
-    if (held_usec < 900000) {
-        return 55000;
+    if (held_usec < 700000) {
+        return 36000;
     }
 
-    if (held_usec < 1600000) {
-        return 33000;
+    if (held_usec < 1200000) {
+        return 22000;
     }
 
-    return 18000;
+    return 12000;
 }
 
 static int menu_lr_step_for_hold(SceUInt64 held_usec) {
-    if (held_usec < 300000) {
-        return 4;
+    if (held_usec < 250000) {
+        return 6;
     }
 
-    if (held_usec < 900000) {
-        return 8;
-    }
-
-    if (held_usec < 1600000) {
+    if (held_usec < 700000) {
         return 14;
     }
 
-    if (held_usec < 2600000) {
-        return 22;
+    if (held_usec < 1200000) {
+        return 28;
     }
 
-    return 32;
+    if (held_usec < 2000000) {
+        return 44;
+    }
+
+    return 64;
 }
 
 static void handle_menu_horizontal(unsigned int buttons, unsigned int pressed) {
@@ -2685,13 +3114,13 @@ static void handle_menu_horizontal(unsigned int buttons, unsigned int pressed) {
         menu_change(dir);
         menu_lr_dir = dir;
         menu_lr_hold_start_tick = now;
-        menu_lr_next_repeat_tick = now + 260000;
+        menu_lr_next_repeat_tick = now + 180000;
         return;
     }
 
     if (menu_lr_hold_start_tick == 0) {
         menu_lr_hold_start_tick = now;
-        menu_lr_next_repeat_tick = now + 260000;
+        menu_lr_next_repeat_tick = now + 180000;
         return;
     }
 
@@ -2748,7 +3177,9 @@ static void handle_input(void) {
         }
 
         if (pressed & SCE_CTRL_CIRCLE) {
-            if (menu_page != MENU_PAGE_MAIN) {
+            if (menu_page == MENU_PAGE_CHOICE) {
+                enter_menu_page(choice_return_page);
+            } else if (menu_page != MENU_PAGE_MAIN) {
                 enter_menu_page(MENU_PAGE_MAIN);
             } else {
                 menu_open = 0;
@@ -2950,7 +3381,11 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         start_x = screen_w - total_w - margin_x;
     }
 
-    if (hud_position == POS_BOTTOM_RIGHT || hud_position == POS_BOTTOM_LEFT) {
+    if (hud_position == POS_TOP_CENTER || hud_position == POS_BOTTOM_CENTER) {
+        start_x = ((screen_w - total_w) / 2) + margin_x;
+    }
+
+    if (hud_position == POS_BOTTOM_RIGHT || hud_position == POS_BOTTOM_LEFT || hud_position == POS_BOTTOM_CENTER) {
         start_y = screen_h - total_h - margin_y;
     }
 
