@@ -293,6 +293,16 @@ static int main_menu_size = MAIN_MENU_SIZE_DEFAULT;
 static int menu_picture_bg = 0;
 static int g_menu_text_mode = 0;
 
+/* Remember selected rows/scroll positions when backing out of submenus. */
+static int saved_main_index = 0;
+static int saved_main_scroll = 0;
+static int saved_profile_index = 0;
+static int saved_profile_scroll = 0;
+static int saved_theme_index = 0;
+static int saved_theme_scroll = 0;
+
+static int current_menu_count(void);
+
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
@@ -2144,8 +2154,35 @@ static void set_choice_for_target(int target, int index) {
     }
 }
 
+static void save_current_menu_page_state(void) {
+    if (menu_page == MENU_PAGE_MAIN) {
+        saved_main_index = menu_index;
+        saved_main_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_PROFILE) {
+        saved_profile_index = menu_index;
+        saved_profile_scroll = menu_scroll;
+    } else if (menu_page == MENU_PAGE_THEME) {
+        saved_theme_index = menu_index;
+        saved_theme_scroll = menu_scroll;
+    }
+}
+
+static void clear_menu_repeat_state(void) {
+    hold_up_frames = 0;
+    hold_down_frames = 0;
+    menu_nav_dir = 0;
+    menu_nav_hold_start_tick = 0;
+    menu_nav_next_repeat_tick = 0;
+    menu_lr_dir = 0;
+    menu_lr_hold_start_tick = 0;
+    menu_lr_next_repeat_tick = 0;
+}
+
 static void enter_choice_menu(int target) {
     int cur;
+
+    save_current_menu_page_state();
+
     choice_target_item = target;
     choice_return_page = menu_page;
     menu_page = MENU_PAGE_CHOICE;
@@ -2154,12 +2191,7 @@ static void enter_choice_menu(int target) {
     if (cur < 0) cur = 0;
     if (cur >= choice_count_for_target(target)) cur = choice_count_for_target(target) - 1;
     menu_index = cur;
-    menu_nav_dir = 0;
-    menu_nav_hold_start_tick = 0;
-    menu_nav_next_repeat_tick = 0;
-    menu_lr_dir = 0;
-    menu_lr_hold_start_tick = 0;
-    menu_lr_next_repeat_tick = 0;
+    clear_menu_repeat_state();
 }
 
 static int current_menu_count(void) {
@@ -2254,17 +2286,38 @@ static int current_menu_item(void) {
 }
 
 static void enter_menu_page(int page) {
+    int count;
+
+    save_current_menu_page_state();
+
     menu_page = page;
-    menu_index = 0;
-    menu_scroll = 0;
-    hold_up_frames = 0;
-    hold_down_frames = 0;
-    menu_nav_dir = 0;
-    menu_nav_hold_start_tick = 0;
-    menu_nav_next_repeat_tick = 0;
-    menu_lr_dir = 0;
-    menu_lr_hold_start_tick = 0;
-    menu_lr_next_repeat_tick = 0;
+
+    if (page == MENU_PAGE_MAIN) {
+        menu_index = saved_main_index;
+        menu_scroll = saved_main_scroll;
+    } else if (page == MENU_PAGE_PROFILE) {
+        menu_index = saved_profile_index;
+        menu_scroll = saved_profile_scroll;
+    } else if (page == MENU_PAGE_THEME) {
+        menu_index = saved_theme_index;
+        menu_scroll = saved_theme_scroll;
+    } else {
+        menu_index = 0;
+        menu_scroll = 0;
+    }
+
+    count = current_menu_count();
+    if (count <= 0) {
+        menu_index = 0;
+        menu_scroll = 0;
+    } else {
+        if (menu_index < 0) menu_index = 0;
+        if (menu_index >= count) menu_index = count - 1;
+        if (menu_scroll < 0) menu_scroll = 0;
+        if (menu_scroll > menu_index) menu_scroll = menu_index;
+    }
+
+    clear_menu_repeat_state();
 }
 
 static const char *choice_title_for_target(void) {
@@ -2492,8 +2545,8 @@ static void menu_change(int dir) {
     int item = current_menu_item();
 
     if (item >= ITEM_CHOICE_BASE) {
+        /* Stay inside selection menus until O is pressed. */
         set_choice_for_target(choice_target_item, item - ITEM_CHOICE_BASE);
-        enter_menu_page(choice_return_page);
         return;
     }
 
@@ -2892,17 +2945,16 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     draw_text_shadow(pixels, pitch, title_x, title_y, title_text, title_col, 1);
 
     if (menu_page != MENU_PAGE_MAIN) {
-        draw_text_shadow(pixels, pitch, panel_x + 10, title_y, "< BACK", title_col, 1);
+        /* Lowered slightly so it does not overlap the header border. */
+        draw_text_shadow(pixels, pitch, panel_x + 10, title_y + 4, "< BACK", title_col, 1);
     }
 
     if (menu_scroll > 0) {
         draw_text_shadow(pixels, pitch, panel_x + panel_w - 22, y + 1, "^", title_col, 1);
-        draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + 1, "^", title_col, 1);
     }
 
     if (menu_scroll + visible < current_menu_count()) {
-        draw_text_shadow(pixels, pitch, panel_x + panel_w - 22, y + h - 36, "V", title_col, 1);
-        draw_text_shadow(pixels, pitch, panel_x + (panel_w / 2) - 4, y + h - 36, "V", title_col, 1);
+        draw_text_shadow(pixels, pitch, panel_x + panel_w - 22, y + h - 36, "v", title_col, 1);
     }
 
     line_y = y + 18;
