@@ -13,7 +13,6 @@ project(vitahud C)
 include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 set(CMAKE_C_STANDARD 11)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-q -Wall -O2")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nostartfiles")
 
@@ -32,9 +31,6 @@ target_link_libraries(vitahud
   SceIofilemgr_stub
   SceAppMgr_stub
   SceSysmem_stub
-  SceSysmodule_stub
-  SceNetCtl_stub
-  SceNet_stub
 )
 
 vita_create_self(vitahud.suprx vitahud

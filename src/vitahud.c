@@ -1,8 +1,6 @@
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
 #include <psp2/kernel/sysmem.h>
-#include <psp2/sysmodule.h>
-#include <psp2/net/netctl.h>
 #include <stdint.h>
 #include <psp2/ctrl.h>
 #include <psp2/power.h>
@@ -177,7 +175,8 @@
 /*
  * MENU ORDER ONLY.
  * Render/glitch hook path is intentionally untouched.
- * CPU/BUS/GPU/APP/RAM/IP are now directly under CLOCK for faster toggling.
+ * CPU/BUS/GPU/APP/RAM are directly under CLOCK for faster toggling.
+ * IP HUD was removed because NetCtl broke menu stability on some systems.
  * Theme/color and profile groups are exposed as clear menu sections.
  */
 #define ITEM_HUD          0
@@ -251,7 +250,7 @@ static int show_bus = 0;
 static int show_gpu = 0;
 static int show_app_id = 0;
 static int show_ram = 0;
-static int show_ip = 0;
+static int show_ip = 0; /* IP HUD removed: always forced OFF. */
 static int use_24h_time = 0;
 
 static int hud_text_color = COLOR_WHITE;
@@ -635,7 +634,8 @@ static void clamp_settings(void) {
     if (show_gpu < 0 || show_gpu > 1) show_gpu = 0;
     if (show_app_id < 0 || show_app_id > 1) show_app_id = 0;
     if (show_ram < 0 || show_ram > 1) show_ram = 0;
-    if (show_ip < 0 || show_ip > 1) show_ip = 0;
+    /* IP HUD permanently disabled/removed. NetCtl caused menu instability. */
+    show_ip = 0;
     if (use_24h_time < 0 || use_24h_time > 1) use_24h_time = 0;
 
     if (hud_text_color < 0 || hud_text_color >= COLOR_COUNT) hud_text_color = COLOR_WHITE;
@@ -695,7 +695,6 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "show_gpu", show_gpu);
     write_config_line(fd, "show_app_id", show_app_id);
     write_config_line(fd, "show_ram", show_ram);
-    write_config_line(fd, "show_ip", show_ip);
     write_config_line(fd, "time_24h", use_24h_time);
 
     write_config_line(fd, "hud_text_color", hud_text_color);
@@ -707,7 +706,6 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "gpu_icon_color", gpu_icon_color);
     write_config_line(fd, "app_icon_color", app_icon_color);
     write_config_line(fd, "ram_icon_color", ram_icon_color);
-    write_config_line(fd, "wifi_icon_color", wifi_icon_color);
     write_config_line(fd, "menu_text_color", menu_text_color);
     write_config_line(fd, "menu_select_color", menu_select_color);
     write_config_line(fd, "menu_border_color", menu_border_color);
@@ -744,7 +742,7 @@ static void load_settings_from_buffer(char *buf) {
     show_gpu = get_config_int(buf, "show_gpu", show_gpu);
     show_app_id = get_config_int(buf, "show_app_id", show_app_id);
     show_ram = get_config_int(buf, "show_ram", show_ram);
-    show_ip = get_config_int(buf, "show_ip", show_ip);
+    show_ip = 0;
     use_24h_time = get_config_int(buf, "time_24h", use_24h_time);
 
     hud_text_color = get_config_int(buf, "hud_text_color", hud_text_color);
@@ -756,7 +754,6 @@ static void load_settings_from_buffer(char *buf) {
     gpu_icon_color = get_config_int(buf, "gpu_icon_color", gpu_icon_color);
     app_icon_color = get_config_int(buf, "app_icon_color", app_icon_color);
     ram_icon_color = get_config_int(buf, "ram_icon_color", ram_icon_color);
-    wifi_icon_color = get_config_int(buf, "wifi_icon_color", wifi_icon_color);
     menu_text_color = get_config_int(buf, "menu_text_color", menu_text_color);
     menu_select_color = get_config_int(buf, "menu_select_color", menu_select_color);
     menu_border_color = get_config_int(buf, "menu_border_color", menu_border_color);
@@ -1124,79 +1121,16 @@ static void build_mhz_cache_text(char *out, int out_size, const char *label, int
 }
 
 static void update_ip_cache_safe(void) {
-    SceRtcTick tick;
-    SceUInt64 now;
-    SceNetCtlInfo net_info;
-    int ret;
-    int i;
-    int pos;
-
     /*
-     * SAFE IP RULES:
-     * - If IP HUD is OFF, do not touch NetCtl.
-     * - If the menu is open, do not touch NetCtl. This keeps navigation alive.
-     * - Never load NET here or in module_start.
-     * - Query only every 10 seconds.
-     * - If it fails a few times, stop querying until IP is toggled off/on or reboot.
+     * IP HUD removed.
+     * Do not call NetCtl, do not load NET, do not query network state.
+     * Leaving this stub keeps older code paths safe if a stale config/profile
+     * tries to enable IP.
      */
-    if (!show_ip) {
-        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-        last_ip_cache_tick = 0;
-        g_ip_query_attempts = 0;
-        g_ip_query_disabled = 0;
-        return;
-    }
-
-    if (menu_open) {
-        if (cached_ip_text[0] == '\0' || cached_ip_text[3] == 'O') {
-            copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP WAIT");
-        }
-        return;
-    }
-
-    if (g_ip_query_disabled) {
-        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-        return;
-    }
-
-    sceRtcGetCurrentTick(&tick);
-    now = tick.tick;
-
-    if (last_ip_cache_tick != 0 && now - last_ip_cache_tick < IP_CACHE_UPDATE_USEC) {
-        return;
-    }
-
-    last_ip_cache_tick = now;
-
-    for (i = 0; i < (int)sizeof(SceNetCtlInfo); i++) {
-        ((char *)&net_info)[i] = 0;
-    }
-
-    ret = sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &net_info);
-
-    if (ret < 0 || net_info.ip_address[0] == '\0') {
-        g_ip_query_attempts++;
-        copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
-
-        if (g_ip_query_attempts >= 3) {
-            g_ip_query_disabled = 1;
-        }
-
-        return;
-    }
-
-    g_ip_query_attempts = 0;
-
-    pos = 0;
-    pos = append_text(cached_ip_text, pos, "IP ");
-
-    i = 0;
-    while (net_info.ip_address[i] && pos < (int)sizeof(cached_ip_text) - 1) {
-        cached_ip_text[pos++] = net_info.ip_address[i++];
-    }
-
-    cached_ip_text[pos] = '\0';
+    show_ip = 0;
+    copy_cstr(cached_ip_text, sizeof(cached_ip_text), "IP OFF");
 }
+
 static void update_system_cache(void) {
     SceRtcTick tick;
     SceUInt64 now;
@@ -2577,7 +2511,7 @@ static int current_menu_count(void) {
 }
 
 static int current_menu_item_at(int index) {
-    static const int main_items[25] = {
+    static const int main_items[24] = {
         ITEM_HUD,
         ITEM_LAYOUT,
         ITEM_POSITION,
@@ -2594,7 +2528,6 @@ static int current_menu_item_at(int index) {
         ITEM_GPU_HUD,
         ITEM_APP_ID_HUD,
         ITEM_RAM_HUD,
-        ITEM_IP_HUD,
         ITEM_CHARGING,
         ITEM_TIMEMODE,
         ITEM_PROFILE_MENU,
@@ -2611,7 +2544,7 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[20] = {
+    static const int theme_items[19] = {
         ITEM_THEME,
         ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
@@ -2623,7 +2556,6 @@ static int current_menu_item_at(int index) {
         ITEM_GPU_ICON,
         ITEM_APP_ICON,
         ITEM_RAM_ICON,
-        ITEM_WIFI_ICON,
         ITEM_HUD_BOX,
         ITEM_HUD_BOX_BG,
         ITEM_MENU_TEXT,
@@ -3158,7 +3090,7 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_IP_HUD:
-            show_ip = !show_ip;
+            show_ip = 0;
             break;
 
         case ITEM_RESET:
@@ -4153,17 +4085,6 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
 int module_start(SceSize args, void *argp) {
     (void)args;
     (void)argp;
-
-    /*
-     * Do NOT load NET here.
-     * IP is now queried safely only when IP HUD is ON, menu is closed,
-     * and the 10-second cache timer allows it.
-     */
-    g_net_module_checked = 0;
-    g_net_module_ready = 0;
-    g_net_module_failed = 0;
-    g_ip_query_attempts = 0;
-    g_ip_query_disabled = 0;
 
     load_profile();
 
