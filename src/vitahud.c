@@ -3954,6 +3954,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         order_w = 0;
 
         switch (order_id) {
+            case HUD_ORDER_FPS:
+                if (show_fps) order_w = fps_w;
+                break;
             case HUD_ORDER_BATTERY:
                 if (show_battery) order_w = battery_icon_w + gap_small + battery_text_w;
                 break;
