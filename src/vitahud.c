@@ -31,20 +31,38 @@
 #define LAYOUT_ICONS   3
 #define LAYOUT_COUNT   4
 
-#define COLOR_AUTO     0
-#define COLOR_WHITE    1
-#define COLOR_GREEN    2
-#define COLOR_YELLOW   3
-#define COLOR_RED      4
-#define COLOR_CYAN     5
-#define COLOR_MAGENTA  6
-#define COLOR_ORANGE   7
-#define COLOR_BLUE     8
-#define COLOR_PINK     9
-#define COLOR_LIME     10
-#define COLOR_SILVER   11
-#define COLOR_BLACK    12
-#define COLOR_COUNT    13
+#define COLOR_AUTO       0
+#define COLOR_WHITE      1
+#define COLOR_GREEN      2
+#define COLOR_YELLOW     3
+#define COLOR_RED        4
+#define COLOR_CYAN       5
+#define COLOR_MAGENTA    6
+#define COLOR_ORANGE     7
+#define COLOR_BLUE       8
+#define COLOR_PINK       9
+#define COLOR_LIME       10
+#define COLOR_SILVER     11
+#define COLOR_BLACK      12
+#define COLOR_PURPLE     13
+#define COLOR_VIOLET     14
+#define COLOR_GOLD       15
+#define COLOR_AMBER      16
+#define COLOR_MINT       17
+#define COLOR_AQUA       18
+#define COLOR_SKY        19
+#define COLOR_NAVY       20
+#define COLOR_MAROON     21
+#define COLOR_CRIMSON    22
+#define COLOR_ROSE       23
+#define COLOR_LAVENDER   24
+#define COLOR_TURQUOISE  25
+#define COLOR_EMERALD    26
+#define COLOR_FOREST     27
+#define COLOR_SLATE      28
+#define COLOR_GRAY       29
+#define COLOR_DARK_GRAY  30
+#define COLOR_COUNT      31
 
 #define BG_TRANSPARENT 0
 #define BG_BLACK       1
@@ -55,7 +73,14 @@
 #define BG_TEAL        6
 #define BG_RED         7
 #define BG_WHITE       8
-#define BG_COUNT       9
+#define BG_CYAN        9
+#define BG_MAGENTA     10
+#define BG_BLUE        11
+#define BG_GOLD        12
+#define BG_MAROON      13
+#define BG_FOREST      14
+#define BG_SLATE       15
+#define BG_COUNT       16
 
 #define LANG_EN 0
 #define LANG_ES 1
@@ -113,6 +138,16 @@
 #define THEME_MINIMAL   6
 #define THEME_COUNT     7
 
+#define HUD_THEME_DEFAULT 0
+#define HUD_THEME_STEALTH 1
+#define HUD_THEME_NEON    2
+#define HUD_THEME_MATRIX  3
+#define HUD_THEME_GOLD    4
+#define HUD_THEME_ICE     5
+#define HUD_THEME_BLOOD   6
+#define HUD_THEME_CLEAN   7
+#define HUD_THEME_COUNT   8
+
 #define PROFILE_1 0
 #define PROFILE_2 1
 #define PROFILE_3 2
@@ -144,26 +179,27 @@
 #define ITEM_TIMEMODE     17
 #define ITEM_THEME_MENU   18
 #define ITEM_THEME        19
-#define ITEM_HUD_TEXT     20
-#define ITEM_HUD_SHADOW   21
-#define ITEM_HUD_ICON     22
-#define ITEM_HUD_BOX           23
-#define ITEM_HUD_BOX_BG        24
-#define ITEM_HUD_BOX_OUTLINE   25
-#define ITEM_HUD_BOX_OUT_COLOR 26
-#define ITEM_MENU_TEXT         27
-#define ITEM_MENU_SELECT       28
-#define ITEM_MENU_BORDER       29
-#define ITEM_MENUBG            30
-#define ITEM_PROFILE_MENU      31
-#define ITEM_PROFILE           32
-#define ITEM_SAVE_PROFILE      33
-#define ITEM_LOAD_PROFILE      34
-#define ITEM_LANGUAGE          35
-#define ITEM_AUTO_HIDE         36
-#define ITEM_TOGGLE            37
-#define ITEM_RESET             38
-#define ITEM_COUNT             39
+#define ITEM_HUD_THEME    20
+#define ITEM_HUD_TEXT     21
+#define ITEM_HUD_SHADOW   22
+#define ITEM_HUD_ICON     23
+#define ITEM_CLOCK_ICON   24
+#define ITEM_HUD_BOX      25
+#define ITEM_HUD_BOX_BG   26
+#define ITEM_MENU_TEXT    27
+#define ITEM_MENU_SELECT  28
+#define ITEM_MENU_BORDER  29
+#define ITEM_MENUBG       30
+#define ITEM_TOP_BAR      31
+#define ITEM_PROFILE_MENU 32
+#define ITEM_PROFILE      33
+#define ITEM_SAVE_PROFILE 34
+#define ITEM_LOAD_PROFILE 35
+#define ITEM_LANGUAGE     36
+#define ITEM_AUTO_HIDE    37
+#define ITEM_TOGGLE       38
+#define ITEM_RESET        39
+#define ITEM_COUNT        40
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -192,19 +228,20 @@ static int use_24h_time = 0;
 static int hud_text_color = COLOR_WHITE;
 static int hud_shadow_color = COLOR_BLACK;
 static int hud_icon_color = COLOR_AUTO;
+static int clock_icon_color = COLOR_AUTO;
 static int menu_text_color = COLOR_WHITE;
 static int menu_select_color = COLOR_YELLOW;
 static int menu_border_color = COLOR_WHITE;
 static int menu_bg_color = BG_BLACK;
+static int top_menu_bar_color = COLOR_BLACK;
 static int hud_box_enabled = 0;
 static int hud_box_bg_color = BG_BLACK;
-static int hud_box_outline_enabled = 0;
-static int hud_box_outline_color = COLOR_WHITE;
 
 static int hud_language = LANG_EN;
 static int auto_hide_mode = AUTO_HIDE_OFF;
 static int toggle_combo_mode = TOGGLE_SELECT;
 static int theme_id = THEME_DEFAULT;
+static int hud_theme_id = HUD_THEME_DEFAULT;
 static int profile_id = PROFILE_1;
 
 static int temporary_show_frames = 0;
@@ -228,6 +265,7 @@ static SceUInt64 menu_nav_next_repeat_tick = 0;
 static int menu_lr_dir = 0;
 static SceUInt64 menu_lr_hold_start_tick = 0;
 static SceUInt64 menu_lr_next_repeat_tick = 0;
+static int menu_lr_step = 4;
 
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
@@ -414,6 +452,7 @@ static void reset_defaults(void) {
     menu_lr_dir = 0;
     menu_lr_hold_start_tick = 0;
     menu_lr_next_repeat_tick = 0;
+    menu_lr_step = 4;
 
     hud_position = POS_BOTTOM_RIGHT;
     hud_layout = LAYOUT_SINGLE;
@@ -437,19 +476,20 @@ static void reset_defaults(void) {
     hud_text_color = COLOR_WHITE;
     hud_shadow_color = COLOR_BLACK;
     hud_icon_color = COLOR_AUTO;
+    clock_icon_color = COLOR_AUTO;
     menu_text_color = COLOR_WHITE;
     menu_select_color = COLOR_YELLOW;
     menu_border_color = COLOR_WHITE;
     menu_bg_color = BG_BLACK;
+    top_menu_bar_color = COLOR_BLACK;
     hud_box_enabled = 0;
     hud_box_bg_color = BG_BLACK;
-    hud_box_outline_enabled = 0;
-    hud_box_outline_color = COLOR_WHITE;
 
     hud_language = LANG_EN;
     auto_hide_mode = AUTO_HIDE_OFF;
     toggle_combo_mode = TOGGLE_SELECT;
     theme_id = THEME_DEFAULT;
+    hud_theme_id = HUD_THEME_DEFAULT;
     profile_id = PROFILE_1;
 
     temporary_show_frames = 0;
@@ -482,19 +522,20 @@ static void clamp_settings(void) {
     if (hud_text_color < 0 || hud_text_color >= COLOR_COUNT) hud_text_color = COLOR_WHITE;
     if (hud_shadow_color < 0 || hud_shadow_color >= COLOR_COUNT) hud_shadow_color = COLOR_BLACK;
     if (hud_icon_color < 0 || hud_icon_color >= COLOR_COUNT) hud_icon_color = COLOR_AUTO;
+    if (clock_icon_color < 0 || clock_icon_color >= COLOR_COUNT) clock_icon_color = COLOR_AUTO;
     if (menu_text_color < 0 || menu_text_color >= COLOR_COUNT) menu_text_color = COLOR_WHITE;
     if (menu_select_color < 0 || menu_select_color >= COLOR_COUNT) menu_select_color = COLOR_YELLOW;
     if (menu_border_color < 0 || menu_border_color >= COLOR_COUNT) menu_border_color = COLOR_WHITE;
     if (menu_bg_color < 0 || menu_bg_color >= BG_COUNT) menu_bg_color = BG_BLACK;
+    if (top_menu_bar_color < 1 || top_menu_bar_color >= COLOR_COUNT) top_menu_bar_color = COLOR_BLACK;
     if (hud_box_enabled < 0 || hud_box_enabled > 1) hud_box_enabled = 0;
     if (hud_box_bg_color < 0 || hud_box_bg_color >= BG_COUNT) hud_box_bg_color = BG_BLACK;
-    if (hud_box_outline_enabled < 0 || hud_box_outline_enabled > 1) hud_box_outline_enabled = 0;
-    if (hud_box_outline_color < 1 || hud_box_outline_color >= COLOR_COUNT) hud_box_outline_color = COLOR_WHITE;
 
     if (hud_language < 0 || hud_language >= LANG_COUNT) hud_language = LANG_EN;
     if (auto_hide_mode < 0 || auto_hide_mode >= AUTO_HIDE_COUNT) auto_hide_mode = AUTO_HIDE_OFF;
     if (toggle_combo_mode < 0 || toggle_combo_mode >= TOGGLE_COUNT) toggle_combo_mode = TOGGLE_SELECT;
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
+    if (hud_theme_id < 0 || hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_DEFAULT;
     if (profile_id < 0 || profile_id >= PROFILE_COUNT) profile_id = PROFILE_1;
 }
 
@@ -534,19 +575,20 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "hud_text_color", hud_text_color);
     write_config_line(fd, "hud_shadow_color", hud_shadow_color);
     write_config_line(fd, "hud_icon_color", hud_icon_color);
+    write_config_line(fd, "clock_icon_color", clock_icon_color);
     write_config_line(fd, "menu_text_color", menu_text_color);
     write_config_line(fd, "menu_select_color", menu_select_color);
     write_config_line(fd, "menu_border_color", menu_border_color);
     write_config_line(fd, "menu_bg", menu_bg_color);
+    write_config_line(fd, "top_menu_bar", top_menu_bar_color);
     write_config_line(fd, "hud_box", hud_box_enabled);
     write_config_line(fd, "hud_box_bg", hud_box_bg_color);
-    write_config_line(fd, "hud_box_outline", hud_box_outline_enabled);
-    write_config_line(fd, "hud_box_outline_color", hud_box_outline_color);
 
     write_config_line(fd, "language", hud_language);
     write_config_line(fd, "auto_hide", auto_hide_mode);
     write_config_line(fd, "toggle_combo", toggle_combo_mode);
     write_config_line(fd, "theme", theme_id);
+    write_config_line(fd, "hud_theme", hud_theme_id);
     write_config_line(fd, "profile", profile_id);
 }
 
@@ -574,19 +616,20 @@ static void load_settings_from_buffer(char *buf) {
     hud_text_color = get_config_int(buf, "hud_text_color", hud_text_color);
     hud_shadow_color = get_config_int(buf, "hud_shadow_color", hud_shadow_color);
     hud_icon_color = get_config_int(buf, "hud_icon_color", hud_icon_color);
+    clock_icon_color = get_config_int(buf, "clock_icon_color", clock_icon_color);
     menu_text_color = get_config_int(buf, "menu_text_color", menu_text_color);
     menu_select_color = get_config_int(buf, "menu_select_color", menu_select_color);
     menu_border_color = get_config_int(buf, "menu_border_color", menu_border_color);
     menu_bg_color = get_config_int(buf, "menu_bg", menu_bg_color);
+    top_menu_bar_color = get_config_int(buf, "top_menu_bar", top_menu_bar_color);
     hud_box_enabled = get_config_int(buf, "hud_box", hud_box_enabled);
     hud_box_bg_color = get_config_int(buf, "hud_box_bg", hud_box_bg_color);
-    hud_box_outline_enabled = get_config_int(buf, "hud_box_outline", hud_box_outline_enabled);
-    hud_box_outline_color = get_config_int(buf, "hud_box_outline_color", hud_box_outline_color);
 
     hud_language = get_config_int(buf, "language", hud_language);
     auto_hide_mode = get_config_int(buf, "auto_hide", auto_hide_mode);
     toggle_combo_mode = get_config_int(buf, "toggle_combo", toggle_combo_mode);
     theme_id = get_config_int(buf, "theme", theme_id);
+    hud_theme_id = get_config_int(buf, "hud_theme", hud_theme_id);
     profile_id = get_config_int(buf, "profile", profile_id);
 
     clamp_settings();
@@ -613,7 +656,7 @@ static int save_config_path(const char *path) {
 
 static int load_config_path(const char *path) {
     SceUID fd;
-    char buf[2048];
+    char buf[4096];
     int read_size;
 
     fd = sceIoOpen(path, SCE_O_RDONLY, 0);
@@ -696,8 +739,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_CYAN;
             menu_border_color = COLOR_CYAN;
             menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_BLACK;
             hud_box_bg_color = BG_BLACK;
-            font_style = FONT_VITA;
             break;
 
         case THEME_PSP:
@@ -708,8 +751,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_GREEN;
             menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_BLACK;
             hud_box_bg_color = BG_BLACK;
-            font_style = FONT_PSP;
             break;
 
         case THEME_MATRIX:
@@ -720,8 +763,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_WHITE;
             menu_border_color = COLOR_LIME;
             menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_BLACK;
             hud_box_bg_color = BG_BLACK;
-            font_style = FONT_DIGITAL;
             break;
 
         case THEME_NEON:
@@ -732,8 +775,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_MAGENTA;
             menu_border_color = COLOR_CYAN;
             menu_bg_color = BG_NAVY;
+            top_menu_bar_color = COLOR_PURPLE;
             hud_box_bg_color = BG_NAVY;
-            font_style = FONT_ARCADE;
             break;
 
         case THEME_RETRO:
@@ -744,8 +787,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_ORANGE;
             menu_bg_color = BG_PURPLE;
+            top_menu_bar_color = COLOR_MAROON;
             hud_box_bg_color = BG_PURPLE;
-            font_style = FONT_RETRO;
             break;
 
         case THEME_MINIMAL:
@@ -756,8 +799,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_WHITE;
             menu_border_color = COLOR_WHITE;
             menu_bg_color = BG_TRANSPARENT;
+            top_menu_bar_color = COLOR_BLACK;
             hud_box_bg_color = BG_TRANSPARENT;
-            font_style = FONT_CLEAN;
             break;
 
         case THEME_DEFAULT:
@@ -769,8 +812,8 @@ static void apply_theme(void) {
             menu_select_color = COLOR_YELLOW;
             menu_border_color = COLOR_WHITE;
             menu_bg_color = BG_BLACK;
+            top_menu_bar_color = COLOR_BLACK;
             hud_box_bg_color = BG_BLACK;
-            font_style = FONT_DEFAULT;
             break;
     }
 }
@@ -1027,20 +1070,38 @@ static void build_time_text(char *out) {
  */
 static unsigned int color_value(int color_id, unsigned int fallback) {
     switch (color_id) {
-        case COLOR_WHITE:   return 0xFFFFFFFF;
-        case COLOR_GREEN:   return 0xFF00FF00;
-        case COLOR_YELLOW:  return 0xFF00FFFF;
-        case COLOR_RED:     return 0xFF0000FF;
-        case COLOR_CYAN:    return 0xFFFFFF00;
-        case COLOR_MAGENTA: return 0xFFFF00FF;
-        case COLOR_ORANGE:  return 0xFF0080FF;
-        case COLOR_BLUE:    return 0xFFFF0000;
-        case COLOR_PINK:    return 0xFFFF80FF;
-        case COLOR_LIME:    return 0xFF80FF00;
-        case COLOR_SILVER:  return 0xFFC0C0C0;
-        case COLOR_BLACK:   return 0xFF000000;
+        case COLOR_WHITE:     return 0xFFFFFFFF;
+        case COLOR_GREEN:     return 0xFF00FF00;
+        case COLOR_YELLOW:    return 0xFF00FFFF;
+        case COLOR_RED:       return 0xFF0000FF;
+        case COLOR_CYAN:      return 0xFFFFFF00;
+        case COLOR_MAGENTA:   return 0xFFFF00FF;
+        case COLOR_ORANGE:    return 0xFF0080FF;
+        case COLOR_BLUE:      return 0xFFFF0000;
+        case COLOR_PINK:      return 0xFFFF80FF;
+        case COLOR_LIME:      return 0xFF80FF00;
+        case COLOR_SILVER:    return 0xFFC0C0C0;
+        case COLOR_BLACK:     return 0xFF000000;
+        case COLOR_PURPLE:    return 0xFF800080;
+        case COLOR_VIOLET:    return 0xFFFF40A0;
+        case COLOR_GOLD:      return 0xFF00D7FF;
+        case COLOR_AMBER:     return 0xFF00BFFF;
+        case COLOR_MINT:      return 0xFFAAFF99;
+        case COLOR_AQUA:      return 0xFFFFD070;
+        case COLOR_SKY:       return 0xFFFFB060;
+        case COLOR_NAVY:      return 0xFF800000;
+        case COLOR_MAROON:    return 0xFF000080;
+        case COLOR_CRIMSON:   return 0xFF3C14DC;
+        case COLOR_ROSE:      return 0xFF8080FF;
+        case COLOR_LAVENDER:  return 0xFFFFA0E6;
+        case COLOR_TURQUOISE: return 0xFFD0E040;
+        case COLOR_EMERALD:   return 0xFF50C878;
+        case COLOR_FOREST:    return 0xFF228B22;
+        case COLOR_SLATE:     return 0xFF908070;
+        case COLOR_GRAY:      return 0xFF808080;
+        case COLOR_DARK_GRAY: return 0xFF303030;
         case COLOR_AUTO:
-        default:            return fallback;
+        default:              return fallback;
     }
 }
 
@@ -1053,6 +1114,13 @@ static unsigned int get_menu_bg_for(int bg_id) {
         case BG_TEAL:        return 0xCC383810;
         case BG_RED:         return 0xCC000040;
         case BG_WHITE:       return 0xCCD0D0D0;
+        case BG_CYAN:        return 0xCC604000;
+        case BG_MAGENTA:     return 0xCC600060;
+        case BG_BLUE:        return 0xCC703000;
+        case BG_GOLD:        return 0xCC006080;
+        case BG_MAROON:      return 0xCC000020;
+        case BG_FOREST:      return 0xCC103010;
+        case BG_SLATE:       return 0xCC302820;
         case BG_BLACK:       return 0xCC000000;
         case BG_TRANSPARENT:
         default:             return 0x00000000;
@@ -1353,7 +1421,7 @@ static void draw_battery_icon(unsigned int *pixels, int pitch, int x, int y, int
 }
 
 static void draw_clock_icon(unsigned int *pixels, int pitch, int x, int y, int scale) {
-    unsigned int white = color_value(hud_icon_color, 0xFFFFFFFF);
+    unsigned int white = color_value(clock_icon_color, color_value(hud_icon_color, 0xFFFFFFFF));
     int s = scale;
 
     if (s < 1) s = 1;
@@ -1481,20 +1549,38 @@ static const char *size_name(void) {
 
 static const char *color_name_generic(int color_id) {
     switch (color_id) {
-        case COLOR_AUTO:    return "AUTO";
-        case COLOR_WHITE:   return "WHITE";
-        case COLOR_GREEN:   return "GREEN";
-        case COLOR_YELLOW:  return "YELLOW";
-        case COLOR_RED:     return "RED";
-        case COLOR_CYAN:    return "CYAN";
-        case COLOR_MAGENTA: return "MAGENTA";
-        case COLOR_ORANGE:  return "ORANGE";
-        case COLOR_BLUE:    return "BLUE";
-        case COLOR_PINK:    return "PINK";
-        case COLOR_LIME:    return "LIME";
-        case COLOR_SILVER:  return "SILVER";
-        case COLOR_BLACK:   return "BLACK";
-        default:            return "WHITE";
+        case COLOR_AUTO:      return "AUTO";
+        case COLOR_WHITE:     return "WHITE";
+        case COLOR_GREEN:     return "GREEN";
+        case COLOR_YELLOW:    return "YELLOW";
+        case COLOR_RED:       return "RED";
+        case COLOR_CYAN:      return "CYAN";
+        case COLOR_MAGENTA:   return "MAGENTA";
+        case COLOR_ORANGE:    return "ORANGE";
+        case COLOR_BLUE:      return "BLUE";
+        case COLOR_PINK:      return "PINK";
+        case COLOR_LIME:      return "LIME";
+        case COLOR_SILVER:    return "SILVER";
+        case COLOR_BLACK:     return "BLACK";
+        case COLOR_PURPLE:    return "PURPLE";
+        case COLOR_VIOLET:    return "VIOLET";
+        case COLOR_GOLD:      return "GOLD";
+        case COLOR_AMBER:     return "AMBER";
+        case COLOR_MINT:      return "MINT";
+        case COLOR_AQUA:      return "AQUA";
+        case COLOR_SKY:       return "SKY";
+        case COLOR_NAVY:      return "NAVY";
+        case COLOR_MAROON:    return "MAROON";
+        case COLOR_CRIMSON:   return "CRIMSON";
+        case COLOR_ROSE:      return "ROSE";
+        case COLOR_LAVENDER:  return "LAVENDER";
+        case COLOR_TURQUOISE: return "TURQUOISE";
+        case COLOR_EMERALD:   return "EMERALD";
+        case COLOR_FOREST:    return "FOREST";
+        case COLOR_SLATE:     return "SLATE";
+        case COLOR_GRAY:      return "GRAY";
+        case COLOR_DARK_GRAY: return "DARK GRAY";
+        default:              return "WHITE";
     }
 }
 
@@ -1505,9 +1591,16 @@ static const char *menu_bg_name_for(int bg_id) {
         case BG_NAVY:        return hud_language == LANG_ES ? "AZUL OSCURO" : "NAVY";
         case BG_GREEN:       return hud_language == LANG_ES ? "VERDE" : "GREEN";
         case BG_PURPLE:      return hud_language == LANG_ES ? "MORADO" : "PURPLE";
-        case BG_TEAL:        return hud_language == LANG_ES ? "TEAL" : "TEAL";
+        case BG_TEAL:        return "TEAL";
         case BG_RED:         return hud_language == LANG_ES ? "ROJO" : "RED";
         case BG_WHITE:       return hud_language == LANG_ES ? "BLANCO" : "WHITE";
+        case BG_CYAN:        return "CYAN";
+        case BG_MAGENTA:     return "MAGENTA";
+        case BG_BLUE:        return "BLUE";
+        case BG_GOLD:        return "GOLD";
+        case BG_MAROON:      return "MAROON";
+        case BG_FOREST:      return "FOREST";
+        case BG_SLATE:       return "SLATE";
         case BG_BLACK:
         default:             return hud_language == LANG_ES ? "NEGRO" : "BLACK";
     }
@@ -1602,6 +1695,103 @@ static const char *theme_name(void) {
     }
 }
 
+static const char *hud_theme_name(void) {
+    switch (hud_theme_id) {
+        case HUD_THEME_STEALTH: return "STEALTH";
+        case HUD_THEME_NEON:    return "NEON GLASS";
+        case HUD_THEME_MATRIX:  return "MATRIX";
+        case HUD_THEME_GOLD:    return "GOLD PRO";
+        case HUD_THEME_ICE:     return "ICE BLUE";
+        case HUD_THEME_BLOOD:   return "BLOOD RED";
+        case HUD_THEME_CLEAN:   return "CLEAN WHITE";
+        case HUD_THEME_DEFAULT:
+        default:                return "DEFAULT";
+    }
+}
+
+static void apply_hud_theme(void) {
+    switch (hud_theme_id) {
+        case HUD_THEME_STEALTH:
+            hud_text_color = COLOR_WHITE;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GREEN;
+            clock_icon_color = COLOR_WHITE;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_BLACK;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_NEON:
+            hud_text_color = COLOR_CYAN;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_MAGENTA;
+            clock_icon_color = COLOR_CYAN;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_PURPLE;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_MATRIX:
+            hud_text_color = COLOR_LIME;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GREEN;
+            clock_icon_color = COLOR_LIME;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_BLACK;
+            hud_layout = LAYOUT_COMPACT;
+            break;
+
+        case HUD_THEME_GOLD:
+            hud_text_color = COLOR_GOLD;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_GOLD;
+            clock_icon_color = COLOR_AMBER;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_BLACK;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_ICE:
+            hud_text_color = COLOR_SKY;
+            hud_shadow_color = COLOR_NAVY;
+            hud_icon_color = COLOR_AQUA;
+            clock_icon_color = COLOR_SKY;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_NAVY;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_BLOOD:
+            hud_text_color = COLOR_RED;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_CRIMSON;
+            clock_icon_color = COLOR_RED;
+            hud_box_enabled = 1;
+            hud_box_bg_color = BG_MAROON;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_CLEAN:
+            hud_text_color = COLOR_WHITE;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_AUTO;
+            clock_icon_color = COLOR_WHITE;
+            hud_box_enabled = 0;
+            hud_box_bg_color = BG_TRANSPARENT;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+
+        case HUD_THEME_DEFAULT:
+        default:
+            hud_text_color = COLOR_WHITE;
+            hud_shadow_color = COLOR_BLACK;
+            hud_icon_color = COLOR_AUTO;
+            clock_icon_color = COLOR_AUTO;
+            hud_layout = LAYOUT_SINGLE;
+            break;
+    }
+}
+
 static const char *profile_name(void) {
     switch (profile_id) {
         case PROFILE_2: return "2";
@@ -1648,7 +1838,7 @@ static int current_menu_count(void) {
             return 3;
 
         case MENU_PAGE_THEME:
-            return 12;
+            return 13;
 
         case MENU_PAGE_MAIN:
         default:
@@ -1690,19 +1880,20 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[12] = {
+    static const int theme_items[13] = {
         ITEM_THEME,
+        ITEM_HUD_THEME,
         ITEM_HUD_TEXT,
         ITEM_HUD_SHADOW,
         ITEM_HUD_ICON,
+        ITEM_CLOCK_ICON,
         ITEM_HUD_BOX,
         ITEM_HUD_BOX_BG,
-        ITEM_HUD_BOX_OUTLINE,
-        ITEM_HUD_BOX_OUT_COLOR,
         ITEM_MENU_TEXT,
         ITEM_MENU_SELECT,
         ITEM_MENU_BORDER,
-        ITEM_MENUBG
+        ITEM_MENUBG,
+        ITEM_TOP_BAR
     };
 
     if (index < 0) {
@@ -1715,7 +1906,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 12) index = 11;
+        if (index >= 13) index = 12;
         return theme_items[index];
     }
 
@@ -1792,17 +1983,18 @@ static const char *menu_label(int item) {
             case ITEM_TIMEMODE:     return "MODO HORA";
             case ITEM_THEME_MENU:   return "TEMA / COLOR";
             case ITEM_THEME:        return "TEMA PRESET";
+            case ITEM_HUD_THEME:    return "TEMA HUD";
             case ITEM_HUD_TEXT:     return "TEXTO HUD";
             case ITEM_HUD_SHADOW:   return "SOMBRA HUD";
             case ITEM_HUD_ICON:     return "ICONO BATERIA";
-            case ITEM_HUD_BOX:           return "CAJA HUD";
-            case ITEM_HUD_BOX_BG:        return "FONDO CAJA HUD";
-            case ITEM_HUD_BOX_OUTLINE:   return "BORDE CAJA HUD";
-            case ITEM_HUD_BOX_OUT_COLOR: return "COLOR BORDE HUD";
+            case ITEM_CLOCK_ICON:   return "ICONO RELOJ";
+            case ITEM_HUD_BOX:      return "CAJA HUD";
+            case ITEM_HUD_BOX_BG:   return "FONDO CAJA HUD";
             case ITEM_MENU_TEXT:    return "TEXTO MENU";
             case ITEM_MENU_SELECT:  return "SELECCION MENU";
             case ITEM_MENU_BORDER:  return "BORDE MENU";
             case ITEM_MENUBG:       return "FONDO MENU";
+            case ITEM_TOP_BAR:      return "BARRA SUPERIOR";
             case ITEM_PROFILE_MENU: return "MENU PERFIL";
             case ITEM_PROFILE:      return "RANURA PERFIL";
             case ITEM_LANGUAGE:     return "IDIOMA";
@@ -1836,17 +2028,18 @@ static const char *menu_label(int item) {
         case ITEM_TIMEMODE:     return "TIME MODE";
         case ITEM_THEME_MENU:   return "THEME / COLOR";
         case ITEM_THEME:        return "THEME PRESET";
+        case ITEM_HUD_THEME:    return "HUD THEME";
         case ITEM_HUD_TEXT:     return "HUD TEXT";
         case ITEM_HUD_SHADOW:   return "HUD SHADOW";
         case ITEM_HUD_ICON:     return "BATTERY ICON";
-        case ITEM_HUD_BOX:           return "HUD BOX";
-        case ITEM_HUD_BOX_BG:        return "HUD BOX BACKGROUND";
-        case ITEM_HUD_BOX_OUTLINE:   return "HUD BOX OUTLINE";
-        case ITEM_HUD_BOX_OUT_COLOR: return "HUD BOX OUTLINE COLOR";
+        case ITEM_CLOCK_ICON:   return "CLOCK ICON";
+        case ITEM_HUD_BOX:      return "HUD BOX";
+        case ITEM_HUD_BOX_BG:   return "HUD BOX BACKGROUND";
         case ITEM_MENU_TEXT:    return "MENU TEXT";
         case ITEM_MENU_SELECT:  return "MENU SELECT";
         case ITEM_MENU_BORDER:  return "MENU BORDER";
         case ITEM_MENUBG:       return "MENU BACKGROUND";
+        case ITEM_TOP_BAR:      return "TOP MENU BAR";
         case ITEM_PROFILE_MENU: return "PROFILE MENU";
         case ITEM_PROFILE:      return "PROFILE SLOT";
         case ITEM_LANGUAGE:     return "LANGUAGE";
@@ -1880,16 +2073,17 @@ static const char *menu_value(int item) {
         case ITEM_HUD_TEXT:     return color_name_generic(hud_text_color);
         case ITEM_HUD_SHADOW:   return color_name_generic(hud_shadow_color);
         case ITEM_HUD_ICON:     return color_name_generic(hud_icon_color);
+        case ITEM_CLOCK_ICON:   return color_name_generic(clock_icon_color);
         case ITEM_MENU_TEXT:    return color_name_generic(menu_text_color);
         case ITEM_MENU_SELECT:  return color_name_generic(menu_select_color);
         case ITEM_MENU_BORDER:  return color_name_generic(menu_border_color);
         case ITEM_MENUBG:       return menu_bg_name();
-        case ITEM_HUD_BOX:           return onoff_name(hud_box_enabled);
-        case ITEM_HUD_BOX_BG:        return menu_bg_name_for(hud_box_bg_color);
-        case ITEM_HUD_BOX_OUTLINE:   return onoff_name(hud_box_outline_enabled);
-        case ITEM_HUD_BOX_OUT_COLOR: return color_name_generic(hud_box_outline_color);
+        case ITEM_TOP_BAR:      return color_name_generic(top_menu_bar_color);
+        case ITEM_HUD_BOX:      return onoff_name(hud_box_enabled);
+        case ITEM_HUD_BOX_BG:   return menu_bg_name_for(hud_box_bg_color);
         case ITEM_THEME_MENU:   return word_open();
         case ITEM_THEME:        return theme_name();
+        case ITEM_HUD_THEME:    return hud_theme_name();
         case ITEM_PROFILE_MENU: return word_open();
         case ITEM_PROFILE:      return profile_name();
         case ITEM_LANGUAGE:     return language_name();
@@ -1906,6 +2100,18 @@ static const char *menu_value(int item) {
         case ITEM_RESET:        return reset_message_frames > 0 ? "RESET" : word_press_x();
         default:                return "";
     }
+}
+
+static int menu_offset_step(void) {
+    if (menu_lr_step < 2) {
+        return 2;
+    }
+
+    if (menu_lr_step > 32) {
+        return 32;
+    }
+
+    return menu_lr_step;
 }
 
 static void menu_change(int dir) {
@@ -1937,13 +2143,13 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_X_OFFSET:
-            hud_x_offset += dir * 2;
+            hud_x_offset += dir * menu_offset_step();
             if (hud_x_offset < 0) hud_x_offset = 0;
             if (hud_x_offset > 960) hud_x_offset = 960;
             break;
 
         case ITEM_Y_OFFSET:
-            hud_y_offset += dir * 2;
+            hud_y_offset += dir * menu_offset_step();
             if (hud_y_offset < 0) hud_y_offset = 0;
             if (hud_y_offset > 544) hud_y_offset = 544;
             break;
@@ -1998,6 +2204,12 @@ static void menu_change(int dir) {
             if (hud_icon_color >= COLOR_COUNT) hud_icon_color = 0;
             break;
 
+        case ITEM_CLOCK_ICON:
+            clock_icon_color += dir;
+            if (clock_icon_color < 0) clock_icon_color = COLOR_COUNT - 1;
+            if (clock_icon_color >= COLOR_COUNT) clock_icon_color = 0;
+            break;
+
         case ITEM_HUD_BOX:
             hud_box_enabled = !hud_box_enabled;
             break;
@@ -2006,16 +2218,6 @@ static void menu_change(int dir) {
             hud_box_bg_color += dir;
             if (hud_box_bg_color < 0) hud_box_bg_color = BG_COUNT - 1;
             if (hud_box_bg_color >= BG_COUNT) hud_box_bg_color = 0;
-            break;
-
-        case ITEM_HUD_BOX_OUTLINE:
-            hud_box_outline_enabled = !hud_box_outline_enabled;
-            break;
-
-        case ITEM_HUD_BOX_OUT_COLOR:
-            hud_box_outline_color += dir;
-            if (hud_box_outline_color < 1) hud_box_outline_color = COLOR_COUNT - 1;
-            if (hud_box_outline_color >= COLOR_COUNT) hud_box_outline_color = 1;
             break;
 
         case ITEM_MENU_TEXT:
@@ -2042,6 +2244,12 @@ static void menu_change(int dir) {
             if (menu_bg_color >= BG_COUNT) menu_bg_color = 0;
             break;
 
+        case ITEM_TOP_BAR:
+            top_menu_bar_color += dir;
+            if (top_menu_bar_color < 1) top_menu_bar_color = COLOR_COUNT - 1;
+            if (top_menu_bar_color >= COLOR_COUNT) top_menu_bar_color = 1;
+            break;
+
         case ITEM_LANGUAGE:
             hud_language += dir;
             if (hud_language < 0) hud_language = LANG_COUNT - 1;
@@ -2065,6 +2273,14 @@ static void menu_change(int dir) {
             if (theme_id < 0) theme_id = THEME_COUNT - 1;
             if (theme_id >= THEME_COUNT) theme_id = 0;
             apply_theme();
+            menu_scroll = 0;
+            break;
+
+        case ITEM_HUD_THEME:
+            hud_theme_id += dir;
+            if (hud_theme_id < 0) hud_theme_id = HUD_THEME_COUNT - 1;
+            if (hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = 0;
+            apply_hud_theme();
             break;
 
         case ITEM_PROFILE:
@@ -2222,7 +2438,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     }
 
     /* Ultimate menu skin: layered header, side rail, corner accents, and inner glow. */
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, 0x66000000);
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, color_value(top_menu_bar_color, 0xFF000000));
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + panel_w - 5, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + 5, panel_y + 5, 24, 1, title_col);
@@ -2246,7 +2462,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     title_text = current_menu_title();
     title_w = text_width(title_text, 1);
     title_x = panel_x + ((panel_w - title_w) / 2);
-    title_y = panel_y + 5;
+    title_y = panel_y + 4;
 
     if (title_x < panel_x + 12) {
         title_x = panel_x + 12;
@@ -2396,22 +2612,43 @@ static void reset_menu_lr_repeat(void) {
     menu_lr_dir = 0;
     menu_lr_hold_start_tick = 0;
     menu_lr_next_repeat_tick = 0;
+    menu_lr_step = 4;
 }
 
 static int menu_lr_repeat_interval_usec(SceUInt64 held_usec) {
-    if (held_usec < 650000) {
-        return 120000;
+    if (held_usec < 300000) {
+        return 90000;
     }
 
-    if (held_usec < 1400000) {
-        return 70000;
+    if (held_usec < 900000) {
+        return 55000;
     }
 
-    if (held_usec < 2400000) {
-        return 42000;
+    if (held_usec < 1600000) {
+        return 33000;
     }
 
-    return 25000;
+    return 18000;
+}
+
+static int menu_lr_step_for_hold(SceUInt64 held_usec) {
+    if (held_usec < 300000) {
+        return 4;
+    }
+
+    if (held_usec < 900000) {
+        return 8;
+    }
+
+    if (held_usec < 1600000) {
+        return 14;
+    }
+
+    if (held_usec < 2600000) {
+        return 22;
+    }
+
+    return 32;
 }
 
 static void handle_menu_horizontal(unsigned int buttons, unsigned int pressed) {
@@ -2444,22 +2681,24 @@ static void handle_menu_horizontal(unsigned int buttons, unsigned int pressed) {
     now = tick.tick;
 
     if ((dir < 0 && (pressed & SCE_CTRL_LEFT)) || (dir > 0 && (pressed & SCE_CTRL_RIGHT)) || menu_lr_dir != dir) {
+        menu_lr_step = 4;
         menu_change(dir);
         menu_lr_dir = dir;
         menu_lr_hold_start_tick = now;
-        menu_lr_next_repeat_tick = now + 420000;
+        menu_lr_next_repeat_tick = now + 260000;
         return;
     }
 
     if (menu_lr_hold_start_tick == 0) {
         menu_lr_hold_start_tick = now;
-        menu_lr_next_repeat_tick = now + 420000;
+        menu_lr_next_repeat_tick = now + 260000;
         return;
     }
 
     if (now >= menu_lr_next_repeat_tick) {
-        menu_change(dir);
         held_usec = now - menu_lr_hold_start_tick;
+        menu_lr_step = menu_lr_step_for_hold(held_usec);
+        menu_change(dir);
         interval = menu_lr_repeat_interval_usec(held_usec);
         menu_lr_next_repeat_tick = now + interval;
     }
@@ -2745,15 +2984,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     last_hud_clear_h = total_h + 12;
 
     if (hud_box_enabled) {
+        /* HUD box background only. No outline. */
         draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, last_hud_clear_h, get_menu_bg_for(hud_box_bg_color));
-    }
-
-    if (hud_box_outline_enabled) {
-        unsigned int outline_col = color_value(hud_box_outline_color, 0xFFFFFFFF);
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, last_hud_clear_w, 1, outline_col);
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y + last_hud_clear_h - 1, last_hud_clear_w, 1, outline_col);
-        draw_rect(pixels, pitch, last_hud_clear_x, last_hud_clear_y, 1, last_hud_clear_h, outline_col);
-        draw_rect(pixels, pitch, last_hud_clear_x + last_hud_clear_w - 1, last_hud_clear_y, 1, last_hud_clear_h, outline_col);
     }
 
     /*
