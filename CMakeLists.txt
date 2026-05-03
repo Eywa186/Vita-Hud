@@ -29,6 +29,7 @@ target_link_libraries(vitahud
   SceDisplay_stub
   SceIofilemgr_stub
   SceAppMgr_stub
+  SceNetCtl_stub
 )
 
 
