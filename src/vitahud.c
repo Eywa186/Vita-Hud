@@ -6802,7 +6802,8 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_LOAD_PROFILE:
-            load_profile();
+            /* Loading from the menu must not block the menu/render thread. */
+            start_cycle_worker(1);
             break;
 
         case ITEM_BACKUP_PROFILES:
@@ -6840,7 +6841,13 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_LOAD_GAME_PROFILE:
-            load_game_profile();
+            /* Manual per-game load uses the worker too, otherwise some games freeze. */
+            current_app_key(pergame_auto_load_app, sizeof(pergame_auto_load_app));
+            if (pergame_app_valid(pergame_auto_load_app)) {
+                start_cycle_worker(4);
+            } else {
+                save_message_frames = 180;
+            }
             break;
 
         case ITEM_CPU_HUD:
@@ -7394,6 +7401,8 @@ static int cycle_worker_thread(SceSize args, void *argp) {
         save_message_frames = 120;
     } else if (action == 3) {
         load_game_profile_for_app(pergame_auto_load_app, 0);
+    } else if (action == 4) {
+        load_game_profile_for_app(pergame_auto_load_app, 1);
     }
 
     cycle_worker_action = 0;
