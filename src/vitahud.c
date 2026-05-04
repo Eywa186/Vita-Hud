@@ -540,6 +540,7 @@ static int choice_return_page = MENU_PAGE_MAIN;
 static int main_menu_size = MAIN_MENU_SIZE_DEFAULT;
 static int menu_picture_bg = 0;
 static int g_menu_text_mode = 0;
+static int g_forced_draw_opacity = -1;
 
 /* Remember selected rows/scroll positions when backing out of submenus. */
 static int saved_main_index = 0;
@@ -2131,12 +2132,59 @@ static unsigned int get_menu_bg_for(int bg_id) {
 }
 
 static unsigned int apply_opacity_to_color(unsigned int color, int opacity_id) {
-    unsigned int alpha = 0xFF000000;
-    if (opacity_id == OPACITY_75) alpha = 0xCC000000;
-    if (opacity_id == OPACITY_50) alpha = 0x88000000;
-    if (opacity_id == OPACITY_25) alpha = 0x44000000;
-    if ((color & 0xFF000000) == 0) return color;
+    unsigned int alpha = color & 0xFF000000;
+
+    if (alpha == 0) {
+        return color;
+    }
+
+    switch (opacity_id) {
+        case OPACITY_75: alpha = 0xC0000000; break;
+        case OPACITY_50: alpha = 0x80000000; break;
+        case OPACITY_25: alpha = 0x40000000; break;
+        case OPACITY_100:
+        default:         alpha = 0xFF000000; break;
+    }
+
     return (color & 0x00FFFFFF) | alpha;
+}
+
+static unsigned int apply_forced_draw_opacity(unsigned int color) {
+    if (g_forced_draw_opacity < 0) {
+        return color;
+    }
+
+    return apply_opacity_to_color(color, g_forced_draw_opacity);
+}
+
+static unsigned int blend_argb_over(unsigned int src, unsigned int dst) {
+    unsigned int a = (src >> 24) & 0xFF;
+    unsigned int rb;
+    unsigned int g;
+
+    if (a == 0) {
+        return dst;
+    }
+
+    if (a >= 255) {
+        return src | 0xFF000000;
+    }
+
+    rb = (((src & 0x00FF00FF) * a) + ((dst & 0x00FF00FF) * (255 - a))) >> 8;
+    g = (((src & 0x0000FF00) * a) + ((dst & 0x0000FF00) * (255 - a))) >> 8;
+
+    return 0xFF000000 | (rb & 0x00FF00FF) | (g & 0x0000FF00);
+}
+
+static void write_pixel(unsigned int *pixels, int pitch, int x, int y, unsigned int color) {
+    unsigned int final_color;
+
+    if (x < 0 || x >= g_screen_w || y < 0 || y >= g_screen_h) {
+        return;
+    }
+
+    final_color = apply_forced_draw_opacity(color);
+    pixels[y * pitch + x] = blend_argb_over(final_color, pixels[y * pitch + x]);
 }
 
 static unsigned int get_menu_bg(void) {
@@ -2144,7 +2192,7 @@ static unsigned int get_menu_bg(void) {
 }
 
 static unsigned int get_hud_box_bg(void) {
-    return apply_opacity_to_color(get_menu_bg_for(hud_box_bg_color), hud_opacity);
+    return get_menu_bg_for(hud_box_bg_color);
 }
 
 static unsigned int get_battery_color(int battery) {
@@ -2338,7 +2386,7 @@ static void draw_rect(unsigned int *pixels, int pitch, int x, int y, int w, int 
 
     for (yy = y; yy < y2; yy++) {
         for (xx = x; xx < x2; xx++) {
-            pixels[yy * pitch + xx] = color;
+            write_pixel(pixels, pitch, xx, yy, color);
         }
     }
 }
@@ -2393,31 +2441,31 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
                         py = y + row * scale + sy;
 
                         if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
-                            pixels[py * pitch + px] = color;
+                            write_pixel(pixels, pitch, px, py, color);
                         }
 
                         if (tall) {
                             py = y + row * scale + sy + 1;
                             if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
-                                pixels[py * pitch + px] = color;
+                                write_pixel(pixels, pitch, px, py, color);
                             }
                         }
 
                         if (soft && ((sx == 0 && scale > 1) || (sy == 0 && scale > 1))) {
                             if (px + 1 >= 0 && px + 1 < g_screen_w && py >= 0 && py < g_screen_h) {
-                                pixels[py * pitch + px + 1] = color;
+                                write_pixel(pixels, pitch, px + 1, py, color);
                             }
                         }
 
                         if (rounded && (row == 1 || row == 5) && (col == 0 || col == 4)) {
                             if (px >= 0 && px < g_screen_w && py + 1 >= 0 && py + 1 < g_screen_h) {
-                                pixels[(py + 1) * pitch + px] = color;
+                                write_pixel(pixels, pitch, px, py + 1, color);
                             }
                         }
 
                         if (digital && (row == 0 || row == 3 || row == 6)) {
                             if (px + 1 >= 0 && px + 1 < g_screen_w && py >= 0 && py < g_screen_h) {
-                                pixels[py * pitch + px + 1] = color;
+                                write_pixel(pixels, pitch, px + 1, py, color);
                             }
                         }
 
@@ -2426,7 +2474,7 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
                             py = y + row * scale + sy;
 
                             if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
-                                pixels[py * pitch + px] = color;
+                                write_pixel(pixels, pitch, px, py, color);
                             }
                         }
 
@@ -2435,7 +2483,7 @@ static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, uns
                             py = y + row * scale + sy + 1;
 
                             if (px >= 0 && px < g_screen_w && py >= 0 && py < g_screen_h) {
-                                pixels[py * pitch + px] = color;
+                                write_pixel(pixels, pitch, px, py, color);
                             }
                         }
                     }
@@ -4677,6 +4725,13 @@ static const char *menu_label(int item) {
         case ITEM_GPU_ICON_STYLE: return "GPU ICON";
         case ITEM_RAM_ICON_STYLE: return "RAM ICON";
         case ITEM_APP_ICON_STYLE: return "APP ID ICON";
+        case ITEM_CREATE_HUD_MENU_SIZE: return "CREATE HUD MENU SIZE";
+        case ITEM_CREATE_MAIN_MENU_SIZE: return "CREATE MAIN MENU SIZE";
+        case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+        case ITEM_DEBUG_PROFILE: return "PROFILE DEBUG";
+        case ITEM_DEBUG_THEME: return "THEME DEBUG";
+        case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+        case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
         case ITEM_RESET:        return "RESET OPTIONS";
         default:                return "";
     }
@@ -5301,7 +5356,8 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         h = screen_h - 20;
         visible = 11;
     } else {
-        int custom_scale = (menu_page == MENU_PAGE_MAIN) ? create_main_menu_size : create_hud_menu_size;
+        /* CREATE MAIN MENU SIZE scales the entire VitaHUD Ultimate menu, including submenus. */
+        int custom_scale = create_main_menu_size;
         int center_x = x + (w / 2);
         int center_y = y + (h / 2);
 
@@ -5866,6 +5922,9 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int has_any;
 
     unsigned int text_color = color_value(hud_text_color, 0xFFFFFFFF);
+    int old_forced_draw_opacity = g_forced_draw_opacity;
+
+    g_forced_draw_opacity = hud_opacity;
     unsigned int fps_text_color = text_color;
     unsigned int battery_text_color = text_color;
     unsigned int ram_text_color = text_color;
@@ -5874,6 +5933,16 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int ram_alert_level = 0;
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
+
+    /* CREATE HUD MENU SIZE scales the live FPS/BATTERY/CLOCK HUD overlay. */
+    if (create_hud_menu_size < 75) create_hud_menu_size = 75;
+    if (create_hud_menu_size > 150) create_hud_menu_size = 150;
+    scale = (scale * create_hud_menu_size + 50) / 100;
+    if (scale < 1) scale = 1;
+    gap_small = (gap_small * create_hud_menu_size + 50) / 100;
+    if (gap_small < 1) gap_small = 1;
+    gap_big = (gap_big * create_hud_menu_size + 50) / 100;
+    if (gap_big < 2) gap_big = 2;
 
     icon_scale = scale;
 
@@ -6320,6 +6389,8 @@ static void debug_append_line(char lines[][32], int *count, const char *label, i
     pos = append_int(lines[*count], pos, value);
     lines[*count][pos] = '\0';
     (*count)++;
+
+    g_forced_draw_opacity = old_forced_draw_opacity;
 }
 
 static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
