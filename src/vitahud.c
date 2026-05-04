@@ -258,7 +258,9 @@
 #define PROFILE_1 0
 #define PROFILE_2 1
 #define PROFILE_3 2
-#define PROFILE_COUNT 3
+#define PROFILE_4 3
+#define PROFILE_5 4
+#define PROFILE_COUNT 5
 
 #define HUD_ORDER_BATTERY 0
 #define HUD_ORDER_CLOCK   1
@@ -528,6 +530,8 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_CREATE_MAIN_SIZE 17
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
+#define ITEM_PERCENT_BASE 3000
+#define CREATE_SIZE_PERCENT_COUNT 15
 
 static int menu_page = MENU_PAGE_MAIN;
 static int menu_nav_dir = 0;
@@ -543,6 +547,7 @@ static int main_menu_size = MAIN_MENU_SIZE_DEFAULT;
 static int menu_picture_bg = 0;
 static int g_menu_text_mode = 0;
 static int g_forced_draw_opacity = -1;
+static int g_hud_text_scale_percent = 100;
 
 /* Remember selected rows/scroll positions when backing out of submenus. */
 static int saved_main_index = 0;
@@ -918,6 +923,8 @@ static void reset_profile_files(void) {
     sceIoRemove("ur0:data/VitaHUD/profile1.txt");
     sceIoRemove("ur0:data/VitaHUD/profile2.txt");
     sceIoRemove("ur0:data/VitaHUD/profile3.txt");
+    sceIoRemove("ur0:data/VitaHUD/profile4.txt");
+    sceIoRemove("ur0:data/VitaHUD/profile5.txt");
     profile_id = PROFILE_1;
     reset_message_frames = 180;
 }
@@ -2467,6 +2474,44 @@ static void draw_rect_menu_opacity_fast(unsigned int *pixels, int pitch, int x, 
     }
 }
 
+static int scale_px_percent(int base, int percent);
+
+static void draw_char_scaled_percent(unsigned int *pixels, int pitch, int x, int y, char c, unsigned int color, int scale, int percent) {
+    int dest_w;
+    int dest_h;
+    int dy;
+    int dx;
+    int row;
+    int col;
+    unsigned char bits;
+
+    if (scale < 1) scale = 1;
+    if (percent < 10) percent = 10;
+    if (percent > 150) percent = 150;
+
+    dest_w = scale_px_percent(5 * scale, percent);
+    dest_h = scale_px_percent(7 * scale, percent);
+    if (dest_w < 1) dest_w = 1;
+    if (dest_h < 1) dest_h = 1;
+
+    for (dy = 0; dy < dest_h; dy++) {
+        row = (dy * 7) / dest_h;
+        if (row < 0) row = 0;
+        if (row > 6) row = 6;
+        bits = font5x7(c, row);
+
+        for (dx = 0; dx < dest_w; dx++) {
+            col = (dx * 5) / dest_w;
+            if (col < 0) col = 0;
+            if (col > 4) col = 4;
+
+            if (bits & (1 << (4 - col))) {
+                write_pixel(pixels, pitch, x + dx, y + dy, color);
+            }
+        }
+    }
+}
+
 static void draw_char(unsigned int *pixels, int pitch, int x, int y, char c, unsigned int color, int scale) {
     int row;
     int col;
@@ -2573,6 +2618,10 @@ static int text_width(const char *text, int scale) {
     int count = 0;
     int spacing = 6 * scale + font_extra_spacing();
 
+    if (!g_menu_text_mode && g_hud_text_scale_percent != 100) {
+        spacing = scale_px_percent(6 * scale, g_hud_text_scale_percent) + font_extra_spacing();
+    }
+
     if (spacing < 3) spacing = 3;
 
     while (text[count]) count++;
@@ -2584,10 +2633,18 @@ static void draw_text(unsigned int *pixels, int pitch, int x, int y, const char 
     int cursor_x = x;
     int spacing = 6 * scale + font_extra_spacing();
 
+    if (!g_menu_text_mode && g_hud_text_scale_percent != 100) {
+        spacing = scale_px_percent(6 * scale, g_hud_text_scale_percent) + font_extra_spacing();
+    }
+
     if (spacing < 3) spacing = 3;
 
     while (*text) {
-        draw_char(pixels, pitch, cursor_x, y, *text, color, scale);
+        if (!g_menu_text_mode && g_hud_text_scale_percent != 100) {
+            draw_char_scaled_percent(pixels, pitch, cursor_x, y, *text, color, scale, g_hud_text_scale_percent);
+        } else {
+            draw_char(pixels, pitch, cursor_x, y, *text, color, scale);
+        }
         cursor_x += spacing;
         text++;
     }
@@ -3573,6 +3630,8 @@ static const char *profile_name(void) {
     switch (profile_id) {
         case PROFILE_2: return "2";
         case PROFILE_3: return "3";
+        case PROFILE_4: return "4";
+        case PROFILE_5: return "5";
         case PROFILE_1:
         default:        return "1";
     }
@@ -3614,6 +3673,35 @@ static const char *percent_name_for(int value) {
     buf[pos++] = '%';
     buf[pos] = '\0';
     return buf;
+}
+
+static int create_size_percent_value_for_index(int index) {
+    if (index < 0) index = 0;
+    if (index >= CREATE_SIZE_PERCENT_COUNT) index = CREATE_SIZE_PERCENT_COUNT - 1;
+    return (index + 1) * 10;
+}
+
+static int create_size_percent_index_for_value(int value) {
+    int index;
+    if (value < 10) value = 10;
+    if (value > 150) value = 150;
+    index = ((value + 5) / 10) - 1;
+    if (index < 0) index = 0;
+    if (index >= CREATE_SIZE_PERCENT_COUNT) index = CREATE_SIZE_PERCENT_COUNT - 1;
+    return index;
+}
+
+static const char *create_size_percent_name_for_index(int index) {
+    return percent_name_for(create_size_percent_value_for_index(index));
+}
+
+static int scale_px_percent(int base, int percent) {
+    int value;
+    if (percent < 10) percent = 10;
+    if (percent > 150) percent = 150;
+    value = (base * percent + 50) / 100;
+    if (value < 1) value = 1;
+    return value;
 }
 
 static const char *icon_style_name_for(int id) {
@@ -4170,9 +4258,9 @@ static int current_menu_count(void) {
         case MENU_PAGE_SIZE:
             return 7;
         case MENU_PAGE_CREATE_HUD_SIZE:
-            return 1;
+            return CREATE_SIZE_PERCENT_COUNT;
         case MENU_PAGE_CREATE_MAIN_SIZE:
-            return 1;
+            return CREATE_SIZE_PERCENT_COUNT;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
@@ -4380,12 +4468,9 @@ static int current_menu_item_at(int index) {
         return size_items[index];
     }
 
-    if (menu_page == MENU_PAGE_CREATE_HUD_SIZE) {
-        return ITEM_CREATE_HUD_MENU_SIZE;
-    }
-
-    if (menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
-        return ITEM_CREATE_MAIN_MENU_SIZE;
+    if (menu_page == MENU_PAGE_CREATE_HUD_SIZE || menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
+        if (index >= CREATE_SIZE_PERCENT_COUNT) index = CREATE_SIZE_PERCENT_COUNT - 1;
+        return ITEM_PERCENT_BASE + index;
     }
 
     if (menu_page == MENU_PAGE_HUD_MENU) {
@@ -4473,6 +4558,12 @@ static void enter_menu_page(int page) {
     } else if (page == MENU_PAGE_ICON_CHANGER) {
         menu_index = saved_icon_changer_index;
         menu_scroll = saved_icon_changer_scroll;
+    } else if (page == MENU_PAGE_CREATE_HUD_SIZE) {
+        menu_index = create_size_percent_index_for_value(create_hud_menu_size);
+        menu_scroll = menu_index > 4 ? menu_index - 4 : 0;
+    } else if (page == MENU_PAGE_CREATE_MAIN_SIZE) {
+        menu_index = create_size_percent_index_for_value(create_main_menu_size);
+        menu_scroll = menu_index > 4 ? menu_index - 4 : 0;
     } else {
         menu_index = 0;
         menu_scroll = 0;
@@ -5551,6 +5642,10 @@ static const char *current_menu_title(void) {
 }
 
 static const char *menu_label(int item) {
+    if (item >= ITEM_PERCENT_BASE) {
+        return create_size_percent_name_for_index(item - ITEM_PERCENT_BASE);
+    }
+
     if (item >= ITEM_HUD_ORDER_BASE) {
         return hud_order_name_for(hud_order[item - ITEM_HUD_ORDER_BASE]);
     }
@@ -5787,6 +5882,13 @@ static const char *menu_label(int item) {
 }
 
 static const char *menu_value(int item) {
+    if (item >= ITEM_PERCENT_BASE) {
+        int value = create_size_percent_value_for_index(item - ITEM_PERCENT_BASE);
+        if (menu_page == MENU_PAGE_CREATE_HUD_SIZE) return value == create_hud_menu_size ? "CURRENT" : "";
+        if (menu_page == MENU_PAGE_CREATE_MAIN_SIZE) return value == create_main_menu_size ? "CURRENT" : "";
+        return "";
+    }
+
     if (item >= ITEM_HUD_ORDER_BASE) {
         return "L/R MOVE";
     }
@@ -5916,6 +6018,18 @@ static int menu_offset_step(void) {
 
 static void menu_change(int dir) {
     int item = current_menu_item();
+
+    if (item >= ITEM_PERCENT_BASE) {
+        int value = create_size_percent_value_for_index(item - ITEM_PERCENT_BASE);
+        (void)dir;
+        if (menu_page == MENU_PAGE_CREATE_HUD_SIZE) {
+            create_hud_menu_size = value;
+        } else if (menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
+            create_main_menu_size = value;
+        }
+        save_message_frames = 90;
+        return;
+    }
 
     if (item >= ITEM_HUD_ORDER_BASE) {
         move_hud_order_item(item - ITEM_HUD_ORDER_BASE, dir);
@@ -6211,20 +6325,12 @@ static void menu_change(int dir) {
         case ITEM_CREATE_HUD_MENU_SIZE:
             if (menu_page == MENU_PAGE_SIZE) {
                 enter_menu_page(MENU_PAGE_CREATE_HUD_SIZE);
-            } else {
-                create_hud_menu_size += dir * 5;
-                if (create_hud_menu_size < 10) create_hud_menu_size = 150;
-                if (create_hud_menu_size > 150) create_hud_menu_size = 10;
             }
             break;
 
         case ITEM_CREATE_MAIN_MENU_SIZE:
             if (menu_page == MENU_PAGE_SIZE) {
                 enter_menu_page(MENU_PAGE_CREATE_MAIN_SIZE);
-            } else {
-                create_main_menu_size += dir * 5;
-                if (create_main_menu_size < 10) create_main_menu_size = 150;
-                if (create_main_menu_size > 150) create_main_menu_size = 10;
             }
             break;
 
@@ -6555,6 +6661,16 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
             text_col,
             1
         );
+    } else if (menu_page == MENU_PAGE_CREATE_HUD_SIZE || menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
+        draw_text_shadow(
+            pixels,
+            pitch,
+            x,
+            y + h - 22,
+            "UP/DOWN SELECT  X SET  O BACK",
+            text_col,
+            1
+        );
     } else {
         draw_text_shadow(
             pixels,
@@ -6729,6 +6845,11 @@ static void handle_menu_horizontal(unsigned int buttons, unsigned int pressed) {
     }
 
     if (dir == 0) {
+        reset_menu_lr_repeat();
+        return;
+    }
+
+    if (menu_page == MENU_PAGE_CREATE_HUD_SIZE || menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
         reset_menu_lr_repeat();
         return;
     }
@@ -6941,6 +7062,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     int scale;
     int gap_small;
     int gap_big;
+    int hud_percent;
 
     int icon_scale;
     int fps_w;
@@ -6993,17 +7115,20 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
-    /* CREATE HUD MENU SIZE scales the live FPS/BATTERY/CLOCK HUD overlay. */
+    /* CREATE HUD MENU SIZE now uses real percent-based HUD text metrics.
+     * The old integer-only scale collapsed most values into only 3 visible sizes.
+     */
     if (create_hud_menu_size < 10) create_hud_menu_size = 10;
     if (create_hud_menu_size > 150) create_hud_menu_size = 150;
-    scale = (scale * create_hud_menu_size + 50) / 100;
-    if (scale < 1) scale = 1;
-    gap_small = (gap_small * create_hud_menu_size + 50) / 100;
+    hud_percent = create_hud_menu_size;
+    g_hud_text_scale_percent = hud_percent;
+
+    gap_small = scale_px_percent(gap_small, hud_percent);
     if (gap_small < 1) gap_small = 1;
-    gap_big = (gap_big * create_hud_menu_size + 50) / 100;
+    gap_big = scale_px_percent(gap_big, hud_percent);
     if (gap_big < 2) gap_big = 2;
 
-    icon_scale = scale;
+    icon_scale = scale_px_percent(scale, hud_percent);
 
     build_fps_text(fps_text);
     build_battery_text(battery_text, battery);
@@ -7046,7 +7171,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     extra_icon_w = hud_extra_icon_w(icon_scale);
     extra_icon_h = hud_extra_icon_h(icon_scale);
 
-    text_h = 7 * scale;
+    text_h = scale_px_percent(7 * scale, hud_percent);
 
     fps_alert_now = fps_warning_enabled && ((int)fps_value < fps_low_limit_value());
     battery_alert_now = battery_warning_enabled && (battery <= battery_low_limit_value());
@@ -7172,6 +7297,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 
     if (total_w <= 0 || total_h <= 0) {
+        g_hud_text_scale_percent = 100;
         g_forced_draw_opacity = old_forced_draw_opacity;
         return;
     }
@@ -7317,6 +7443,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             }
         }
 
+        g_hud_text_scale_percent = 100;
         g_forced_draw_opacity = old_forced_draw_opacity;
         return;
     }
@@ -7442,6 +7569,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         }
     }
 
+    g_hud_text_scale_percent = 100;
     g_forced_draw_opacity = old_forced_draw_opacity;
 }
 
