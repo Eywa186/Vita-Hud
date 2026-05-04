@@ -11,11 +11,11 @@
 #include <psp2/types.h>
 #include <taihen.h>
 
-#define CONFIG_DIR  "ur0:data/VitaHUD"
-#define CONFIG_PATH "ur0:data/VitaHUD/config.txt"
-#define BACKUP_DIR  "ur0:data/VitaHUD/backups"
-#define EXPORT_CONFIG_PATH "ur0:data/VitaHUD/export_config.txt"
-#define PERGAME_DIR "ur0:data/VitaHUD/pergame"
+#define CONFIG_DIR  "ux0:data/VitaHUD"
+#define CONFIG_PATH "ux0:data/VitaHUD/config.txt"
+#define BACKUP_DIR  "ux0:data/VitaHUD/backups"
+#define EXPORT_CONFIG_PATH "ux0:data/VitaHUD/export_config.txt"
+#define PERGAME_DIR "ux0:data/VitaHUD/pergame"
 
 #define MENU_COMBO (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_START)
 
@@ -938,11 +938,11 @@ static void reset_overlay_defaults(void) {
 }
 
 static void reset_profile_files(void) {
-    sceIoRemove("ur0:data/VitaHUD/profile1.txt");
-    sceIoRemove("ur0:data/VitaHUD/profile2.txt");
-    sceIoRemove("ur0:data/VitaHUD/profile3.txt");
-    sceIoRemove("ur0:data/VitaHUD/profile4.txt");
-    sceIoRemove("ur0:data/VitaHUD/profile5.txt");
+    sceIoRemove("ux0:data/VitaHUD/profile1.txt");
+    sceIoRemove("ux0:data/VitaHUD/profile2.txt");
+    sceIoRemove("ux0:data/VitaHUD/profile3.txt");
+    sceIoRemove("ux0:data/VitaHUD/profile4.txt");
+    sceIoRemove("ux0:data/VitaHUD/profile5.txt");
     profile_id = PROFILE_1;
     reset_message_frames = 180;
 }
@@ -4640,13 +4640,13 @@ static int current_menu_item_at(int index) {
         ITEM_PROFILE,
         ITEM_SAVE_PROFILE,
         ITEM_LOAD_PROFILE,
-        ITEM_BACKUP_PROFILES,
-        ITEM_RESTORE_PROFILES,
-        ITEM_EXPORT_CONFIG,
-        ITEM_IMPORT_CONFIG,
         ITEM_PER_GAME_PROFILE,
         ITEM_SAVE_GAME_PROFILE,
-        ITEM_LOAD_GAME_PROFILE
+        ITEM_LOAD_GAME_PROFILE,
+        ITEM_EXPORT_CONFIG,
+        ITEM_IMPORT_CONFIG,
+        ITEM_BACKUP_PROFILES,
+        ITEM_RESTORE_PROFILES
     };
 
     static const int theme_items[10] = {
