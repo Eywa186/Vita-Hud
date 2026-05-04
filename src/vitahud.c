@@ -13,6 +13,9 @@
 
 #define CONFIG_DIR  "ur0:data/VitaHUD"
 #define CONFIG_PATH "ur0:data/VitaHUD/config.txt"
+#define BACKUP_DIR  "ur0:data/VitaHUD/backups"
+#define EXPORT_CONFIG_PATH "ur0:data/VitaHUD/export_config.txt"
+#define PERGAME_DIR "ur0:data/VitaHUD/pergame"
 
 #define MENU_COMBO (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_START)
 
@@ -385,7 +388,14 @@
 #define ITEM_DEBUG_THEME 103
 #define ITEM_DEBUG_ALERT 104
 #define ITEM_DEBUG_HUD_INFO 105
-#define ITEM_COUNT        106
+#define ITEM_BACKUP_PROFILES 106
+#define ITEM_RESTORE_PROFILES 107
+#define ITEM_EXPORT_CONFIG 108
+#define ITEM_IMPORT_CONFIG 109
+#define ITEM_PER_GAME_PROFILE 110
+#define ITEM_SAVE_GAME_PROFILE 111
+#define ITEM_LOAD_GAME_PROFILE 112
+#define ITEM_COUNT        113
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -499,6 +509,8 @@ static int toggle_combo_mode = TOGGLE_SELECT;
 static int theme_id = THEME_DEFAULT;
 static int hud_theme_id = HUD_THEME_DEFAULT;
 static int profile_id = PROFILE_1;
+static int per_game_profile_enabled = 0;
+static char last_pergame_loaded_app[24] = "";
 
 static int temporary_show_frames = 0;
 static int save_message_frames = 0;
@@ -1031,6 +1043,8 @@ static void reset_defaults(void) {
     theme_id = THEME_DEFAULT;
     hud_theme_id = HUD_THEME_DEFAULT;
     profile_id = PROFILE_1;
+    per_game_profile_enabled = 0;
+    last_pergame_loaded_app[0] = '\0';
 
     temporary_show_frames = 0;
     reset_message_frames = 180;
@@ -1132,6 +1146,7 @@ static void clamp_settings(void) {
     if (theme_id < 0 || theme_id >= THEME_COUNT) theme_id = THEME_DEFAULT;
     if (hud_theme_id < 0 || hud_theme_id >= HUD_THEME_COUNT) hud_theme_id = HUD_THEME_DEFAULT;
     if (profile_id < 0 || profile_id >= PROFILE_COUNT) profile_id = PROFILE_1;
+    if (per_game_profile_enabled < 0 || per_game_profile_enabled > 1) per_game_profile_enabled = 0;
 }
 
 static void write_config_line(SceUID fd, const char *key, int value) {
@@ -1245,6 +1260,7 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "theme", theme_id);
     write_config_line(fd, "hud_theme", hud_theme_id);
     write_config_line(fd, "profile", profile_id);
+    write_config_line(fd, "per_game_profile", per_game_profile_enabled);
 }
 
 static void load_settings_from_buffer(char *buf) {
@@ -1345,6 +1361,7 @@ static void load_settings_from_buffer(char *buf) {
     theme_id = get_config_int(buf, "theme", theme_id);
     hud_theme_id = get_config_int(buf, "hud_theme", hud_theme_id);
     profile_id = get_config_int(buf, "profile", profile_id);
+    per_game_profile_enabled = get_config_int(buf, "per_game_profile", per_game_profile_enabled);
 
     clamp_settings();
 }
@@ -1442,6 +1459,246 @@ static int load_profile(void) {
     }
 
     return result;
+}
+
+static void profile_path_for_slot(char *out, int slot) {
+    int pos = 0;
+
+    if (slot < 0) slot = 0;
+    if (slot >= PROFILE_COUNT) slot = PROFILE_COUNT - 1;
+
+    pos = append_text(out, pos, CONFIG_DIR);
+    out[pos++] = '/';
+    pos = append_text(out, pos, "profile");
+    pos = append_int(out, pos, slot + 1);
+    pos = append_text(out, pos, ".txt");
+    out[pos] = '\0';
+}
+
+static void backup_profile_path_for_slot(char *out, int slot) {
+    int pos = 0;
+
+    if (slot < 0) slot = 0;
+    if (slot >= PROFILE_COUNT) slot = PROFILE_COUNT - 1;
+
+    pos = append_text(out, pos, BACKUP_DIR);
+    out[pos++] = '/';
+    pos = append_text(out, pos, "profile");
+    pos = append_int(out, pos, slot + 1);
+    pos = append_text(out, pos, ".txt");
+    out[pos] = '\0';
+}
+
+static int copy_file_path(const char *src_path, const char *dst_path) {
+    SceUID src;
+    SceUID dst;
+    char buffer[2048];
+    int read_size;
+    int write_size;
+    int total = 0;
+
+    src = sceIoOpen(src_path, SCE_O_RDONLY, 0);
+    if (src < 0) {
+        return src;
+    }
+
+    dst = sceIoOpen(dst_path, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    if (dst < 0) {
+        sceIoClose(src);
+        return dst;
+    }
+
+    while ((read_size = sceIoRead(src, buffer, sizeof(buffer))) > 0) {
+        write_size = sceIoWrite(dst, buffer, read_size);
+        if (write_size != read_size) {
+            sceIoClose(src);
+            sceIoClose(dst);
+            return -1;
+        }
+        total += write_size;
+    }
+
+    sceIoClose(src);
+    sceIoClose(dst);
+
+    if (read_size < 0) {
+        return read_size;
+    }
+
+    return total;
+}
+
+static int backup_all_profiles(void) {
+    char src[64];
+    char dst[80];
+    int i;
+    int copied = 0;
+
+    sceIoMkdir(CONFIG_DIR, 0777);
+    sceIoMkdir(BACKUP_DIR, 0777);
+
+    for (i = 0; i < PROFILE_COUNT; i++) {
+        profile_path_for_slot(src, i);
+        backup_profile_path_for_slot(dst, i);
+        if (copy_file_path(src, dst) >= 0) {
+            copied++;
+        }
+    }
+
+    save_message_frames = 180;
+    return copied;
+}
+
+static int restore_all_profiles(void) {
+    char src[80];
+    char dst[64];
+    int i;
+    int copied = 0;
+
+    sceIoMkdir(CONFIG_DIR, 0777);
+
+    for (i = 0; i < PROFILE_COUNT; i++) {
+        backup_profile_path_for_slot(src, i);
+        profile_path_for_slot(dst, i);
+        if (copy_file_path(src, dst) >= 0) {
+            copied++;
+        }
+    }
+
+    save_message_frames = 180;
+    return copied;
+}
+
+static void export_config_path(char *out) {
+    copy_cstr(out, 80, EXPORT_CONFIG_PATH);
+}
+
+static int export_config(void) {
+    char path[80];
+    export_config_path(path);
+    return save_config_path(path);
+}
+
+static int import_config(void) {
+    char path[80];
+    int result;
+
+    export_config_path(path);
+    result = load_config_path(path);
+
+    if (result >= 0) {
+        save_message_frames = 180;
+    }
+
+    return result;
+}
+
+static void current_app_key(char *out, int out_size) {
+    const char *src = cached_app_id_text;
+    int pos = 0;
+    int i;
+    char c;
+
+    if (!out || out_size <= 0) {
+        return;
+    }
+
+    if (src[0] == 'A' && src[1] == 'P' && src[2] == 'P' && src[3] == ' ') {
+        src += 4;
+    }
+
+    if (src[0] == 0) {
+        copy_cstr(out, out_size, "UNKNOWN");
+        return;
+    }
+
+    for (i = 0; src[i] && pos < out_size - 1; i++) {
+        c = src[i];
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            out[pos++] = c;
+        } else if (c != ' ') {
+            out[pos++] = '_';
+        }
+    }
+
+    if (pos == 0) {
+        copy_cstr(out, out_size, "UNKNOWN");
+        return;
+    }
+
+    out[pos] = '\0';
+}
+
+static void pergame_profile_path(char *out) {
+    int pos = 0;
+    char app_id[24];
+
+    current_app_key(app_id, sizeof(app_id));
+
+    pos = append_text(out, pos, PERGAME_DIR);
+    out[pos++] = '/';
+    pos = append_text(out, pos, app_id);
+    pos = append_text(out, pos, ".txt");
+    out[pos] = '\0';
+}
+
+static int save_game_profile(void) {
+    char path[96];
+
+    sceIoMkdir(CONFIG_DIR, 0777);
+    sceIoMkdir(PERGAME_DIR, 0777);
+
+    pergame_profile_path(path);
+    return save_config_path(path);
+}
+
+static int load_game_profile(void) {
+    char path[96];
+    int result;
+
+    pergame_profile_path(path);
+    result = load_config_path(path);
+
+    if (result >= 0) {
+        save_message_frames = 180;
+    }
+
+    return result;
+}
+
+static void auto_load_pergame_profile_if_needed(void) {
+    char app_id[24];
+
+    if (!per_game_profile_enabled) {
+        last_pergame_loaded_app[0] = '\0';
+        return;
+    }
+
+    current_app_key(app_id, sizeof(app_id));
+
+    if (app_id[0] == 0 || (app_id[0] == 'U' && app_id[1] == 'N' && app_id[2] == 'K')) {
+        return;
+    }
+
+    {
+        int same = 1;
+        int i;
+        for (i = 0; last_pergame_loaded_app[i] || app_id[i]; i++) {
+            if (last_pergame_loaded_app[i] != app_id[i]) {
+                same = 0;
+                break;
+            }
+        }
+        if (same) {
+            return;
+        }
+    }
+
+    copy_cstr(last_pergame_loaded_app, sizeof(last_pergame_loaded_app), app_id);
+
+    if (load_game_profile() >= 0) {
+        save_message_frames = 0;
+    }
 }
 
 static void apply_theme(void) {
@@ -1991,6 +2248,7 @@ static void update_system_cache(void) {
 
     build_app_id_live_text(temp_app);
     copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
+    auto_load_pergame_profile_if_needed();
 
     /*
      * RAM HUD working pass.
@@ -4230,7 +4488,7 @@ static void enter_choice_menu(int target) {
 static int current_menu_count(void) {
     switch (menu_page) {
         case MENU_PAGE_PROFILE:
-            return 3;
+            return 10;
         case MENU_PAGE_THEME:
             return 10;
         case MENU_PAGE_HUD_COLORS:
@@ -4285,10 +4543,17 @@ static int current_menu_item_at(int index) {
         ITEM_RESET
     };
 
-    static const int profile_items[3] = {
+    static const int profile_items[10] = {
         ITEM_PROFILE,
         ITEM_SAVE_PROFILE,
-        ITEM_LOAD_PROFILE
+        ITEM_LOAD_PROFILE,
+        ITEM_BACKUP_PROFILES,
+        ITEM_RESTORE_PROFILES,
+        ITEM_EXPORT_CONFIG,
+        ITEM_IMPORT_CONFIG,
+        ITEM_PER_GAME_PROFILE,
+        ITEM_SAVE_GAME_PROFILE,
+        ITEM_LOAD_GAME_PROFILE
     };
 
     static const int theme_items[10] = {
@@ -4429,7 +4694,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_PROFILE) {
-        if (index >= 3) index = 2;
+        if (index >= 10) index = 9;
         return profile_items[index];
     }
 
@@ -4657,6 +4922,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "ESTILO RELOJ";
                 case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL";
                 case ITEM_LOAD_PROFILE: return "CARGAR PERFIL";
+                case ITEM_BACKUP_PROFILES: return "COPIA PERFILES";
+                case ITEM_RESTORE_PROFILES: return "RESTAURAR PERFILES";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "HUD CPU";
                 case ITEM_BUS_HUD: return "HUD BUS";
                 case ITEM_GPU_HUD: return "HUD GPU";
@@ -4767,6 +5039,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "HORLOGE STYLE";
                 case ITEM_SAVE_PROFILE: return "SAUVER PROFIL";
                 case ITEM_LOAD_PROFILE: return "CHARGER PROFIL";
+                case ITEM_BACKUP_PROFILES: return "SAUVEGARDER PROFILS";
+                case ITEM_RESTORE_PROFILES: return "RESTAURER PROFILS";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -4877,6 +5156,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "UHR STIL";
                 case ITEM_SAVE_PROFILE: return "SPEICHERN PROFIL";
                 case ITEM_LOAD_PROFILE: return "LADEN PROFIL";
+                case ITEM_BACKUP_PROFILES: return "PROFILE SICHERN";
+                case ITEM_RESTORE_PROFILES: return "PROFILE WIEDERHERSTELLEN";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -4987,6 +5273,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "OROLOGIO STILE";
                 case ITEM_SAVE_PROFILE: return "SALVA PROFILO";
                 case ITEM_LOAD_PROFILE: return "CARICA PROFILO";
+                case ITEM_BACKUP_PROFILES: return "BACKUP PROFILI";
+                case ITEM_RESTORE_PROFILES: return "RIPRISTINA PROFILI";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5097,6 +5390,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "RELOGIO ESTILO";
                 case ITEM_SAVE_PROFILE: return "SALVAR PERFIL";
                 case ITEM_LOAD_PROFILE: return "CARREGAR PERFIL";
+                case ITEM_BACKUP_PROFILES: return "BACKUP PERFIS";
+                case ITEM_RESTORE_PROFILES: return "RESTAURAR PERFIS";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5207,6 +5507,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "KLOK STIJL";
                 case ITEM_SAVE_PROFILE: return "OPSLAAN PROFIEL";
                 case ITEM_LOAD_PROFILE: return "LADEN PROFIEL";
+                case ITEM_BACKUP_PROFILES: return "BACKUP PROFIELEN";
+                case ITEM_RESTORE_PROFILES: return "HERSTEL PROFIELEN";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5317,6 +5624,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "JAM GAYA";
                 case ITEM_SAVE_PROFILE: return "SIMPAN PROFIL";
                 case ITEM_LOAD_PROFILE: return "MUAT PROFIL";
+                case ITEM_BACKUP_PROFILES: return "CADANG PROFIL";
+                case ITEM_RESTORE_PROFILES: return "PULIHKAN PROFIL";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5427,6 +5741,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "SAAT STIL";
                 case ITEM_SAVE_PROFILE: return "KAYDET PROFIL";
                 case ITEM_LOAD_PROFILE: return "YUKLE PROFIL";
+                case ITEM_BACKUP_PROFILES: return "PROFIL YEDEKLE";
+                case ITEM_RESTORE_PROFILES: return "PROFIL GERI YUKLE";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5537,6 +5858,13 @@ static const char *translated_menu_label_for_language(int lang, int item) {
                 case ITEM_CLOCK_STYLE: return "ZEGAR STYL";
                 case ITEM_SAVE_PROFILE: return "ZAPISZ PROFIL";
                 case ITEM_LOAD_PROFILE: return "WCZYTAJ PROFIL";
+                case ITEM_BACKUP_PROFILES: return "KOPIA PROFILI";
+                case ITEM_RESTORE_PROFILES: return "PRZYWROC PROFILE";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
                 case ITEM_CPU_HUD: return "CPU HUD";
                 case ITEM_BUS_HUD: return "BUS HUD";
                 case ITEM_GPU_HUD: return "GPU HUD";
@@ -5729,6 +6057,13 @@ static const char *menu_label(int item) {
             case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
             case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL";
             case ITEM_LOAD_PROFILE: return "CARGAR PERFIL";
+                case ITEM_BACKUP_PROFILES: return "COPIA PERFILES";
+                case ITEM_RESTORE_PROFILES: return "RESTAURAR PERFILES";
+                case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+                case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+                case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+                case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+                case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
             case ITEM_CPU_HUD:      return "HUD CPU";
             case ITEM_BUS_HUD:      return "HUD BUS";
             case ITEM_GPU_HUD:      return "HUD GPU";
@@ -5840,6 +6175,13 @@ static const char *menu_label(int item) {
         case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
+        case ITEM_BACKUP_PROFILES: return "BACKUP ALL PROFILES";
+        case ITEM_RESTORE_PROFILES: return "RESTORE ALL PROFILES";
+        case ITEM_EXPORT_CONFIG: return "EXPORT CONFIG";
+        case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG";
+        case ITEM_PER_GAME_PROFILE: return "PER-GAME PROFILE";
+        case ITEM_SAVE_GAME_PROFILE: return "SAVE GAME PROFILE";
+        case ITEM_LOAD_GAME_PROFILE: return "LOAD GAME PROFILE";
         case ITEM_CPU_HUD:      return "CPU HUD";
         case ITEM_BUS_HUD:      return "BUS HUD";
         case ITEM_GPU_HUD:      return "GPU HUD";
@@ -5984,6 +6326,13 @@ static const char *menu_value(int item) {
         case ITEM_DEBUG_HUD_INFO: return onoff_name(debug_show_hud_info);
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? word_saved() : word_press_x();
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? word_loaded() : word_press_x();
+        case ITEM_BACKUP_PROFILES: return save_message_frames > 0 ? word_saved() : word_press_x();
+        case ITEM_RESTORE_PROFILES: return save_message_frames > 0 ? word_loaded() : word_press_x();
+        case ITEM_EXPORT_CONFIG: return save_message_frames > 0 ? word_saved() : word_press_x();
+        case ITEM_IMPORT_CONFIG: return save_message_frames > 0 ? word_loaded() : word_press_x();
+        case ITEM_PER_GAME_PROFILE: return onoff_name(per_game_profile_enabled);
+        case ITEM_SAVE_GAME_PROFILE: return save_message_frames > 0 ? word_saved() : word_press_x();
+        case ITEM_LOAD_GAME_PROFILE: return save_message_frames > 0 ? word_loaded() : word_press_x();
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
         case ITEM_BUS_HUD:      return onoff_name(show_bus);
         case ITEM_GPU_HUD:      return onoff_name(show_gpu);
@@ -6361,6 +6710,37 @@ static void menu_change(int dir) {
 
         case ITEM_LOAD_PROFILE:
             load_profile();
+            break;
+
+        case ITEM_BACKUP_PROFILES:
+            backup_all_profiles();
+            break;
+
+        case ITEM_RESTORE_PROFILES:
+            restore_all_profiles();
+            break;
+
+        case ITEM_EXPORT_CONFIG:
+            export_config();
+            break;
+
+        case ITEM_IMPORT_CONFIG:
+            import_config();
+            break;
+
+        case ITEM_PER_GAME_PROFILE:
+            per_game_profile_enabled = !per_game_profile_enabled;
+            if (!per_game_profile_enabled) {
+                last_pergame_loaded_app[0] = '\0';
+            }
+            break;
+
+        case ITEM_SAVE_GAME_PROFILE:
+            save_game_profile();
+            break;
+
+        case ITEM_LOAD_GAME_PROFILE:
+            load_game_profile();
             break;
 
         case ITEM_CPU_HUD:
