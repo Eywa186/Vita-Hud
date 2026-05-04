@@ -1138,6 +1138,7 @@ static void write_config_line(SceUID fd, const char *key, int value) {
 }
 
 static void save_settings_to_fd(SceUID fd) {
+    write_config_line(fd, "profile_full_save_version", 2);
     write_config_line(fd, "hud_enabled", hud_enabled);
     write_config_line(fd, "layout", hud_layout);
     write_config_line(fd, "position", hud_position);
@@ -1407,8 +1408,9 @@ static int save_profile(void) {
     /*
      * Profiles are now the main save system.
      * This saves the FULL VitaHUD setup:
-     * HUD, layout, offsets, font, colors, menu background,
-     * language, auto-hide, toggle combo, theme, and profile id.
+     * HUD, layout, offsets, size scaling, display styles, opacity, font,
+     * debug options, alerts, overlay order, icons/icon styles, colors,
+     * menu background, language, combos, theme, and profile id.
      */
     profile_path(path);
     return save_config_path(path);
@@ -4404,103 +4406,1056 @@ static void enter_menu_page(int page) {
     clear_menu_repeat_state();
 }
 
+
+static const char *translated_menu_label_for_language(int lang, int item) {
+    switch (lang) {
+        case LANG_ES:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "DISENO";
+                case ITEM_POSITION: return "POSICION";
+                case ITEM_X_OFFSET: return "AJUSTE X";
+                case ITEM_Y_OFFSET: return "AJUSTE Y";
+                case ITEM_SIZE: return "TAMANO HUD";
+                case ITEM_MENU_SIZE: return "TAMANO MENU";
+                case ITEM_FONT: return "FUENTE";
+                case ITEM_FPS: return "HUD FPS";
+                case ITEM_BATTERY: return "HUD BATERIA";
+                case ITEM_TIME: return "HUD RELOJ";
+                case ITEM_DATE_HUD: return "HUD FECHA";
+                case ITEM_TIMEMODE: return "MODO HORA";
+                case ITEM_THEME_MENU: return "TEMA / COLOR / FUENTE";
+                case ITEM_HUD_COLORS_MENU: return "COLORES HUD";
+                case ITEM_MENU_COLORS_MENU: return "COLORES MENU";
+                case ITEM_ICON_COLORS_MENU: return "COLORES ICONOS";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "ALERTAS RENDIMIENTO";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "TODOS LOS HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "ESTILOS / MENU / TAMANOS HUD";
+                case ITEM_THEME: return "PRESET TEMA";
+                case ITEM_HUD_THEME: return "TEMA HUD";
+                case ITEM_HUD_TEXT: return "TEXTO HUD";
+                case ITEM_HUD_SHADOW: return "SOMBRA HUD";
+                case ITEM_HUD_ICON: return "ICONO BATERIA";
+                case ITEM_CLOCK_ICON: return "ICONO RELOJ";
+                case ITEM_DATE_ICON: return "ICONO FECHA";
+                case ITEM_FPS_ICON: return "ICONO FPS";
+                case ITEM_CPU_ICON: return "ICONO CPU";
+                case ITEM_BUS_ICON: return "ICONO BUS";
+                case ITEM_GPU_ICON: return "ICONO GPU";
+                case ITEM_APP_ICON: return "ICONO APP ID";
+                case ITEM_RAM_ICON: return "ICONO RAM";
+                case ITEM_HUD_BOX: return "CAJA HUD";
+                case ITEM_HUD_BOX_BG: return "FONDO HUD";
+                case ITEM_MENU_TEXT: return "TEXTO MENU";
+                case ITEM_MENU_SELECT: return "SELECCION MENU";
+                case ITEM_MENU_BORDER: return "BORDE MENU";
+                case ITEM_MENUBG: return "FONDO MENU";
+                case ITEM_TOP_BAR: return "BARRA SUPERIOR";
+                case ITEM_MENU_PICTURE_BG: return "FONDO IMAGEN";
+                case ITEM_PROFILE_MENU: return "MENU PERFIL";
+                case ITEM_PROFILE: return "RANURA PERFIL";
+                case ITEM_LANGUAGE: return "IDIOMA";
+                case ITEM_AUTO_HIDE: return "AUTO OCULTAR";
+                case ITEM_TOGGLE: return "COMBOS ACTIVAR";
+                case ITEM_TOGGLE_HUD_COMBO: return "COMBO HUD";
+                case ITEM_TOGGLE_MENU_COMBO: return "COMBO MENU";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CICLAR PERFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "COMBO PERFIL";
+                case ITEM_CYCLE_THEME_ENABLE: return "CICLAR TEMA";
+                case ITEM_CYCLE_THEME_COMBO: return "COMBO TEMA";
+                case ITEM_DEBUG_MENU: return "MENU DEBUG";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "POSICION DEBUG";
+                case ITEM_DEBUG_X_OFFSET: return "AJUSTE X DEBUG";
+                case ITEM_DEBUG_Y_OFFSET: return "AJUSTE Y DEBUG";
+                case ITEM_DEBUG_SIZE: return "TAMANO DEBUG";
+                case ITEM_DEBUG_FRAMEBUF: return "DEBUG FRAMEBUF";
+                case ITEM_DEBUG_CACHE: return "DEBUG CACHE";
+                case ITEM_DEBUG_INPUT: return "DEBUG ENTRADA";
+                case ITEM_DEBUG_SYSTEM: return "DEBUG SISTEMA";
+                case ITEM_HUD_OPACITY: return "OPACIDAD HUD";
+                case ITEM_MENU_OPACITY: return "OPACIDAD MENU";
+                case ITEM_FPS_STYLE: return "ESTILO FPS";
+                case ITEM_BATTERY_STYLE: return "ESTILO BATERIA";
+                case ITEM_CLOCK_STYLE: return "ESTILO RELOJ";
+                case ITEM_SAVE_PROFILE: return "GUARDAR PERFIL";
+                case ITEM_LOAD_PROFILE: return "CARGAR PERFIL";
+                case ITEM_CPU_HUD: return "HUD CPU";
+                case ITEM_BUS_HUD: return "HUD BUS";
+                case ITEM_GPU_HUD: return "HUD GPU";
+                case ITEM_APP_ID_HUD: return "HUD APP ID";
+                case ITEM_RAM_HUD: return "HUD RAM";
+                case ITEM_HUD_ORDER_MENU: return "ORDEN HUD";
+                case ITEM_FPS_WARNING: return "ALERTA FPS";
+                case ITEM_FPS_LOW_LIMIT: return "LIMITE BAJO FPS";
+                case ITEM_BATTERY_WARNING: return "ALERTA BATERIA";
+                case ITEM_BATTERY_LOW_LIMIT: return "LIMITE BAJO BATERIA";
+                case ITEM_RAM_WARNING: return "ALERTA RAM";
+                case ITEM_RESET_HUD_POSITION: return "REINICIAR POS HUD";
+                case ITEM_RESET_COLORS: return "REINICIAR COLORES";
+                case ITEM_RESET_OVERLAYS: return "REINICIAR HUDS";
+                case ITEM_RESET_PROFILES: return "REINICIAR PERFILES";
+                case ITEM_RESET_ALL_DEFAULTS: return "REINICIAR TODO";
+                case ITEM_HUD_MENU: return "MENU HUD";
+                case ITEM_DEBUG_FONT: return "FUENTE DEBUG";
+                case ITEM_DEBUG_COLOR: return "COLORES DEBUG";
+                case ITEM_ICON_CHANGER_MENU: return "MENU CAMBIAR ICONOS";
+                case ITEM_FPS_ICON_STYLE: return "ICONO FPS";
+                case ITEM_BATTERY_ICON_STYLE: return "ICONO BATERIA";
+                case ITEM_CLOCK_ICON_STYLE: return "ICONO RELOJ";
+                case ITEM_DATE_ICON_STYLE: return "ICONO FECHA";
+                case ITEM_CPU_ICON_STYLE: return "ICONO CPU";
+                case ITEM_BUS_ICON_STYLE: return "ICONO BUS";
+                case ITEM_GPU_ICON_STYLE: return "ICONO GPU";
+                case ITEM_RAM_ICON_STYLE: return "ICONO RAM";
+                case ITEM_APP_ICON_STYLE: return "ICONO APP ID";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "CREAR TAMANO HUD";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "CREAR TAMANO MENU";
+                case ITEM_DEBUG_MENU_INFO: return "DEBUG MENU";
+                case ITEM_DEBUG_PROFILE: return "DEBUG PERFIL";
+                case ITEM_DEBUG_THEME: return "DEBUG TEMA";
+                case ITEM_DEBUG_ALERT: return "DEBUG ALERTA";
+                case ITEM_DEBUG_HUD_INFO: return "INFO DEBUG HUD";
+                case ITEM_RESET: return "OPCIONES RESET";
+                default: return "";
+            }
+        case LANG_FR:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "DISPOSITION";
+                case ITEM_POSITION: return "POSITION";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "TAILLE HUD";
+                case ITEM_MENU_SIZE: return "TAILLE MENU";
+                case ITEM_FONT: return "POLICE";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATTERIE HUD";
+                case ITEM_TIME: return "HORLOGE HUD";
+                case ITEM_DATE_HUD: return "DATE HUD";
+                case ITEM_TIMEMODE: return "HEURE MODE";
+                case ITEM_THEME_MENU: return "THEME / COULEUR / POLICE";
+                case ITEM_HUD_COLORS_MENU: return "HUD COULEURS";
+                case ITEM_MENU_COLORS_MENU: return "MENU COULEURS";
+                case ITEM_ICON_COLORS_MENU: return "ICONE COULEURS";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "MENU TOUS HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STYLES / MENU / TAILLES HUD";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEXTE";
+                case ITEM_HUD_SHADOW: return "HUD OMBRE";
+                case ITEM_HUD_ICON: return "BATTERIE ICONE";
+                case ITEM_CLOCK_ICON: return "HORLOGE ICONE";
+                case ITEM_DATE_ICON: return "DATE ICONE";
+                case ITEM_FPS_ICON: return "FPS ICONE";
+                case ITEM_CPU_ICON: return "CPU ICONE";
+                case ITEM_BUS_ICON: return "BUS ICONE";
+                case ITEM_GPU_ICON: return "GPU ICONE";
+                case ITEM_APP_ICON: return "APP ID ICONE";
+                case ITEM_RAM_ICON: return "RAM ICONE";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD FOND";
+                case ITEM_MENU_TEXT: return "MENU TEXTE";
+                case ITEM_MENU_SELECT: return "MENU SELECTION";
+                case ITEM_MENU_BORDER: return "MENU BORDURE";
+                case ITEM_MENUBG: return "MENU FOND";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE FOND";
+                case ITEM_PROFILE_MENU: return "PROFIL MENU";
+                case ITEM_PROFILE: return "PROFIL SLOT";
+                case ITEM_LANGUAGE: return "LANGUE";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "COMBOS BASCULE";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STYLE";
+                case ITEM_BATTERY_STYLE: return "BATTERIE STYLE";
+                case ITEM_CLOCK_STYLE: return "HORLOGE STYLE";
+                case ITEM_SAVE_PROFILE: return "SAUVER PROFIL";
+                case ITEM_LOAD_PROFILE: return "CHARGER PROFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD ORDRE";
+                case ITEM_FPS_WARNING: return "FPS ALERTE";
+                case ITEM_FPS_LOW_LIMIT: return "FPS LIMITE BASSE";
+                case ITEM_BATTERY_WARNING: return "BATTERIE ALERTE";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATTERIE LIMITE BASSE";
+                case ITEM_RAM_WARNING: return "RAM ALERTE";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITION";
+                case ITEM_RESET_COLORS: return "RESET COULEURS";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG POLICE";
+                case ITEM_DEBUG_COLOR: return "DEBUG COULEURS";
+                case ITEM_ICON_CHANGER_MENU: return "ICONE CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS ICONE";
+                case ITEM_BATTERY_ICON_STYLE: return "BATTERIE ICONE";
+                case ITEM_CLOCK_ICON_STYLE: return "HORLOGE ICONE";
+                case ITEM_DATE_ICON_STYLE: return "DATE ICONE";
+                case ITEM_CPU_ICON_STYLE: return "CPU ICONE";
+                case ITEM_BUS_ICON_STYLE: return "BUS ICONE";
+                case ITEM_GPU_ICON_STYLE: return "GPU ICONE";
+                case ITEM_RAM_ICON_STYLE: return "RAM ICONE";
+                case ITEM_APP_ICON_STYLE: return "APP ID ICONE";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "CREER HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "CREER TAILLE MENU";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPTIONS";
+                default: return "";
+            }
+        case LANG_DE:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "LAYOUT";
+                case ITEM_POSITION: return "POSITION";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "HUD GROSSE";
+                case ITEM_MENU_SIZE: return "MENU GROSSE";
+                case ITEM_FONT: return "SCHRIFT";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATTERIE HUD";
+                case ITEM_TIME: return "UHR HUD";
+                case ITEM_DATE_HUD: return "DATUM HUD";
+                case ITEM_TIMEMODE: return "ZEIT MODE";
+                case ITEM_THEME_MENU: return "THEMA / FARBE / SCHRIFT";
+                case ITEM_HUD_COLORS_MENU: return "HUD FARBEN";
+                case ITEM_MENU_COLORS_MENU: return "MENU FARBEN";
+                case ITEM_ICON_COLORS_MENU: return "SYMBOL FARBEN";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALLE HUD ANZEIGEN";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STILE / MENU / HUD GROSSEN";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEXT";
+                case ITEM_HUD_SHADOW: return "HUD SCHATTEN";
+                case ITEM_HUD_ICON: return "BATTERIE SYMBOL";
+                case ITEM_CLOCK_ICON: return "UHR SYMBOL";
+                case ITEM_DATE_ICON: return "DATUM SYMBOL";
+                case ITEM_FPS_ICON: return "FPS SYMBOL";
+                case ITEM_CPU_ICON: return "CPU SYMBOL";
+                case ITEM_BUS_ICON: return "BUS SYMBOL";
+                case ITEM_GPU_ICON: return "GPU SYMBOL";
+                case ITEM_APP_ICON: return "APP ID SYMBOL";
+                case ITEM_RAM_ICON: return "RAM SYMBOL";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD HINTERGRUND";
+                case ITEM_MENU_TEXT: return "MENU TEXT";
+                case ITEM_MENU_SELECT: return "MENU AUSWAHL";
+                case ITEM_MENU_BORDER: return "MENU RAND";
+                case ITEM_MENUBG: return "MENU HINTERGRUND";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE HINTERGRUND";
+                case ITEM_PROFILE_MENU: return "PROFIL MENU";
+                case ITEM_PROFILE: return "PROFIL SLOT";
+                case ITEM_LANGUAGE: return "SPRACHE";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "UMSCHALT KOMBOS";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STIL";
+                case ITEM_BATTERY_STYLE: return "BATTERIE STIL";
+                case ITEM_CLOCK_STYLE: return "UHR STIL";
+                case ITEM_SAVE_PROFILE: return "SPEICHERN PROFIL";
+                case ITEM_LOAD_PROFILE: return "LADEN PROFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD REIHENFOLGE";
+                case ITEM_FPS_WARNING: return "FPS WARNUNG";
+                case ITEM_FPS_LOW_LIMIT: return "FPS UNTERE GRENZE";
+                case ITEM_BATTERY_WARNING: return "BATTERIE WARNUNG";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATTERIE UNTERE GRENZE";
+                case ITEM_RAM_WARNING: return "RAM WARNUNG";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITION";
+                case ITEM_RESET_COLORS: return "RESET FARBEN";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG SCHRIFT";
+                case ITEM_DEBUG_COLOR: return "DEBUG FARBEN";
+                case ITEM_ICON_CHANGER_MENU: return "SYMBOL CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS SYMBOL";
+                case ITEM_BATTERY_ICON_STYLE: return "BATTERIE SYMBOL";
+                case ITEM_CLOCK_ICON_STYLE: return "UHR SYMBOL";
+                case ITEM_DATE_ICON_STYLE: return "DATUM SYMBOL";
+                case ITEM_CPU_ICON_STYLE: return "CPU SYMBOL";
+                case ITEM_BUS_ICON_STYLE: return "BUS SYMBOL";
+                case ITEM_GPU_ICON_STYLE: return "GPU SYMBOL";
+                case ITEM_RAM_ICON_STYLE: return "RAM SYMBOL";
+                case ITEM_APP_ICON_STYLE: return "APP ID SYMBOL";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "ERSTELLEN HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "ERSTELLEN MENU GROSSE";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPTIONEN";
+                default: return "";
+            }
+        case LANG_IT:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "LAYOUT";
+                case ITEM_POSITION: return "POSIZIONE";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "DIM HUD";
+                case ITEM_MENU_SIZE: return "DIM MENU";
+                case ITEM_FONT: return "FONT";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATTERIA HUD";
+                case ITEM_TIME: return "OROLOGIO HUD";
+                case ITEM_DATE_HUD: return "DATA HUD";
+                case ITEM_TIMEMODE: return "ORA MODE";
+                case ITEM_THEME_MENU: return "TEMA / COLORE / FONT";
+                case ITEM_HUD_COLORS_MENU: return "HUD COLOREI";
+                case ITEM_MENU_COLORS_MENU: return "MENU COLOREI";
+                case ITEM_ICON_COLORS_MENU: return "ICONA COLOREI";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "MENU TUTTI HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STILI / MENU / DIM HUD";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TESTO";
+                case ITEM_HUD_SHADOW: return "HUD OMBRA";
+                case ITEM_HUD_ICON: return "BATTERIA ICONA";
+                case ITEM_CLOCK_ICON: return "OROLOGIO ICONA";
+                case ITEM_DATE_ICON: return "DATA ICONA";
+                case ITEM_FPS_ICON: return "FPS ICONA";
+                case ITEM_CPU_ICON: return "CPU ICONA";
+                case ITEM_BUS_ICON: return "BUS ICONA";
+                case ITEM_GPU_ICON: return "GPU ICONA";
+                case ITEM_APP_ICON: return "APP ID ICONA";
+                case ITEM_RAM_ICON: return "RAM ICONA";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD SFONDO";
+                case ITEM_MENU_TEXT: return "MENU TESTO";
+                case ITEM_MENU_SELECT: return "MENU SELEZIONE";
+                case ITEM_MENU_BORDER: return "MENU BORDO";
+                case ITEM_MENUBG: return "MENU SFONDO";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE SFONDO";
+                case ITEM_PROFILE_MENU: return "PROFILO MENU";
+                case ITEM_PROFILE: return "PROFILO SLOT";
+                case ITEM_LANGUAGE: return "LINGUA";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "COMBO ATTIVA";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFILO";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFILO COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSIZIONE";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STILE";
+                case ITEM_BATTERY_STYLE: return "BATTERIA STILE";
+                case ITEM_CLOCK_STYLE: return "OROLOGIO STILE";
+                case ITEM_SAVE_PROFILE: return "SALVA PROFILO";
+                case ITEM_LOAD_PROFILE: return "CARICA PROFILO";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD ORDINE";
+                case ITEM_FPS_WARNING: return "FPS AVVISO";
+                case ITEM_FPS_LOW_LIMIT: return "FPS LIMITE BASSO";
+                case ITEM_BATTERY_WARNING: return "BATTERIA AVVISO";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATTERIA LIMITE BASSO";
+                case ITEM_RAM_WARNING: return "RAM AVVISO";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSIZIONE";
+                case ITEM_RESET_COLORS: return "RESET COLOREI";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILOS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG FONT";
+                case ITEM_DEBUG_COLOR: return "DEBUG COLOREI";
+                case ITEM_ICON_CHANGER_MENU: return "ICONA CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS ICONA";
+                case ITEM_BATTERY_ICON_STYLE: return "BATTERIA ICONA";
+                case ITEM_CLOCK_ICON_STYLE: return "OROLOGIO ICONA";
+                case ITEM_DATE_ICON_STYLE: return "DATA ICONA";
+                case ITEM_CPU_ICON_STYLE: return "CPU ICONA";
+                case ITEM_BUS_ICON_STYLE: return "BUS ICONA";
+                case ITEM_GPU_ICON_STYLE: return "GPU ICONA";
+                case ITEM_RAM_ICON_STYLE: return "RAM ICONA";
+                case ITEM_APP_ICON_STYLE: return "APP ID ICONA";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "CREA HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "CREA DIM MENU";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFILO DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPZIONI";
+                default: return "";
+            }
+        case LANG_PT:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "LAYOUT";
+                case ITEM_POSITION: return "POSICAO";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "TAMANHO HUD";
+                case ITEM_MENU_SIZE: return "TAMANHO MENU";
+                case ITEM_FONT: return "FONTE";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATERIA HUD";
+                case ITEM_TIME: return "RELOGIO HUD";
+                case ITEM_DATE_HUD: return "DATA HUD";
+                case ITEM_TIMEMODE: return "HORA MODE";
+                case ITEM_THEME_MENU: return "TEMA / COR / FONTE";
+                case ITEM_HUD_COLORS_MENU: return "HUD CORES";
+                case ITEM_MENU_COLORS_MENU: return "MENU CORES";
+                case ITEM_ICON_COLORS_MENU: return "ICONE CORES";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "MENU TODOS HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "ESTILOS / MENU / TAM HUD";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEXTO";
+                case ITEM_HUD_SHADOW: return "HUD SOMBRA";
+                case ITEM_HUD_ICON: return "BATERIA ICONE";
+                case ITEM_CLOCK_ICON: return "RELOGIO ICONE";
+                case ITEM_DATE_ICON: return "DATA ICONE";
+                case ITEM_FPS_ICON: return "FPS ICONE";
+                case ITEM_CPU_ICON: return "CPU ICONE";
+                case ITEM_BUS_ICON: return "BUS ICONE";
+                case ITEM_GPU_ICON: return "GPU ICONE";
+                case ITEM_APP_ICON: return "APP ID ICONE";
+                case ITEM_RAM_ICON: return "RAM ICONE";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD FUNDO";
+                case ITEM_MENU_TEXT: return "MENU TEXTO";
+                case ITEM_MENU_SELECT: return "MENU SELECAO";
+                case ITEM_MENU_BORDER: return "MENU BORDA";
+                case ITEM_MENUBG: return "MENU FUNDO";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE FUNDO";
+                case ITEM_PROFILE_MENU: return "PERFIL MENU";
+                case ITEM_PROFILE: return "PERFIL SLOT";
+                case ITEM_LANGUAGE: return "IDIOMA";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "COMBOS ALTERNAR";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PERFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PERFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSICAO";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS ESTILO";
+                case ITEM_BATTERY_STYLE: return "BATERIA ESTILO";
+                case ITEM_CLOCK_STYLE: return "RELOGIO ESTILO";
+                case ITEM_SAVE_PROFILE: return "SALVAR PERFIL";
+                case ITEM_LOAD_PROFILE: return "CARREGAR PERFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD ORDEM";
+                case ITEM_FPS_WARNING: return "FPS ALERTA";
+                case ITEM_FPS_LOW_LIMIT: return "FPS LIMITE BAIXO";
+                case ITEM_BATTERY_WARNING: return "BATERIA ALERTA";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATERIA LIMITE BAIXO";
+                case ITEM_RAM_WARNING: return "RAM ALERTA";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSICAO";
+                case ITEM_RESET_COLORS: return "RESET CORES";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PERFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG FONTE";
+                case ITEM_DEBUG_COLOR: return "DEBUG CORES";
+                case ITEM_ICON_CHANGER_MENU: return "ICONE CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS ICONE";
+                case ITEM_BATTERY_ICON_STYLE: return "BATERIA ICONE";
+                case ITEM_CLOCK_ICON_STYLE: return "RELOGIO ICONE";
+                case ITEM_DATE_ICON_STYLE: return "DATA ICONE";
+                case ITEM_CPU_ICON_STYLE: return "CPU ICONE";
+                case ITEM_BUS_ICON_STYLE: return "BUS ICONE";
+                case ITEM_GPU_ICON_STYLE: return "GPU ICONE";
+                case ITEM_RAM_ICON_STYLE: return "RAM ICONE";
+                case ITEM_APP_ICON_STYLE: return "APP ID ICONE";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "CRIAR HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "CRIAR TAMANHO MENU";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PERFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPCOES";
+                default: return "";
+            }
+        case LANG_NL:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "INDELING";
+                case ITEM_POSITION: return "POSITIE";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "HUD GROOTTE";
+                case ITEM_MENU_SIZE: return "MENU GROOTTE";
+                case ITEM_FONT: return "LETTERTYPE";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATTERIJ HUD";
+                case ITEM_TIME: return "KLOK HUD";
+                case ITEM_DATE_HUD: return "DATUM HUD";
+                case ITEM_TIMEMODE: return "TIJD MODE";
+                case ITEM_THEME_MENU: return "THEMA / KLEUR / LETTERTYPE";
+                case ITEM_HUD_COLORS_MENU: return "HUD KLEUREN";
+                case ITEM_MENU_COLORS_MENU: return "MENU KLEUREN";
+                case ITEM_ICON_COLORS_MENU: return "ICOON KLEUREN";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "ALLE HUD OVERLAYS";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STIJLEN / MENU / HUD GROOTTE";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEKST";
+                case ITEM_HUD_SHADOW: return "HUD SCHADUW";
+                case ITEM_HUD_ICON: return "BATTERIJ ICOON";
+                case ITEM_CLOCK_ICON: return "KLOK ICOON";
+                case ITEM_DATE_ICON: return "DATUM ICOON";
+                case ITEM_FPS_ICON: return "FPS ICOON";
+                case ITEM_CPU_ICON: return "CPU ICOON";
+                case ITEM_BUS_ICON: return "BUS ICOON";
+                case ITEM_GPU_ICON: return "GPU ICOON";
+                case ITEM_APP_ICON: return "APP ID ICOON";
+                case ITEM_RAM_ICON: return "RAM ICOON";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD ACHTERGROND";
+                case ITEM_MENU_TEXT: return "MENU TEKST";
+                case ITEM_MENU_SELECT: return "MENU SELECTIE";
+                case ITEM_MENU_BORDER: return "MENU RAND";
+                case ITEM_MENUBG: return "MENU ACHTERGROND";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE ACHTERGROND";
+                case ITEM_PROFILE_MENU: return "PROFIEL MENU";
+                case ITEM_PROFILE: return "PROFIEL SLOT";
+                case ITEM_LANGUAGE: return "TAAL";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "SCHAKEL COMBOS";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIEL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIEL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSITIE";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STIJL";
+                case ITEM_BATTERY_STYLE: return "BATTERIJ STIJL";
+                case ITEM_CLOCK_STYLE: return "KLOK STIJL";
+                case ITEM_SAVE_PROFILE: return "OPSLAAN PROFIEL";
+                case ITEM_LOAD_PROFILE: return "LADEN PROFIEL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD VOLGORDE";
+                case ITEM_FPS_WARNING: return "FPS WAARSCHUWING";
+                case ITEM_FPS_LOW_LIMIT: return "FPS LAGE LIMIET";
+                case ITEM_BATTERY_WARNING: return "BATTERIJ WAARSCHUWING";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATTERIJ LAGE LIMIET";
+                case ITEM_RAM_WARNING: return "RAM WAARSCHUWING";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSITIE";
+                case ITEM_RESET_COLORS: return "RESET KLEUREN";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFIELS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG LETTERTYPE";
+                case ITEM_DEBUG_COLOR: return "DEBUG KLEUREN";
+                case ITEM_ICON_CHANGER_MENU: return "ICOON CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS ICOON";
+                case ITEM_BATTERY_ICON_STYLE: return "BATTERIJ ICOON";
+                case ITEM_CLOCK_ICON_STYLE: return "KLOK ICOON";
+                case ITEM_DATE_ICON_STYLE: return "DATUM ICOON";
+                case ITEM_CPU_ICON_STYLE: return "CPU ICOON";
+                case ITEM_BUS_ICON_STYLE: return "BUS ICOON";
+                case ITEM_GPU_ICON_STYLE: return "GPU ICOON";
+                case ITEM_RAM_ICON_STYLE: return "RAM ICOON";
+                case ITEM_APP_ICON_STYLE: return "APP ID ICOON";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "MAAK HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "MAAK MENU GROOTTE";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIEL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPTIES";
+                default: return "";
+            }
+        case LANG_ID:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "TATA LETAK";
+                case ITEM_POSITION: return "POSISI";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "UKURAN HUD";
+                case ITEM_MENU_SIZE: return "UKURAN MENU";
+                case ITEM_FONT: return "FONT";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATERAI HUD";
+                case ITEM_TIME: return "JAM HUD";
+                case ITEM_DATE_HUD: return "TANGGAL HUD";
+                case ITEM_TIMEMODE: return "WAKTU MODE";
+                case ITEM_THEME_MENU: return "TEMA / WARNA / FONT";
+                case ITEM_HUD_COLORS_MENU: return "HUD WARNA";
+                case ITEM_MENU_COLORS_MENU: return "MENU WARNA";
+                case ITEM_ICON_COLORS_MENU: return "IKON WARNA";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "MENU SEMUA HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "GAYA / MENU / UKURAN HUD";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEKS";
+                case ITEM_HUD_SHADOW: return "HUD BAYANGAN";
+                case ITEM_HUD_ICON: return "BATERAI IKON";
+                case ITEM_CLOCK_ICON: return "JAM IKON";
+                case ITEM_DATE_ICON: return "TANGGAL IKON";
+                case ITEM_FPS_ICON: return "FPS IKON";
+                case ITEM_CPU_ICON: return "CPU IKON";
+                case ITEM_BUS_ICON: return "BUS IKON";
+                case ITEM_GPU_ICON: return "GPU IKON";
+                case ITEM_APP_ICON: return "APP ID IKON";
+                case ITEM_RAM_ICON: return "RAM IKON";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD LATAR";
+                case ITEM_MENU_TEXT: return "MENU TEKS";
+                case ITEM_MENU_SELECT: return "MENU PILIHAN";
+                case ITEM_MENU_BORDER: return "MENU BATAS";
+                case ITEM_MENUBG: return "MENU LATAR";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE LATAR";
+                case ITEM_PROFILE_MENU: return "PROFIL MENU";
+                case ITEM_PROFILE: return "PROFIL SLOT";
+                case ITEM_LANGUAGE: return "BAHASA";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "KOMBO TOGGLE";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POSISI";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS GAYA";
+                case ITEM_BATTERY_STYLE: return "BATERAI GAYA";
+                case ITEM_CLOCK_STYLE: return "JAM GAYA";
+                case ITEM_SAVE_PROFILE: return "SIMPAN PROFIL";
+                case ITEM_LOAD_PROFILE: return "MUAT PROFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD URUTAN";
+                case ITEM_FPS_WARNING: return "FPS PERINGATAN";
+                case ITEM_FPS_LOW_LIMIT: return "FPS BATAS RENDAH";
+                case ITEM_BATTERY_WARNING: return "BATERAI PERINGATAN";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATERAI BATAS RENDAH";
+                case ITEM_RAM_WARNING: return "RAM PERINGATAN";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POSISI";
+                case ITEM_RESET_COLORS: return "RESET WARNA";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG FONT";
+                case ITEM_DEBUG_COLOR: return "DEBUG WARNA";
+                case ITEM_ICON_CHANGER_MENU: return "IKON CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS IKON";
+                case ITEM_BATTERY_ICON_STYLE: return "BATERAI IKON";
+                case ITEM_CLOCK_ICON_STYLE: return "JAM IKON";
+                case ITEM_DATE_ICON_STYLE: return "TANGGAL IKON";
+                case ITEM_CPU_ICON_STYLE: return "CPU IKON";
+                case ITEM_BUS_ICON_STYLE: return "BUS IKON";
+                case ITEM_GPU_ICON_STYLE: return "GPU IKON";
+                case ITEM_RAM_ICON_STYLE: return "RAM IKON";
+                case ITEM_APP_ICON_STYLE: return "APP ID IKON";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "BUAT HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "BUAT UKURAN MENU";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPSI";
+                default: return "";
+            }
+        case LANG_TR:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "DUZEN";
+                case ITEM_POSITION: return "KONUM";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "HUD BOYUT";
+                case ITEM_MENU_SIZE: return "MENU BOYUT";
+                case ITEM_FONT: return "YAZI TIPI";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "PIL HUD";
+                case ITEM_TIME: return "SAAT HUD";
+                case ITEM_DATE_HUD: return "TARIH HUD";
+                case ITEM_TIMEMODE: return "SAAT MODE";
+                case ITEM_THEME_MENU: return "TEMA / RENK / YAZI";
+                case ITEM_HUD_COLORS_MENU: return "HUD RENKLER";
+                case ITEM_MENU_COLORS_MENU: return "MENU RENKLER";
+                case ITEM_ICON_COLORS_MENU: return "SIMGE RENKLER";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "TUM HUD MENU";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STILLER / MENU / HUD BOYUT";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD YAZI";
+                case ITEM_HUD_SHADOW: return "HUD GOLGE";
+                case ITEM_HUD_ICON: return "PIL SIMGE";
+                case ITEM_CLOCK_ICON: return "SAAT SIMGE";
+                case ITEM_DATE_ICON: return "TARIH SIMGE";
+                case ITEM_FPS_ICON: return "FPS SIMGE";
+                case ITEM_CPU_ICON: return "CPU SIMGE";
+                case ITEM_BUS_ICON: return "BUS SIMGE";
+                case ITEM_GPU_ICON: return "GPU SIMGE";
+                case ITEM_APP_ICON: return "APP ID SIMGE";
+                case ITEM_RAM_ICON: return "RAM SIMGE";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD ARKA PLAN";
+                case ITEM_MENU_TEXT: return "MENU YAZI";
+                case ITEM_MENU_SELECT: return "MENU SECIM";
+                case ITEM_MENU_BORDER: return "MENU KENAR";
+                case ITEM_MENUBG: return "MENU ARKA PLAN";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE ARKA PLAN";
+                case ITEM_PROFILE_MENU: return "PROFIL MENU";
+                case ITEM_PROFILE: return "PROFIL SLOT";
+                case ITEM_LANGUAGE: return "DIL";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "AC/KAPA KOMBOLAR";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG KONUM";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STIL";
+                case ITEM_BATTERY_STYLE: return "PIL STIL";
+                case ITEM_CLOCK_STYLE: return "SAAT STIL";
+                case ITEM_SAVE_PROFILE: return "KAYDET PROFIL";
+                case ITEM_LOAD_PROFILE: return "YUKLE PROFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD SIRA";
+                case ITEM_FPS_WARNING: return "FPS UYARI";
+                case ITEM_FPS_LOW_LIMIT: return "FPS ALT LIMIT";
+                case ITEM_BATTERY_WARNING: return "PIL UYARI";
+                case ITEM_BATTERY_LOW_LIMIT: return "PIL ALT LIMIT";
+                case ITEM_RAM_WARNING: return "RAM UYARI";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD KONUM";
+                case ITEM_RESET_COLORS: return "RESET RENKLER";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG YAZI TIPI";
+                case ITEM_DEBUG_COLOR: return "DEBUG RENKLER";
+                case ITEM_ICON_CHANGER_MENU: return "SIMGE CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS SIMGE";
+                case ITEM_BATTERY_ICON_STYLE: return "PIL SIMGE";
+                case ITEM_CLOCK_ICON_STYLE: return "SAAT SIMGE";
+                case ITEM_DATE_ICON_STYLE: return "TARIH SIMGE";
+                case ITEM_CPU_ICON_STYLE: return "CPU SIMGE";
+                case ITEM_BUS_ICON_STYLE: return "BUS SIMGE";
+                case ITEM_GPU_ICON_STYLE: return "GPU SIMGE";
+                case ITEM_RAM_ICON_STYLE: return "RAM SIMGE";
+                case ITEM_APP_ICON_STYLE: return "APP ID SIMGE";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "OLUSTUR HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "OLUSTUR MENU BOYUT";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET SECENEKLER";
+                default: return "";
+            }
+        case LANG_PL:
+            switch (item) {
+                case ITEM_HUD: return "HUD";
+                case ITEM_LAYOUT: return "UKLAD";
+                case ITEM_POSITION: return "POZYCJA";
+                case ITEM_X_OFFSET: return "X OFFSET";
+                case ITEM_Y_OFFSET: return "Y OFFSET";
+                case ITEM_SIZE: return "ROZMIAR HUD";
+                case ITEM_MENU_SIZE: return "ROZMIAR MENU";
+                case ITEM_FONT: return "CZCIONKA";
+                case ITEM_FPS: return "FPS HUD";
+                case ITEM_BATTERY: return "BATERIA HUD";
+                case ITEM_TIME: return "ZEGAR HUD";
+                case ITEM_DATE_HUD: return "DATA HUD";
+                case ITEM_TIMEMODE: return "CZAS MODE";
+                case ITEM_THEME_MENU: return "MOTYW / KOLOR / CZCIONKA";
+                case ITEM_HUD_COLORS_MENU: return "HUD KOLORY";
+                case ITEM_MENU_COLORS_MENU: return "MENU KOLORY";
+                case ITEM_ICON_COLORS_MENU: return "IKONA KOLORY";
+                case ITEM_PERFORMANCE_ALERTS_MENU: return "PERFORMANCE ALERTS MENU";
+                case ITEM_ALL_HUD_OVERLAYS_MENU: return "MENU WSZYSTKIE HUD";
+                case ITEM_MENU_HUD_SIZE_MENU: return "STYLE / MENU / ROZMIARY HUD";
+                case ITEM_THEME: return "THEME PRESET";
+                case ITEM_HUD_THEME: return "HUD THEME";
+                case ITEM_HUD_TEXT: return "HUD TEKST";
+                case ITEM_HUD_SHADOW: return "HUD CIEN";
+                case ITEM_HUD_ICON: return "BATERIA IKONA";
+                case ITEM_CLOCK_ICON: return "ZEGAR IKONA";
+                case ITEM_DATE_ICON: return "DATA IKONA";
+                case ITEM_FPS_ICON: return "FPS IKONA";
+                case ITEM_CPU_ICON: return "CPU IKONA";
+                case ITEM_BUS_ICON: return "BUS IKONA";
+                case ITEM_GPU_ICON: return "GPU IKONA";
+                case ITEM_APP_ICON: return "APP ID IKONA";
+                case ITEM_RAM_ICON: return "RAM IKONA";
+                case ITEM_HUD_BOX: return "HUD BOX";
+                case ITEM_HUD_BOX_BG: return "HUD TLO";
+                case ITEM_MENU_TEXT: return "MENU TEKST";
+                case ITEM_MENU_SELECT: return "MENU WYBOR";
+                case ITEM_MENU_BORDER: return "MENU RAMKA";
+                case ITEM_MENUBG: return "MENU TLO";
+                case ITEM_TOP_BAR: return "MENU TOP BAR";
+                case ITEM_MENU_PICTURE_BG: return "PICTURE TLO";
+                case ITEM_PROFILE_MENU: return "PROFIL MENU";
+                case ITEM_PROFILE: return "PROFIL SLOT";
+                case ITEM_LANGUAGE: return "JEZYK";
+                case ITEM_AUTO_HIDE: return "AUTO HIDE";
+                case ITEM_TOGGLE: return "KOMBO PRZELACZ";
+                case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
+                case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
+                case ITEM_CYCLE_PROFILE_ENABLE: return "CYCLE PROFIL";
+                case ITEM_CYCLE_PROFILE_COMBO: return "PROFIL COMBO";
+                case ITEM_CYCLE_THEME_ENABLE: return "CYCLE THEME";
+                case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
+                case ITEM_DEBUG_MENU: return "DEBUG MENU";
+                case ITEM_DEBUG_HUD: return "DEBUG HUD";
+                case ITEM_DEBUG_POSITION: return "DEBUG POZYCJA";
+                case ITEM_DEBUG_X_OFFSET: return "DEBUG X OFFSET";
+                case ITEM_DEBUG_Y_OFFSET: return "DEBUG Y OFFSET";
+                case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
+                case ITEM_DEBUG_FRAMEBUF: return "FRAMEBUF DEBUG";
+                case ITEM_DEBUG_CACHE: return "CACHE DEBUG";
+                case ITEM_DEBUG_INPUT: return "INPUT DEBUG";
+                case ITEM_DEBUG_SYSTEM: return "SYSTEM DEBUG";
+                case ITEM_HUD_OPACITY: return "HUD OPACITY";
+                case ITEM_MENU_OPACITY: return "MENU OPACITY";
+                case ITEM_FPS_STYLE: return "FPS STYL";
+                case ITEM_BATTERY_STYLE: return "BATERIA STYL";
+                case ITEM_CLOCK_STYLE: return "ZEGAR STYL";
+                case ITEM_SAVE_PROFILE: return "ZAPISZ PROFIL";
+                case ITEM_LOAD_PROFILE: return "WCZYTAJ PROFIL";
+                case ITEM_CPU_HUD: return "CPU HUD";
+                case ITEM_BUS_HUD: return "BUS HUD";
+                case ITEM_GPU_HUD: return "GPU HUD";
+                case ITEM_APP_ID_HUD: return "APP ID HUD";
+                case ITEM_RAM_HUD: return "RAM HUD";
+                case ITEM_HUD_ORDER_MENU: return "HUD KOLEJNOSC";
+                case ITEM_FPS_WARNING: return "FPS ALERT";
+                case ITEM_FPS_LOW_LIMIT: return "FPS NISKI LIMIT";
+                case ITEM_BATTERY_WARNING: return "BATERIA ALERT";
+                case ITEM_BATTERY_LOW_LIMIT: return "BATERIA NISKI LIMIT";
+                case ITEM_RAM_WARNING: return "RAM ALERT";
+                case ITEM_RESET_HUD_POSITION: return "RESET HUD POZYCJA";
+                case ITEM_RESET_COLORS: return "RESET KOLORY";
+                case ITEM_RESET_OVERLAYS: return "RESET OVERLAYS";
+                case ITEM_RESET_PROFILES: return "RESET PROFILS";
+                case ITEM_RESET_ALL_DEFAULTS: return "RESET ALL DEFAULTS";
+                case ITEM_HUD_MENU: return "HUD MENU";
+                case ITEM_DEBUG_FONT: return "DEBUG CZCIONKA";
+                case ITEM_DEBUG_COLOR: return "DEBUG KOLORY";
+                case ITEM_ICON_CHANGER_MENU: return "IKONA CHANGER MENU";
+                case ITEM_FPS_ICON_STYLE: return "FPS IKONA";
+                case ITEM_BATTERY_ICON_STYLE: return "BATERIA IKONA";
+                case ITEM_CLOCK_ICON_STYLE: return "ZEGAR IKONA";
+                case ITEM_DATE_ICON_STYLE: return "DATA IKONA";
+                case ITEM_CPU_ICON_STYLE: return "CPU IKONA";
+                case ITEM_BUS_ICON_STYLE: return "BUS IKONA";
+                case ITEM_GPU_ICON_STYLE: return "GPU IKONA";
+                case ITEM_RAM_ICON_STYLE: return "RAM IKONA";
+                case ITEM_APP_ICON_STYLE: return "APP ID IKONA";
+                case ITEM_CREATE_HUD_MENU_SIZE: return "UTWORZ HUD MENU SIZE";
+                case ITEM_CREATE_MAIN_MENU_SIZE: return "UTWORZ ROZMIAR MENU";
+                case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+                case ITEM_DEBUG_PROFILE: return "PROFIL DEBUG";
+                case ITEM_DEBUG_THEME: return "THEME DEBUG";
+                case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+                case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
+                case ITEM_RESET: return "RESET OPCJE";
+                default: return "";
+            }
+        case LANG_EN:
+        default:
+            return "";
+    }
+}
+
+static const char *menu_label(int item);
+
 static const char *choice_title_for_target(void) {
-    switch (choice_target_item) {
-        case ITEM_LAYOUT: return "LAYOUT";
-        case ITEM_SIZE: return "HUD SIZE";
-        case ITEM_MENU_SIZE: return "MAIN MENU SIZE";
-        case ITEM_FONT: return "FONT";
-        case ITEM_DEBUG_FONT: return "DEBUG FONT";
-        case ITEM_DEBUG_COLOR: return "DEBUG COLORS";
-        case ITEM_HUD_OPACITY: return "HUD OPACITY";
-        case ITEM_MENU_OPACITY: return "MENU OPACITY";
-        case ITEM_FPS_STYLE: return "FPS STYLE";
-        case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
-        case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
-        case ITEM_DEBUG_POSITION: return "DEBUG POSITION";
-        case ITEM_DEBUG_SIZE: return "DEBUG SIZE";
-        case ITEM_TOGGLE_HUD_COMBO: return "HUD COMBO";
-        case ITEM_TOGGLE_MENU_COMBO: return "MENU COMBO";
-        case ITEM_CYCLE_PROFILE_COMBO: return "PROFILE COMBO";
-        case ITEM_CYCLE_THEME_COMBO: return "THEME COMBO";
-        case ITEM_LANGUAGE: return "LANGUAGE";
-        case ITEM_THEME: return "THEME PRESET";
-        case ITEM_HUD_THEME: return "HUD THEME";
-        case ITEM_HUD_TEXT: return "HUD TEXT";
-        case ITEM_HUD_SHADOW: return "HUD SHADOW";
-        case ITEM_HUD_ICON: return "BATTERY ICON";
-        case ITEM_CLOCK_ICON: return "CLOCK ICON";
-        case ITEM_DATE_ICON: return "DATE ICON";
-        case ITEM_FPS_ICON: return "FPS ICON";
-        case ITEM_CPU_ICON: return "CPU ICON";
-        case ITEM_BUS_ICON: return "BUS ICON";
-        case ITEM_GPU_ICON: return "GPU ICON";
-        case ITEM_APP_ICON: return "APP ID ICON";
-        case ITEM_RAM_ICON: return "RAM ICON";
-        case ITEM_HUD_BOX_BG: return "HUD BACKGROUND";
-        case ITEM_MENU_TEXT: return "MENU TEXT";
-        case ITEM_MENU_SELECT: return "MENU SELECT";
-        case ITEM_MENU_BORDER: return "MENU BORDER";
-        case ITEM_MENUBG: return "MENU BACKGROUND";
-        case ITEM_TOP_BAR: return "MENU TOP BAR";
-        case ITEM_FPS_ICON_STYLE: return "FPS ICON";
-        case ITEM_BATTERY_ICON_STYLE: return "BATTERY ICON";
-        case ITEM_CLOCK_ICON_STYLE: return "CLOCK ICON";
-        case ITEM_DATE_ICON_STYLE: return "DATE ICON";
-        case ITEM_CPU_ICON_STYLE: return "CPU ICON";
-        case ITEM_BUS_ICON_STYLE: return "BUS ICON";
-        case ITEM_GPU_ICON_STYLE: return "GPU ICON";
-        case ITEM_RAM_ICON_STYLE: return "RAM ICON";
-        case ITEM_APP_ICON_STYLE: return "APP ID ICON";
-        default: return "CHOOSE";
+    /* Choice popup titles now use the same translated text as the parent menu row. */
+    return menu_label(choice_target_item);
+}
+
+
+static const char *translated_page_title_for_language(int page) {
+    if (hud_language == LANG_EN) return 0;
+    switch (page) {
+        case MENU_PAGE_HUD_ORDER: return translated_menu_label_for_language(hud_language, ITEM_HUD_ORDER_MENU);
+        case MENU_PAGE_OVERLAYS: return translated_menu_label_for_language(hud_language, ITEM_ALL_HUD_OVERLAYS_MENU);
+        case MENU_PAGE_SIZE: return translated_menu_label_for_language(hud_language, ITEM_MENU_HUD_SIZE_MENU);
+        case MENU_PAGE_HUD_COLORS: return translated_menu_label_for_language(hud_language, ITEM_HUD_COLORS_MENU);
+        case MENU_PAGE_MENU_COLORS: return translated_menu_label_for_language(hud_language, ITEM_MENU_COLORS_MENU);
+        case MENU_PAGE_ICON_COLORS: return translated_menu_label_for_language(hud_language, ITEM_ICON_COLORS_MENU);
+        case MENU_PAGE_PERFORMANCE: return translated_menu_label_for_language(hud_language, ITEM_PERFORMANCE_ALERTS_MENU);
+        case MENU_PAGE_RESET_OPTIONS: return translated_menu_label_for_language(hud_language, ITEM_RESET);
+        case MENU_PAGE_HUD_MENU: return translated_menu_label_for_language(hud_language, ITEM_HUD_MENU);
+        case MENU_PAGE_DEBUG: return translated_menu_label_for_language(hud_language, ITEM_DEBUG_MENU);
+        case MENU_PAGE_TOGGLE_COMBOS: return translated_menu_label_for_language(hud_language, ITEM_TOGGLE);
+        case MENU_PAGE_ICON_CHANGER: return translated_menu_label_for_language(hud_language, ITEM_ICON_CHANGER_MENU);
+        case MENU_PAGE_PROFILE: return translated_menu_label_for_language(hud_language, ITEM_PROFILE_MENU);
+        case MENU_PAGE_THEME: return translated_menu_label_for_language(hud_language, ITEM_THEME_MENU);
+        default: return 0;
     }
 }
 
 static const char *current_menu_title(void) {
+    const char *translated;
+
     if (menu_page == MENU_PAGE_CHOICE) return choice_title_for_target();
 
+    translated = translated_page_title_for_language(menu_page);
+    if (translated && translated[0]) return translated;
+
     if (menu_page == MENU_PAGE_HUD_ORDER) return "HUD ORDER";
-
     if (menu_page == MENU_PAGE_OVERLAYS) return "ALL HUD OVERLAYS MENU";
-
     if (menu_page == MENU_PAGE_SIZE) return "DISPLAY STYLES / MENU / HUD SIZES MENU";
-
     if (menu_page == MENU_PAGE_HUD_COLORS) return "HUD COLORS";
-
     if (menu_page == MENU_PAGE_MENU_COLORS) return "MENU COLORS";
-
     if (menu_page == MENU_PAGE_ICON_COLORS) return "ICON COLORS";
-
     if (menu_page == MENU_PAGE_PERFORMANCE) return "PERFORMANCE ALERTS MENU";
-
     if (menu_page == MENU_PAGE_RESET_OPTIONS) return "RESET OPTIONS";
-
     if (menu_page == MENU_PAGE_HUD_MENU) return "HUD MENU";
-
     if (menu_page == MENU_PAGE_DEBUG) return "DEBUG MENU";
-
     if (menu_page == MENU_PAGE_TOGGLE_COMBOS) return "TOGGLE COMBOS";
-
     if (menu_page == MENU_PAGE_ICON_CHANGER) return "ICON CHANGER MENU";
-
-    if (menu_page == MENU_PAGE_PROFILE) {
-        switch (hud_language) {
-            case LANG_ES: return "MENU DE PERFIL";
-            case LANG_FR: return "MENU PROFIL";
-            case LANG_DE: return "PROFIL MENU";
-            case LANG_IT: return "MENU PROFILO";
-            case LANG_PT: return "MENU PERFIL";
-            case LANG_NL: return "PROFIEL MENU";
-            case LANG_ID: return "MENU PROFIL";
-            case LANG_TR: return "PROFIL MENU";
-            case LANG_PL: return "MENU PROFILU";
-            default: return "PROFILE MENU";
-        }
-    }
-
-    if (menu_page == MENU_PAGE_THEME) {
-        return "THEME / COLOR / FONT MENU";
-    }
+    if (menu_page == MENU_PAGE_PROFILE) return "PROFILE MENU";
+    if (menu_page == MENU_PAGE_THEME) return "THEME / COLOR / FONT MENU";
 
     return tr_menu_title();
 }
@@ -4512,6 +5467,10 @@ static const char *menu_label(int item) {
 
     if (item >= ITEM_CHOICE_BASE) {
         return choice_name_for_target(choice_target_item, item - ITEM_CHOICE_BASE);
+    }
+
+    if (hud_language != LANG_EN) {
+        return translated_menu_label_for_language(hud_language, item);
     }
 
     if (hud_language == LANG_ES) {
@@ -6113,6 +7072,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     }
 
     if (total_w <= 0 || total_h <= 0) {
+        g_forced_draw_opacity = old_forced_draw_opacity;
         return;
     }
 
@@ -6171,7 +7131,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                     if (show_fps) {
                         int tx = x;
                         if (fps_icon_w > 0) { draw_fps_icon(pixels, pitch, tx, draw_y + ((text_h - fps_icon_h) / 2), icon_scale); tx += fps_icon_w; if (fps_w > 0) tx += gap_small; }
-                        if (fps_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, fps_text, active_fps_alert ? 0xFF0000FF : text_color, scale);
+                        if (fps_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, fps_text, fps_text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -6180,7 +7140,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                     if (show_battery) {
                         int tx = x;
                         if (battery_icon_w > 0) { draw_battery_icon(pixels, pitch, tx, draw_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging); tx += battery_icon_w; if (battery_text_w > 0) tx += gap_small; }
-                        if (battery_text_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, battery_text, active_battery_alert ? 0xFF0000FF : text_color, scale);
+                        if (battery_text_w > 0) draw_text_shadow(pixels, pitch, tx, draw_y, battery_text, active_battery_alert ? battery_text_color : text_color, scale);
                         y += text_h + gap_small;
                     }
                     break;
@@ -6257,6 +7217,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
             }
         }
 
+        g_forced_draw_opacity = old_forced_draw_opacity;
         return;
     }
 
@@ -6311,12 +7272,12 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
         switch (order_id) {
             case HUD_ORDER_FPS:
                 if (fps_icon_w > 0) { draw_fps_icon(pixels, pitch, x, start_y + ((text_h - fps_icon_h) / 2), icon_scale); x += fps_icon_w; if (fps_w > 0) x += gap_small; }
-                if (fps_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, fps_text, active_fps_alert ? 0xFF0000FF : text_color, scale); x += fps_w; }
+                if (fps_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, fps_text, fps_text_color, scale); x += fps_w; }
                 break;
 
             case HUD_ORDER_BATTERY:
                 if (battery_icon_w > 0) { draw_battery_icon(pixels, pitch, x, start_y + ((text_h - battery_icon_h) / 2), battery, icon_scale, battery_charging); x += battery_icon_w; if (battery_text_w > 0) x += gap_small; }
-                if (battery_text_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, battery_text, active_battery_alert ? 0xFF0000FF : text_color, scale); x += battery_text_w; }
+                if (battery_text_w > 0) { draw_text_shadow(pixels, pitch, x, start_y, battery_text, active_battery_alert ? battery_text_color : text_color, scale); x += battery_text_w; }
                 break;
 
             case HUD_ORDER_CLOCK:
@@ -6380,6 +7341,8 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
                 break;
         }
     }
+
+    g_forced_draw_opacity = old_forced_draw_opacity;
 }
 
 static void debug_append_line(char lines[][32], int *count, const char *label, int value) {
@@ -6389,8 +7352,6 @@ static void debug_append_line(char lines[][32], int *count, const char *label, i
     pos = append_int(lines[*count], pos, value);
     lines[*count][pos] = '\0';
     (*count)++;
-
-    g_forced_draw_opacity = old_forced_draw_opacity;
 }
 
 static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
