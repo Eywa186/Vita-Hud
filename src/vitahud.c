@@ -524,6 +524,8 @@ static int hold_down_frames = 0;
 #define MENU_PAGE_TOGGLE_COMBOS 13
 #define MENU_PAGE_HUD_MENU 14
 #define MENU_PAGE_ICON_CHANGER 15
+#define MENU_PAGE_CREATE_HUD_SIZE 16
+#define MENU_PAGE_CREATE_MAIN_SIZE 17
 #define ITEM_CHOICE_BASE  1000
 #define ITEM_HUD_ORDER_BASE 2000
 
@@ -1081,9 +1083,9 @@ static void clamp_settings(void) {
     if (debug_font_style < 0 || debug_font_style >= FONT_COUNT) debug_font_style = FONT_DEFAULT;
     if (hud_opacity < 0 || hud_opacity >= OPACITY_COUNT) hud_opacity = OPACITY_100;
     if (menu_opacity < 0 || menu_opacity >= OPACITY_COUNT) menu_opacity = OPACITY_100;
-    if (create_hud_menu_size < 75) create_hud_menu_size = 75;
+    if (create_hud_menu_size < 10) create_hud_menu_size = 10;
     if (create_hud_menu_size > 150) create_hud_menu_size = 150;
-    if (create_main_menu_size < 75) create_main_menu_size = 75;
+    if (create_main_menu_size < 10) create_main_menu_size = 10;
     if (create_main_menu_size > 150) create_main_menu_size = 150;
     if (cycle_profile_enabled < 0 || cycle_profile_enabled > 1) cycle_profile_enabled = 0;
     if (cycle_theme_enabled < 0 || cycle_theme_enabled > 1) cycle_theme_enabled = 0;
@@ -2369,6 +2371,8 @@ static void draw_rect(unsigned int *pixels, int pitch, int x, int y, int w, int 
     int xx;
     int x2;
     int y2;
+    unsigned int final_color;
+    unsigned int alpha;
 
     if (w <= 0 || h <= 0) {
         return;
@@ -2386,9 +2390,79 @@ static void draw_rect(unsigned int *pixels, int pitch, int x, int y, int w, int 
         return;
     }
 
+    final_color = apply_forced_draw_opacity(color);
+    alpha = (final_color >> 24) & 0xFF;
+
+    if (alpha == 0) {
+        return;
+    }
+
+    /* Fast path: most HUD/menu rectangles are fully opaque.
+     * Avoid calling write_pixel()/blend_argb_over() for every panel pixel.
+     */
+    if (alpha >= 255) {
+        final_color |= 0xFF000000;
+        for (yy = y; yy < y2; yy++) {
+            unsigned int *row = pixels + (yy * pitch);
+            for (xx = x; xx < x2; xx++) {
+                row[xx] = final_color;
+            }
+        }
+        return;
+    }
+
     for (yy = y; yy < y2; yy++) {
+        unsigned int *row = pixels + (yy * pitch);
         for (xx = x; xx < x2; xx++) {
-            write_pixel(pixels, pitch, xx, yy, color);
+            row[xx] = blend_argb_over(final_color, row[xx]);
+        }
+    }
+}
+
+static void draw_rect_menu_opacity_fast(unsigned int *pixels, int pitch, int x, int y, int w, int h, unsigned int color, int opacity_id) {
+    int yy;
+    int xx;
+    int x2;
+    int y2;
+    unsigned int final_color;
+
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+
+    x2 = x + w;
+    y2 = y + h;
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x2 > g_screen_w) x2 = g_screen_w;
+    if (y2 > g_screen_h) y2 = g_screen_h;
+
+    if (x >= x2 || y >= y2) {
+        return;
+    }
+
+    final_color = (color & 0x00FFFFFF) | 0xFF000000;
+
+    /*
+     * Performance fix: menu panels are the largest draw cost when the menu opens.
+     * Do not alpha-blend thousands of pixels every frame. Use a fast direct-fill
+     * dither for lower opacity levels so MENU OPACITY still visibly changes,
+     * but opening the menu does not tank the game.
+     */
+    for (yy = y; yy < y2; yy++) {
+        unsigned int *row = pixels + (yy * pitch);
+
+        for (xx = x; xx < x2; xx++) {
+            if (opacity_id == OPACITY_75) {
+                if (((xx + yy) & 3) == 0) continue;
+            } else if (opacity_id == OPACITY_50) {
+                if (((xx + yy) & 1) != 0) continue;
+            } else if (opacity_id == OPACITY_25) {
+                if (((xx + yy) & 3) != 0) continue;
+            }
+
+            row[xx] = final_color;
         }
     }
 }
@@ -4095,6 +4169,10 @@ static int current_menu_count(void) {
             return 9;
         case MENU_PAGE_SIZE:
             return 7;
+        case MENU_PAGE_CREATE_HUD_SIZE:
+            return 1;
+        case MENU_PAGE_CREATE_MAIN_SIZE:
+            return 1;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
@@ -4300,6 +4378,14 @@ static int current_menu_item_at(int index) {
     if (menu_page == MENU_PAGE_SIZE) {
         if (index >= 7) index = 6;
         return size_items[index];
+    }
+
+    if (menu_page == MENU_PAGE_CREATE_HUD_SIZE) {
+        return ITEM_CREATE_HUD_MENU_SIZE;
+    }
+
+    if (menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
+        return ITEM_CREATE_MAIN_MENU_SIZE;
     }
 
     if (menu_page == MENU_PAGE_HUD_MENU) {
@@ -5419,6 +5505,8 @@ static const char *translated_page_title_for_language(int page) {
         case MENU_PAGE_HUD_ORDER: return translated_menu_label_for_language(hud_language, ITEM_HUD_ORDER_MENU);
         case MENU_PAGE_OVERLAYS: return translated_menu_label_for_language(hud_language, ITEM_ALL_HUD_OVERLAYS_MENU);
         case MENU_PAGE_SIZE: return translated_menu_label_for_language(hud_language, ITEM_MENU_HUD_SIZE_MENU);
+        case MENU_PAGE_CREATE_HUD_SIZE: return translated_menu_label_for_language(hud_language, ITEM_CREATE_HUD_MENU_SIZE);
+        case MENU_PAGE_CREATE_MAIN_SIZE: return translated_menu_label_for_language(hud_language, ITEM_CREATE_MAIN_MENU_SIZE);
         case MENU_PAGE_HUD_COLORS: return translated_menu_label_for_language(hud_language, ITEM_HUD_COLORS_MENU);
         case MENU_PAGE_MENU_COLORS: return translated_menu_label_for_language(hud_language, ITEM_MENU_COLORS_MENU);
         case MENU_PAGE_ICON_COLORS: return translated_menu_label_for_language(hud_language, ITEM_ICON_COLORS_MENU);
@@ -5445,6 +5533,8 @@ static const char *current_menu_title(void) {
     if (menu_page == MENU_PAGE_HUD_ORDER) return "HUD ORDER";
     if (menu_page == MENU_PAGE_OVERLAYS) return "ALL HUD OVERLAYS MENU";
     if (menu_page == MENU_PAGE_SIZE) return "DISPLAY STYLES / MENU / HUD SIZES MENU";
+    if (menu_page == MENU_PAGE_CREATE_HUD_SIZE) return "CREATE HUD MENU SIZE";
+    if (menu_page == MENU_PAGE_CREATE_MAIN_SIZE) return "CREATE MAIN MENU SIZE";
     if (menu_page == MENU_PAGE_HUD_COLORS) return "HUD COLORS";
     if (menu_page == MENU_PAGE_MENU_COLORS) return "MENU COLORS";
     if (menu_page == MENU_PAGE_ICON_COLORS) return "ICON COLORS";
@@ -5783,8 +5873,8 @@ static const char *menu_value(int item) {
         case ITEM_GPU_ICON_STYLE: return icon_style_name_for(gpu_icon_style);
         case ITEM_RAM_ICON_STYLE: return icon_style_name_for(ram_icon_style);
         case ITEM_APP_ICON_STYLE: return icon_style_name_for(app_icon_style);
-        case ITEM_CREATE_HUD_MENU_SIZE: return percent_name_for(create_hud_menu_size);
-        case ITEM_CREATE_MAIN_MENU_SIZE: return percent_name_for(create_main_menu_size);
+        case ITEM_CREATE_HUD_MENU_SIZE: return menu_page == MENU_PAGE_SIZE ? word_open() : percent_name_for(create_hud_menu_size);
+        case ITEM_CREATE_MAIN_MENU_SIZE: return menu_page == MENU_PAGE_SIZE ? word_open() : percent_name_for(create_main_menu_size);
         case ITEM_DEBUG_MENU_INFO: return onoff_name(debug_show_menu_info);
         case ITEM_DEBUG_PROFILE: return onoff_name(debug_show_profile);
         case ITEM_DEBUG_THEME: return onoff_name(debug_show_theme);
@@ -6119,15 +6209,23 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_CREATE_HUD_MENU_SIZE:
-            create_hud_menu_size += dir * 5;
-            if (create_hud_menu_size < 75) create_hud_menu_size = 150;
-            if (create_hud_menu_size > 150) create_hud_menu_size = 75;
+            if (menu_page == MENU_PAGE_SIZE) {
+                enter_menu_page(MENU_PAGE_CREATE_HUD_SIZE);
+            } else {
+                create_hud_menu_size += dir * 5;
+                if (create_hud_menu_size < 10) create_hud_menu_size = 150;
+                if (create_hud_menu_size > 150) create_hud_menu_size = 10;
+            }
             break;
 
         case ITEM_CREATE_MAIN_MENU_SIZE:
-            create_main_menu_size += dir * 5;
-            if (create_main_menu_size < 75) create_main_menu_size = 150;
-            if (create_main_menu_size > 150) create_main_menu_size = 75;
+            if (menu_page == MENU_PAGE_SIZE) {
+                enter_menu_page(MENU_PAGE_CREATE_MAIN_SIZE);
+            } else {
+                create_main_menu_size += dir * 5;
+                if (create_main_menu_size < 10) create_main_menu_size = 150;
+                if (create_main_menu_size > 150) create_main_menu_size = 10;
+            }
             break;
 
         case ITEM_THEME:
@@ -6320,13 +6418,13 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         int center_x = x + (w / 2);
         int center_y = y + (h / 2);
 
-        if (custom_scale < 75) custom_scale = 75;
+        if (custom_scale < 10) custom_scale = 10;
         if (custom_scale > 150) custom_scale = 150;
 
         w = (w * custom_scale) / 100;
         h = (h * custom_scale) / 100;
-        visible = (visible * custom_scale) / 100;
-        if (visible < 8) visible = 8;
+        visible = (h - 54) / 12;
+        if (visible < 1) visible = 1;
         if (visible > 26) visible = 26;
 
         x = center_x - (w / 2);
@@ -6372,7 +6470,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
      * Default is BLACK, but user can change it with MENU BG.
      */
     if (menu_bg_color != BG_TRANSPARENT) {
-        draw_rect(pixels, pitch, panel_x, panel_y, panel_w, panel_h, get_menu_bg());
+        draw_rect_menu_opacity_fast(pixels, pitch, panel_x, panel_y, panel_w, panel_h, get_menu_bg_for(menu_bg_color), menu_opacity);
     }
 
     if (menu_picture_bg) {
@@ -6385,7 +6483,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     }
 
     /* Ultimate menu skin: layered header, side rail, corner accents, and inner glow. */
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, apply_opacity_to_color(color_value(top_menu_bar_color, 0xFF000000), menu_opacity));
+    draw_rect_menu_opacity_fast(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, color_value(top_menu_bar_color, 0xFF000000), menu_opacity);
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + panel_w - 5, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + 5, panel_y + 5, 24, 1, title_col);
@@ -6791,6 +6889,8 @@ static void handle_input(void) {
                 enter_menu_page(choice_return_page);
             } else if (menu_page == MENU_PAGE_HUD_ORDER) {
                 enter_menu_page(MENU_PAGE_HUD_MENU);
+            } else if (menu_page == MENU_PAGE_CREATE_HUD_SIZE || menu_page == MENU_PAGE_CREATE_MAIN_SIZE) {
+                enter_menu_page(MENU_PAGE_SIZE);
             } else if (menu_page == MENU_PAGE_HUD_COLORS || menu_page == MENU_PAGE_MENU_COLORS || menu_page == MENU_PAGE_ICON_COLORS) {
                 enter_menu_page(MENU_PAGE_THEME);
             } else if (menu_page != MENU_PAGE_MAIN) {
@@ -6894,7 +6994,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     get_hud_metrics(&scale, &gap_small, &gap_big);
 
     /* CREATE HUD MENU SIZE scales the live FPS/BATTERY/CLOCK HUD overlay. */
-    if (create_hud_menu_size < 75) create_hud_menu_size = 75;
+    if (create_hud_menu_size < 10) create_hud_menu_size = 10;
     if (create_hud_menu_size > 150) create_hud_menu_size = 150;
     scale = (scale * create_hud_menu_size + 50) / 100;
     if (scale < 1) scale = 1;
