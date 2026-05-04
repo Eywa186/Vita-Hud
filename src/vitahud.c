@@ -376,7 +376,14 @@
 #define ITEM_GPU_ICON_STYLE 96
 #define ITEM_RAM_ICON_STYLE 97
 #define ITEM_APP_ICON_STYLE 98
-#define ITEM_COUNT        99
+#define ITEM_CREATE_HUD_MENU_SIZE 99
+#define ITEM_CREATE_MAIN_MENU_SIZE 100
+#define ITEM_DEBUG_MENU_INFO 101
+#define ITEM_DEBUG_PROFILE 102
+#define ITEM_DEBUG_THEME 103
+#define ITEM_DEBUG_ALERT 104
+#define ITEM_DEBUG_HUD_INFO 105
+#define ITEM_COUNT        106
 
 static int hud_enabled = 1;
 static int menu_open = 0;
@@ -419,6 +426,11 @@ static int debug_show_framebuf = 1;
 static int debug_show_cache = 1;
 static int debug_show_input = 1;
 static int debug_show_system = 1;
+static int debug_show_menu_info = 1;
+static int debug_show_profile = 1;
+static int debug_show_theme = 1;
+static int debug_show_alert = 1;
+static int debug_show_hud_info = 1;
 static int debug_position = POS_BOTTOM_LEFT;
 static int debug_x_offset = 8;
 static int debug_y_offset = 8;
@@ -439,6 +451,8 @@ static int last_theme_cycle_down = 0;
 
 static int hud_opacity = OPACITY_100;
 static int menu_opacity = OPACITY_100;
+static int create_hud_menu_size = 100;
+static int create_main_menu_size = 100;
 
 static int fps_warning_enabled = 0;
 static int fps_low_limit_index = 0;
@@ -986,11 +1000,18 @@ static void reset_defaults(void) {
     cycle_theme_combo_mode = TOGGLE_SELECT_DOWN;
     hud_opacity = OPACITY_100;
     menu_opacity = OPACITY_100;
+    create_hud_menu_size = 100;
+    create_main_menu_size = 100;
     debug_enabled = 0;
     debug_show_framebuf = 1;
     debug_show_cache = 1;
     debug_show_input = 1;
     debug_show_system = 1;
+    debug_show_menu_info = 1;
+    debug_show_profile = 1;
+    debug_show_theme = 1;
+    debug_show_alert = 1;
+    debug_show_hud_info = 1;
     debug_position = POS_BOTTOM_LEFT;
     debug_x_offset = 8;
     debug_y_offset = 8;
@@ -1044,6 +1065,11 @@ static void clamp_settings(void) {
     if (debug_show_cache < 0 || debug_show_cache > 1) debug_show_cache = 1;
     if (debug_show_input < 0 || debug_show_input > 1) debug_show_input = 1;
     if (debug_show_system < 0 || debug_show_system > 1) debug_show_system = 1;
+    if (debug_show_menu_info < 0 || debug_show_menu_info > 1) debug_show_menu_info = 1;
+    if (debug_show_profile < 0 || debug_show_profile > 1) debug_show_profile = 1;
+    if (debug_show_theme < 0 || debug_show_theme > 1) debug_show_theme = 1;
+    if (debug_show_alert < 0 || debug_show_alert > 1) debug_show_alert = 1;
+    if (debug_show_hud_info < 0 || debug_show_hud_info > 1) debug_show_hud_info = 1;
     if (debug_position < 0 || debug_position >= POS_COUNT) debug_position = POS_BOTTOM_LEFT;
     if (debug_x_offset < 0) debug_x_offset = 0;
     if (debug_x_offset > 960) debug_x_offset = 960;
@@ -1054,6 +1080,10 @@ static void clamp_settings(void) {
     if (debug_font_style < 0 || debug_font_style >= FONT_COUNT) debug_font_style = FONT_DEFAULT;
     if (hud_opacity < 0 || hud_opacity >= OPACITY_COUNT) hud_opacity = OPACITY_100;
     if (menu_opacity < 0 || menu_opacity >= OPACITY_COUNT) menu_opacity = OPACITY_100;
+    if (create_hud_menu_size < 75) create_hud_menu_size = 75;
+    if (create_hud_menu_size > 150) create_hud_menu_size = 150;
+    if (create_main_menu_size < 75) create_main_menu_size = 75;
+    if (create_main_menu_size > 150) create_main_menu_size = 150;
     if (cycle_profile_enabled < 0 || cycle_profile_enabled > 1) cycle_profile_enabled = 0;
     if (cycle_theme_enabled < 0 || cycle_theme_enabled > 1) cycle_theme_enabled = 0;
     if (fps_warning_enabled < 0 || fps_warning_enabled > 1) fps_warning_enabled = 0;
@@ -1143,6 +1173,11 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "debug_cache", debug_show_cache);
     write_config_line(fd, "debug_input", debug_show_input);
     write_config_line(fd, "debug_system", debug_show_system);
+    write_config_line(fd, "debug_menu_info", debug_show_menu_info);
+    write_config_line(fd, "debug_profile", debug_show_profile);
+    write_config_line(fd, "debug_theme", debug_show_theme);
+    write_config_line(fd, "debug_alert", debug_show_alert);
+    write_config_line(fd, "debug_hud_info", debug_show_hud_info);
     write_config_line(fd, "debug_position", debug_position);
     write_config_line(fd, "debug_x_offset", debug_x_offset);
     write_config_line(fd, "debug_y_offset", debug_y_offset);
@@ -1151,6 +1186,8 @@ static void save_settings_to_fd(SceUID fd) {
     write_config_line(fd, "debug_font", debug_font_style);
     write_config_line(fd, "hud_opacity", hud_opacity);
     write_config_line(fd, "menu_opacity", menu_opacity);
+    write_config_line(fd, "create_hud_menu_size", create_hud_menu_size);
+    write_config_line(fd, "create_main_menu_size", create_main_menu_size);
     write_config_line(fd, "menu_combo", menu_toggle_combo_mode);
     write_config_line(fd, "cycle_profile_enabled", cycle_profile_enabled);
     write_config_line(fd, "cycle_profile_combo", cycle_profile_combo_mode);
@@ -1236,6 +1273,11 @@ static void load_settings_from_buffer(char *buf) {
     debug_show_cache = get_config_int(buf, "debug_cache", debug_show_cache);
     debug_show_input = get_config_int(buf, "debug_input", debug_show_input);
     debug_show_system = get_config_int(buf, "debug_system", debug_show_system);
+    debug_show_menu_info = get_config_int(buf, "debug_menu_info", debug_show_menu_info);
+    debug_show_profile = get_config_int(buf, "debug_profile", debug_show_profile);
+    debug_show_theme = get_config_int(buf, "debug_theme", debug_show_theme);
+    debug_show_alert = get_config_int(buf, "debug_alert", debug_show_alert);
+    debug_show_hud_info = get_config_int(buf, "debug_hud_info", debug_show_hud_info);
     debug_position = get_config_int(buf, "debug_position", debug_position);
     debug_x_offset = get_config_int(buf, "debug_x_offset", debug_x_offset);
     debug_y_offset = get_config_int(buf, "debug_y_offset", debug_y_offset);
@@ -1244,6 +1286,8 @@ static void load_settings_from_buffer(char *buf) {
     debug_font_style = get_config_int(buf, "debug_font", debug_font_style);
     hud_opacity = get_config_int(buf, "hud_opacity", hud_opacity);
     menu_opacity = get_config_int(buf, "menu_opacity", menu_opacity);
+    create_hud_menu_size = get_config_int(buf, "create_hud_menu_size", create_hud_menu_size);
+    create_main_menu_size = get_config_int(buf, "create_main_menu_size", create_main_menu_size);
     menu_toggle_combo_mode = get_config_int(buf, "menu_combo", menu_toggle_combo_mode);
     cycle_profile_enabled = get_config_int(buf, "cycle_profile_enabled", cycle_profile_enabled);
     cycle_profile_combo_mode = get_config_int(buf, "cycle_profile_combo", cycle_profile_combo_mode);
@@ -3437,6 +3481,17 @@ static const char *combo_name_for(int combo_mode) {
 static const char *toggle_name(void) { return combo_name_for(toggle_combo_mode); }
 static const char *opacity_name_for(int id) { if (id == OPACITY_75) return "75%"; if (id == OPACITY_50) return "50%"; if (id == OPACITY_25) return "25%"; return "100%"; }
 
+static const char *percent_name_for(int value) {
+    static char buf[8];
+    int pos = 0;
+    if (value < 0) value = 0;
+    if (value > 999) value = 999;
+    pos = append_int(buf, pos, value);
+    buf[pos++] = '%';
+    buf[pos] = '\0';
+    return buf;
+}
+
 static const char *icon_style_name_for(int id) {
     switch (id) {
         case ICON_STYLE_OUTLINE: return "OUTLINE";
@@ -3965,19 +4020,19 @@ static int current_menu_count(void) {
         case MENU_PAGE_PROFILE:
             return 3;
         case MENU_PAGE_THEME:
-            return 8;
+            return 10;
         case MENU_PAGE_HUD_COLORS:
             return 4;
         case MENU_PAGE_MENU_COLORS:
             return 5;
         case MENU_PAGE_ICON_COLORS:
-            return 11;
+            return 9;
         case MENU_PAGE_PERFORMANCE:
             return 5;
         case MENU_PAGE_RESET_OPTIONS:
             return 5;
         case MENU_PAGE_DEBUG:
-            return 9;
+            return 14;
         case MENU_PAGE_TOGGLE_COMBOS:
             return 6;
         case MENU_PAGE_ICON_CHANGER:
@@ -3989,7 +4044,7 @@ static int current_menu_count(void) {
         case MENU_PAGE_OVERLAYS:
             return 9;
         case MENU_PAGE_SIZE:
-            return 5;
+            return 7;
         case MENU_PAGE_CHOICE:
             return choice_count_for_target(choice_target_item);
         case MENU_PAGE_MAIN:
@@ -4020,7 +4075,7 @@ static int current_menu_item_at(int index) {
         ITEM_LOAD_PROFILE
     };
 
-    static const int theme_items[8] = {
+    static const int theme_items[10] = {
         ITEM_THEME,
         ITEM_FONT,
         ITEM_DEBUG_FONT,
@@ -4028,6 +4083,8 @@ static int current_menu_item_at(int index) {
         ITEM_HUD_COLORS_MENU,
         ITEM_MENU_COLORS_MENU,
         ITEM_ICON_COLORS_MENU,
+        ITEM_HUD_OPACITY,
+        ITEM_MENU_OPACITY,
         ITEM_MENU_PICTURE_BG
     };
 
@@ -4046,7 +4103,7 @@ static int current_menu_item_at(int index) {
         ITEM_TOP_BAR
     };
 
-    static const int icon_color_items[11] = {
+    static const int icon_color_items[9] = {
         ITEM_FPS_ICON,
         ITEM_HUD_ICON,
         ITEM_CLOCK_ICON,
@@ -4055,9 +4112,7 @@ static int current_menu_item_at(int index) {
         ITEM_BUS_ICON,
         ITEM_GPU_ICON,
         ITEM_RAM_ICON,
-        ITEM_APP_ICON,
-        ITEM_HUD_OPACITY,
-        ITEM_MENU_OPACITY
+        ITEM_APP_ICON
     };
 
     static const int icon_changer_items[9] = {
@@ -4080,16 +4135,18 @@ static int current_menu_item_at(int index) {
         ITEM_CPU_HUD,
         ITEM_BUS_HUD,
         ITEM_GPU_HUD,
-        ITEM_APP_ID_HUD,
-        ITEM_RAM_HUD
+        ITEM_RAM_HUD,
+        ITEM_APP_ID_HUD
     };
 
-    static const int size_items[5] = {
+    static const int size_items[7] = {
         ITEM_FPS_STYLE,
         ITEM_BATTERY_STYLE,
         ITEM_CLOCK_STYLE,
         ITEM_SIZE,
-        ITEM_MENU_SIZE
+        ITEM_MENU_SIZE,
+        ITEM_CREATE_HUD_MENU_SIZE,
+        ITEM_CREATE_MAIN_MENU_SIZE
     };
 
     static const int performance_items[5] = {
@@ -4117,7 +4174,7 @@ static int current_menu_item_at(int index) {
         ITEM_TIMEMODE
     };
 
-    static const int debug_items[9] = {
+    static const int debug_items[14] = {
         ITEM_DEBUG_HUD,
         ITEM_DEBUG_POSITION,
         ITEM_DEBUG_X_OFFSET,
@@ -4126,7 +4183,12 @@ static int current_menu_item_at(int index) {
         ITEM_DEBUG_FRAMEBUF,
         ITEM_DEBUG_CACHE,
         ITEM_DEBUG_INPUT,
-        ITEM_DEBUG_SYSTEM
+        ITEM_DEBUG_SYSTEM,
+        ITEM_DEBUG_MENU_INFO,
+        ITEM_DEBUG_PROFILE,
+        ITEM_DEBUG_THEME,
+        ITEM_DEBUG_ALERT,
+        ITEM_DEBUG_HUD_INFO
     };
 
     static const int toggle_items[6] = {
@@ -4156,7 +4218,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_THEME) {
-        if (index >= 8) index = 7;
+        if (index >= 10) index = 9;
         return theme_items[index];
     }
 
@@ -4171,7 +4233,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_ICON_COLORS) {
-        if (index >= 11) index = 10;
+        if (index >= 9) index = 8;
         return icon_color_items[index];
     }
 
@@ -4186,7 +4248,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_SIZE) {
-        if (index >= 5) index = 4;
+        if (index >= 7) index = 6;
         return size_items[index];
     }
 
@@ -4206,7 +4268,7 @@ static int current_menu_item_at(int index) {
     }
 
     if (menu_page == MENU_PAGE_DEBUG) {
-        if (index >= 9) index = 8;
+        if (index >= 14) index = 13;
         return debug_items[index];
     }
 
@@ -4504,6 +4566,13 @@ static const char *menu_label(int item) {
             case ITEM_GPU_ICON_STYLE: return "GPU ICON";
             case ITEM_RAM_ICON_STYLE: return "RAM ICON";
             case ITEM_APP_ICON_STYLE: return "APP ID ICON";
+            case ITEM_CREATE_HUD_MENU_SIZE: return "CREATE HUD MENU SIZE";
+            case ITEM_CREATE_MAIN_MENU_SIZE: return "CREATE MAIN MENU SIZE";
+            case ITEM_DEBUG_MENU_INFO: return "MENU DEBUG";
+            case ITEM_DEBUG_PROFILE: return "PROFILE DEBUG";
+            case ITEM_DEBUG_THEME: return "THEME DEBUG";
+            case ITEM_DEBUG_ALERT: return "ALERT DEBUG";
+            case ITEM_DEBUG_HUD_INFO: return "HUD DEBUG INFO";
             case ITEM_RESET:        return "RESET OPTIONS";
             default:                return "";
         }
@@ -4700,6 +4769,13 @@ static const char *menu_value(int item) {
         case ITEM_GPU_ICON_STYLE: return icon_style_name_for(gpu_icon_style);
         case ITEM_RAM_ICON_STYLE: return icon_style_name_for(ram_icon_style);
         case ITEM_APP_ICON_STYLE: return icon_style_name_for(app_icon_style);
+        case ITEM_CREATE_HUD_MENU_SIZE: return percent_name_for(create_hud_menu_size);
+        case ITEM_CREATE_MAIN_MENU_SIZE: return percent_name_for(create_main_menu_size);
+        case ITEM_DEBUG_MENU_INFO: return onoff_name(debug_show_menu_info);
+        case ITEM_DEBUG_PROFILE: return onoff_name(debug_show_profile);
+        case ITEM_DEBUG_THEME: return onoff_name(debug_show_theme);
+        case ITEM_DEBUG_ALERT: return onoff_name(debug_show_alert);
+        case ITEM_DEBUG_HUD_INFO: return onoff_name(debug_show_hud_info);
         case ITEM_SAVE_PROFILE: return save_message_frames > 0 ? word_saved() : word_press_x();
         case ITEM_LOAD_PROFILE: return save_message_frames > 0 ? word_loaded() : word_press_x();
         case ITEM_CPU_HUD:      return onoff_name(show_cpu);
@@ -5008,6 +5084,38 @@ static void menu_change(int dir) {
             debug_show_system = !debug_show_system;
             break;
 
+        case ITEM_DEBUG_MENU_INFO:
+            debug_show_menu_info = !debug_show_menu_info;
+            break;
+
+        case ITEM_DEBUG_PROFILE:
+            debug_show_profile = !debug_show_profile;
+            break;
+
+        case ITEM_DEBUG_THEME:
+            debug_show_theme = !debug_show_theme;
+            break;
+
+        case ITEM_DEBUG_ALERT:
+            debug_show_alert = !debug_show_alert;
+            break;
+
+        case ITEM_DEBUG_HUD_INFO:
+            debug_show_hud_info = !debug_show_hud_info;
+            break;
+
+        case ITEM_CREATE_HUD_MENU_SIZE:
+            create_hud_menu_size += dir * 5;
+            if (create_hud_menu_size < 75) create_hud_menu_size = 150;
+            if (create_hud_menu_size > 150) create_hud_menu_size = 75;
+            break;
+
+        case ITEM_CREATE_MAIN_MENU_SIZE:
+            create_main_menu_size += dir * 5;
+            if (create_main_menu_size < 75) create_main_menu_size = 150;
+            if (create_main_menu_size > 150) create_main_menu_size = 75;
+            break;
+
         case ITEM_THEME:
             theme_id += dir;
             if (theme_id < 0) theme_id = THEME_COUNT - 1;
@@ -5192,6 +5300,28 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
         w = screen_w - 20;
         h = screen_h - 20;
         visible = 11;
+    } else {
+        int custom_scale = (menu_page == MENU_PAGE_MAIN) ? create_main_menu_size : create_hud_menu_size;
+        int center_x = x + (w / 2);
+        int center_y = y + (h / 2);
+
+        if (custom_scale < 75) custom_scale = 75;
+        if (custom_scale > 150) custom_scale = 150;
+
+        w = (w * custom_scale) / 100;
+        h = (h * custom_scale) / 100;
+        visible = (visible * custom_scale) / 100;
+        if (visible < 8) visible = 8;
+        if (visible > 26) visible = 26;
+
+        x = center_x - (w / 2);
+        y = center_y - (h / 2);
+        if (x < 10) x = 10;
+        if (y < 10) y = 10;
+        if (x + w > screen_w - 10) x = screen_w - 10 - w;
+        if (y + h > screen_h - 10) y = screen_h - 10 - h;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
     }
 
     if (menu_index < menu_scroll) {
@@ -5240,7 +5370,7 @@ static void draw_menu(unsigned int *pixels, int pitch, int screen_w, int screen_
     }
 
     /* Ultimate menu skin: layered header, side rail, corner accents, and inner glow. */
-    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, color_value(top_menu_bar_color, 0xFF000000));
+    draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, panel_w - 4, 14, apply_opacity_to_color(color_value(top_menu_bar_color, 0xFF000000), menu_opacity));
     draw_rect(pixels, pitch, panel_x + 2, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + panel_w - 5, panel_y + 2, 3, panel_h - 4, title_col);
     draw_rect(pixels, pitch, panel_x + 5, panel_y + 5, 24, 1, title_col);
@@ -5644,6 +5774,8 @@ static void handle_input(void) {
         if (pressed & SCE_CTRL_CIRCLE) {
             if (menu_page == MENU_PAGE_CHOICE) {
                 enter_menu_page(choice_return_page);
+            } else if (menu_page == MENU_PAGE_HUD_ORDER) {
+                enter_menu_page(MENU_PAGE_HUD_MENU);
             } else if (menu_page == MENU_PAGE_HUD_COLORS || menu_page == MENU_PAGE_MENU_COLORS || menu_page == MENU_PAGE_ICON_COLORS) {
                 enter_menu_page(MENU_PAGE_THEME);
             } else if (menu_page != MENU_PAGE_MAIN) {
@@ -6183,7 +6315,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
 
 static void debug_append_line(char lines[][32], int *count, const char *label, int value) {
     int pos = 0;
-    if (*count >= 10) return;
+    if (*count >= 16) return;
     pos = append_text(lines[*count], pos, label);
     pos = append_int(lines[*count], pos, value);
     lines[*count][pos] = '\0';
@@ -6191,7 +6323,7 @@ static void debug_append_line(char lines[][32], int *count, const char *label, i
 }
 
 static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, int screen_h) {
-    char lines[10][32];
+    char lines[16][32];
     int count = 0;
     int scale;
     int gap_small;
@@ -6221,6 +6353,11 @@ static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, in
     if (debug_show_cache) { debug_append_line(lines, &count, "RAM MB ", cached_ram_free_mb); }
     if (debug_show_input) { debug_append_line(lines, &count, "BTN ", (int)(last_buttons & 0xFFFF)); debug_append_line(lines, &count, "PAGE ", menu_page); }
     if (debug_show_system) { debug_append_line(lines, &count, "CPU ", scePowerGetArmClockFrequency()); debug_append_line(lines, &count, "GPU ", scePowerGetGpuClockFrequency()); }
+    if (debug_show_menu_info) { debug_append_line(lines, &count, "MENU IDX ", menu_index); debug_append_line(lines, &count, "SCROLL ", menu_scroll); }
+    if (debug_show_profile) { debug_append_line(lines, &count, "PROFILE ", profile_id + 1); }
+    if (debug_show_theme) { debug_append_line(lines, &count, "THEME ", theme_id); }
+    if (debug_show_alert) { debug_append_line(lines, &count, "FPS LIM ", fps_low_limit_value()); debug_append_line(lines, &count, "BAT LIM ", battery_low_limit_value()); }
+    if (debug_show_hud_info) { debug_append_line(lines, &count, "HUD POS ", hud_position); debug_append_line(lines, &count, "HUD LAY ", hud_layout); }
 
     for (i = 0; i < count; i++) { w = text_width(lines[i], scale); if (w > max_w) max_w = w; }
     total_h = count * (text_h + gap_small); if (total_h > 0) total_h -= gap_small;
@@ -6228,7 +6365,12 @@ static void draw_debug_overlay(unsigned int *pixels, int pitch, int screen_w, in
     if (debug_position == POS_BOTTOM_RIGHT || debug_position == POS_TOP_RIGHT) x = screen_w - max_w - debug_x_offset;
     if (debug_position == POS_TOP_CENTER || debug_position == POS_BOTTOM_CENTER) x = ((screen_w - max_w) / 2) + debug_x_offset;
     if (debug_position == POS_BOTTOM_RIGHT || debug_position == POS_BOTTOM_LEFT || debug_position == POS_BOTTOM_CENTER) y = screen_h - total_h - debug_y_offset;
-    if (x < 0) x = 0; if (y < 0) y = 0;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x + max_w > screen_w) x = screen_w - max_w;
+    if (y + total_h > screen_h) y = screen_h - total_h;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
     for (i = 0; i < count; i++) draw_text_shadow(pixels, pitch, x, y + (i * (text_h + gap_small)), lines[i], col, scale);
 
     font_style = old_font;
