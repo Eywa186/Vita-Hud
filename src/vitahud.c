@@ -511,6 +511,11 @@ static int hud_theme_id = HUD_THEME_DEFAULT;
 static int profile_id = PROFILE_1;
 static int per_game_profile_enabled = 0;
 static char last_pergame_loaded_app[24] = "";
+static int pergame_auto_load_pending = 0;
+static SceUInt64 pergame_auto_load_ready_tick = 0;
+static char pergame_auto_load_app[24] = "";
+
+#define PERGAME_AUTO_LOAD_DELAY_USEC 2000000
 
 static int temporary_show_frames = 0;
 static int save_message_frames = 0;
@@ -594,12 +599,13 @@ static int saved_icon_changer_index = 0;
 static int saved_icon_changer_scroll = 0;
 
 static int current_menu_count(void);
+static void start_cycle_worker(int action);
 
 static unsigned int frame_count = 0;
 static unsigned int fps_value = 0;
 static SceUInt64 last_tick = 0;
 
-/* VITABatteryPlus-style display hook. Draw into the frame buffer being submitted, not a separate polling thread. */
+/* Stable display hook. Draw into the frame buffer being submitted, not a separate polling thread. */
 static SceUID g_display_hook_uid = -1;
 static tai_hook_ref_t g_display_hook;
 
@@ -1045,6 +1051,9 @@ static void reset_defaults(void) {
     profile_id = PROFILE_1;
     per_game_profile_enabled = 0;
     last_pergame_loaded_app[0] = '\0';
+    pergame_auto_load_pending = 0;
+    pergame_auto_load_ready_tick = 0;
+    pergame_auto_load_app[0] = '\0';
 
     temporary_show_frames = 0;
     reset_message_frames = 180;
@@ -1666,39 +1675,122 @@ static int load_game_profile(void) {
     return result;
 }
 
-static void auto_load_pergame_profile_if_needed(void) {
+static int str_same(const char *a, const char *b) {
+    int i;
+
+    if (!a || !b) {
+        return 0;
+    }
+
+    for (i = 0; a[i] || b[i]; i++) {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static int pergame_app_valid(const char *app_id) {
+    if (!app_id || app_id[0] == 0) {
+        return 0;
+    }
+
+    if (app_id[0] == 'U' && app_id[1] == 'N' && app_id[2] == 'K') {
+        return 0;
+    }
+
+    return 1;
+}
+
+static void pergame_profile_path_for_app(char *out, const char *app_id) {
+    int pos = 0;
+
+    pos = append_text(out, pos, PERGAME_DIR);
+    out[pos++] = '/';
+    pos = append_text(out, pos, app_id && app_id[0] ? app_id : "UNKNOWN");
+    pos = append_text(out, pos, ".txt");
+    out[pos] = '\0';
+}
+
+static int load_game_profile_for_app(const char *app_id, int show_message) {
+    char path[96];
+    int result;
+    int keep_pergame_enabled = per_game_profile_enabled;
+
+    if (!pergame_app_valid(app_id)) {
+        return -1;
+    }
+
+    pergame_profile_path_for_app(path, app_id);
+    result = load_config_path(path);
+
+    /* Loading a per-game file must never silently disable the auto-load feature. */
+    per_game_profile_enabled = keep_pergame_enabled;
+
+    if (result >= 0) {
+        copy_cstr(last_pergame_loaded_app, sizeof(last_pergame_loaded_app), app_id);
+        if (show_message) {
+            save_message_frames = 180;
+        } else {
+            save_message_frames = 0;
+        }
+    }
+
+    return result;
+}
+
+static void schedule_pergame_auto_load(void) {
     char app_id[24];
+    SceRtcTick tick;
 
     if (!per_game_profile_enabled) {
+        pergame_auto_load_pending = 0;
+        pergame_auto_load_ready_tick = 0;
+        pergame_auto_load_app[0] = '\0';
         last_pergame_loaded_app[0] = '\0';
         return;
     }
 
     current_app_key(app_id, sizeof(app_id));
 
-    if (app_id[0] == 0 || (app_id[0] == 'U' && app_id[1] == 'N' && app_id[2] == 'K')) {
+    if (!pergame_app_valid(app_id)) {
         return;
     }
 
-    {
-        int same = 1;
-        int i;
-        for (i = 0; last_pergame_loaded_app[i] || app_id[i]; i++) {
-            if (last_pergame_loaded_app[i] != app_id[i]) {
-                same = 0;
-                break;
-            }
-        }
-        if (same) {
-            return;
-        }
+    if (str_same(app_id, last_pergame_loaded_app)) {
+        return;
     }
 
-    copy_cstr(last_pergame_loaded_app, sizeof(last_pergame_loaded_app), app_id);
-
-    if (load_game_profile() >= 0) {
-        save_message_frames = 0;
+    if (pergame_auto_load_pending && str_same(app_id, pergame_auto_load_app)) {
+        return;
     }
+
+    sceRtcGetCurrentTick(&tick);
+    copy_cstr(pergame_auto_load_app, sizeof(pergame_auto_load_app), app_id);
+    pergame_auto_load_ready_tick = tick.tick + PERGAME_AUTO_LOAD_DELAY_USEC;
+    pergame_auto_load_pending = 1;
+}
+
+static void process_pergame_auto_load(void) {
+    SceRtcTick tick;
+
+    if (!per_game_profile_enabled || !pergame_auto_load_pending) {
+        return;
+    }
+
+    if (cycle_worker_busy) {
+        return;
+    }
+
+    sceRtcGetCurrentTick(&tick);
+
+    if (tick.tick < pergame_auto_load_ready_tick) {
+        return;
+    }
+
+    pergame_auto_load_pending = 0;
+    start_cycle_worker(3);
 }
 
 static void apply_theme(void) {
@@ -2248,7 +2340,6 @@ static void update_system_cache(void) {
 
     build_app_id_live_text(temp_app);
     copy_cstr(cached_app_id_text, sizeof(cached_app_id_text), temp_app);
-    auto_load_pergame_profile_if_needed();
 
     /*
      * RAM HUD working pass.
@@ -2289,6 +2380,8 @@ static void update_system_cache(void) {
         }
     }
 
+    schedule_pergame_auto_load();
+    process_pergame_auto_load();
 }
 
 static void build_time_text(char *out) {
@@ -6729,9 +6822,16 @@ static void menu_change(int dir) {
             break;
 
         case ITEM_PER_GAME_PROFILE:
+            /* Toggle only: never do file I/O on the button press.
+             * Auto-load is scheduled later after the app ID is stable.
+             */
             per_game_profile_enabled = !per_game_profile_enabled;
-            if (!per_game_profile_enabled) {
-                last_pergame_loaded_app[0] = '\0';
+            last_pergame_loaded_app[0] = '\0';
+            pergame_auto_load_pending = 0;
+            pergame_auto_load_ready_tick = 0;
+            pergame_auto_load_app[0] = '\0';
+            if (per_game_profile_enabled) {
+                schedule_pergame_auto_load();
             }
             break;
 
@@ -7292,6 +7392,8 @@ static int cycle_worker_thread(SceSize args, void *argp) {
     } else if (action == 2) {
         apply_theme();
         save_message_frames = 120;
+    } else if (action == 3) {
+        load_game_profile_for_app(pergame_auto_load_app, 0);
     }
 
     cycle_worker_action = 0;
@@ -8094,7 +8196,7 @@ static int vitahud_continue_setframebuf(const SceDisplayFrameBuf *pParam, int sy
 
 static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
     /*
-     * Core fix copied from VITABatteryPlus behavior:
+     * Core display stability fix:
      * draw during sceDisplaySetFrameBuf, using the submitted buffer.
      * This avoids polling sceDisplayGetFrameBuf from a separate HUD thread,
      * which was the source of unstable/zero buffers and menu jitter.
@@ -8125,7 +8227,7 @@ int module_start(SceSize args, void *argp) {
 
     load_profile();
 
-    /* Same import hook method used by VITABatteryPlus 1.8. */
+    /* Import hook for sceDisplaySetFrameBuf. */
     g_display_hook_uid = taiHookFunctionImport(
         &g_display_hook,
         TAI_MAIN_MODULE,
