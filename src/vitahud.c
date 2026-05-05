@@ -2327,6 +2327,10 @@ static void build_fps_text(char *out) {
 static void build_battery_text(char *out, int battery) {
     int pos = 0;
 
+    if (battery_display_style == BATTERY_STYLE_BAR_ONLY) {
+        pos = append_text(out, pos, "BAT ");
+    }
+
     pos = append_battery_number(out, pos, battery);
 
     if (hud_layout != LAYOUT_ICONS) {
@@ -4268,22 +4272,135 @@ static const char *icon_style_name_for(int id) {
         default: return "ORIGINAL";
     }
 }
-static const char *fps_style_name(void) { if (fps_display_style == FPS_STYLE_NUMBER_ONLY) return "NUMBER ONLY"; if (fps_display_style == FPS_STYLE_ICON_ONLY) return "ICON ONLY"; if (fps_display_style == FPS_STYLE_LABEL_NUMBER) return "FPS + NUMBER"; return "ICON + NUMBER"; }
-static const char *battery_style_name(void) { if (battery_display_style == BATTERY_STYLE_PERCENT_ONLY) return "PERCENT ONLY"; if (battery_display_style == BATTERY_STYLE_ICON_ONLY) return "ICON ONLY"; if (battery_display_style == BATTERY_STYLE_BAR_ONLY) return "BAR ONLY"; return "ICON + PERCENT"; }
-static const char *clock_style_name(void) { if (clock_display_style == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY"; if (clock_display_style == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY"; if (clock_display_style == CLOCK_STYLE_DATE_TIME) return "DATE + TIME"; return "ICON + TIME"; }
-static const char *overlay_style_name_for(int id) { if (id == OVERLAY_STYLE_VALUE_ONLY) return "VALUE ONLY"; if (id == OVERLAY_STYLE_ICON_ONLY) return "ICON ONLY"; if (id == OVERLAY_STYLE_LABEL_VALUE) return "LABEL + VALUE"; return "ICON + VALUE"; }
+static const char *overlay_style_name_for_language(int lang, int id) {
+    switch (lang) {
+        case LANG_ES:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "SOLO VALOR";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "SOLO ICONO";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "ETIQUETA + VALOR";
+            return "ICONO + VALOR";
+        case LANG_FR:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "VALEUR SEULE";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "ICONE SEULE";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "LIBELLE + VALEUR";
+            return "ICONE + VALEUR";
+        case LANG_DE:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "NUR WERT";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "NUR SYMBOL";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "LABEL + WERT";
+            return "SYMBOL + WERT";
+        case LANG_IT:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "SOLO VALORE";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "SOLO ICONA";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "ETICHETTA + VALORE";
+            return "ICONA + VALORE";
+        case LANG_PT:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "SO VALOR";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "SO ICONE";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "ROTULO + VALOR";
+            return "ICONE + VALOR";
+        case LANG_NL:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "ALLEEN WAARDE";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "ALLEEN ICOON";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "LABEL + WAARDE";
+            return "ICOON + WAARDE";
+        case LANG_ID:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "NILAI SAJA";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "IKON SAJA";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "LABEL + NILAI";
+            return "IKON + NILAI";
+        case LANG_TR:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "SADECE DEGER";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "SADECE SIMGE";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "ETIKET + DEGER";
+            return "SIMGE + DEGER";
+        case LANG_PL:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "TYLKO WARTOSC";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "TYLKO IKONA";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "ETYKIETA + WARTOSC";
+            return "IKONA + WARTOSC";
+        case LANG_EN:
+        default:
+            if (id == OVERLAY_STYLE_VALUE_ONLY) return "VALUE ONLY";
+            if (id == OVERLAY_STYLE_ICON_ONLY) return "ICON ONLY";
+            if (id == OVERLAY_STYLE_LABEL_VALUE) return "LABEL + VALUE";
+            return "ICON + VALUE";
+    }
+}
+
+static const char *overlay_style_name_for(int id) { return overlay_style_name_for_language(LANG_EN, id); }
+static const char *overlay_style_name_current(int id) { return overlay_style_name_for_language(hud_language, id); }
+static const char *clock_style_name_for_language(int lang, int id) {
+    switch (lang) {
+        case LANG_ES:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO HORA";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "SOLO ICONO";
+            if (id == CLOCK_STYLE_DATE_TIME) return "FECHA + HORA";
+            return "ICONO + HORA";
+        case LANG_FR:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "HEURE SEULE";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "ICONE SEULE";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATE + HEURE";
+            return "ICONE + HEURE";
+        case LANG_DE:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "NUR ZEIT";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "NUR SYMBOL";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATUM + ZEIT";
+            return "SYMBOL + ZEIT";
+        case LANG_IT:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO ORA";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "SOLO ICONA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + ORA";
+            return "ICONA + ORA";
+        case LANG_PT:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SO HORA";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "SO ICONE";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + HORA";
+            return "ICONE + HORA";
+        case LANG_NL:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "ALLEEN TIJD";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "ALLEEN ICOON";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATUM + TIJD";
+            return "ICOON + TIJD";
+        case LANG_ID:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "WAKTU SAJA";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "IKON SAJA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "TANGGAL + WAKTU";
+            return "IKON + WAKTU";
+        case LANG_TR:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SADECE SAAT";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "SADECE SIMGE";
+            if (id == CLOCK_STYLE_DATE_TIME) return "TARIH + SAAT";
+            return "SIMGE + SAAT";
+        case LANG_PL:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "TYLKO CZAS";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "TYLKO IKONA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + CZAS";
+            return "IKONA + CZAS";
+        case LANG_EN:
+        default:
+            if (id == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY";
+            if (id == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY";
+            if (id == CLOCK_STYLE_DATE_TIME) return "DATE + TIME";
+            return "ICON + TIME";
+    }
+}
 static int overlay_style_has_icon(int id) { return id == OVERLAY_STYLE_ICON_VALUE || id == OVERLAY_STYLE_ICON_ONLY; }
 static int overlay_style_has_text(int id) { return id != OVERLAY_STYLE_ICON_ONLY; }
 static const char *overlay_style_text_for(int id, const char *label_text, const char *value_text) { return id == OVERLAY_STYLE_LABEL_VALUE ? label_text : value_text; }
 static int hud_pair_width(int icon_w, int text_w, int gap) { return icon_w + text_w + ((icon_w > 0 && text_w > 0) ? gap : 0); }
-static const char *battery_temp_style_name(void) { return overlay_style_name_for(battery_temp_display_style); }
-static const char *date_style_name(void) { return overlay_style_name_for(date_display_style); }
-static const char *cpu_style_name(void) { return overlay_style_name_for(cpu_display_style); }
-static const char *bus_style_name(void) { return overlay_style_name_for(bus_display_style); }
-static const char *gpu_style_name(void) { return overlay_style_name_for(gpu_display_style); }
-static const char *xbar_style_name(void) { return overlay_style_name_for(xbar_display_style); }
-static const char *ram_style_name(void) { return overlay_style_name_for(ram_display_style); }
-static const char *app_id_style_name(void) { return overlay_style_name_for(app_id_display_style); }
+
+static const char *fps_style_name(void) { return overlay_style_name_current(fps_display_style); }
+static const char *battery_style_name(void) { return overlay_style_name_current(battery_display_style); }
+static const char *clock_style_name(void) { return clock_style_name_for_language(hud_language, clock_display_style); }
+static const char *battery_temp_style_name(void) { return overlay_style_name_current(battery_temp_display_style); }
+static const char *date_style_name(void) { return overlay_style_name_current(date_display_style); }
+static const char *cpu_style_name(void) { return overlay_style_name_current(cpu_display_style); }
+static const char *bus_style_name(void) { return overlay_style_name_current(bus_display_style); }
+static const char *gpu_style_name(void) { return overlay_style_name_current(gpu_display_style); }
+static const char *xbar_style_name(void) { return overlay_style_name_current(xbar_display_style); }
+static const char *ram_style_name(void) { return overlay_style_name_current(ram_display_style); }
+static const char *app_id_style_name(void) { return overlay_style_name_current(app_id_display_style); }
 
 static const char *tr_menu_title(void) {
     return "VITAHUD ULTIMATE";
@@ -4487,8 +4604,9 @@ static int choice_count_for_target(int target) {
         case ITEM_DEBUG_FONT: return FONT_COUNT;
         case ITEM_HUD_OPACITY: return OPACITY_COUNT;
         case ITEM_MENU_OPACITY: return OPACITY_COUNT;
-        case ITEM_FPS_STYLE: return FPS_STYLE_COUNT;
-        case ITEM_BATTERY_STYLE: return BATTERY_STYLE_COUNT;
+        case ITEM_FPS_STYLE:
+        case ITEM_BATTERY_STYLE:
+            return OVERLAY_STYLE_COUNT;
         case ITEM_CLOCK_STYLE: return CLOCK_STYLE_COUNT;
         case ITEM_BATTERY_TEMP_STYLE:
         case ITEM_DATE_STYLE:
@@ -4588,12 +4706,11 @@ static const char *choice_name_for_target(int target, int index) {
     if (target == ITEM_DEBUG_SIZE) return size_name_for(index);
     if (target == ITEM_DEBUG_FONT) return font_name_for(index);
     if (target == ITEM_HUD_OPACITY || target == ITEM_MENU_OPACITY) return opacity_name_for(index);
-    if (target == ITEM_FPS_STYLE) { if (index == FPS_STYLE_NUMBER_ONLY) return "NUMBER ONLY"; if (index == FPS_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == FPS_STYLE_LABEL_NUMBER) return "FPS + NUMBER"; return "ICON + NUMBER"; }
-    if (target == ITEM_BATTERY_STYLE) { if (index == BATTERY_STYLE_PERCENT_ONLY) return "PERCENT ONLY"; if (index == BATTERY_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == BATTERY_STYLE_BAR_ONLY) return "BAR ONLY"; return "ICON + PERCENT"; }
-    if (target == ITEM_CLOCK_STYLE) { if (index == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY"; if (index == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY"; if (index == CLOCK_STYLE_DATE_TIME) return "DATE + TIME"; return "ICON + TIME"; }
-    if (target == ITEM_BATTERY_TEMP_STYLE || target == ITEM_DATE_STYLE || target == ITEM_CPU_STYLE ||
+    if (target == ITEM_FPS_STYLE || target == ITEM_BATTERY_STYLE ||
+        target == ITEM_BATTERY_TEMP_STYLE || target == ITEM_DATE_STYLE || target == ITEM_CPU_STYLE ||
         target == ITEM_BUS_STYLE || target == ITEM_GPU_STYLE || target == ITEM_XBAR_STYLE ||
-        target == ITEM_RAM_STYLE || target == ITEM_APP_ID_STYLE) return overlay_style_name_for(index);
+        target == ITEM_RAM_STYLE || target == ITEM_APP_ID_STYLE) return overlay_style_name_current(index);
+    if (target == ITEM_CLOCK_STYLE) return clock_style_name_for_language(hud_language, index);
     if (item_uses_color_menu(target)) return color_name_generic(index);
     if (item_uses_bg_menu(target)) return menu_bg_name_for(index);
 
@@ -5186,7 +5303,36 @@ static void enter_menu_page(int page) {
 }
 
 
+static const char *translated_extra_menu_label(int lang, int item) {
+    switch (lang) {
+        case LANG_ES:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD TEMP BATERIA"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "ICONO TEMP BATERIA"; case ITEM_XBAR_ICON: return "ICONO XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "ICONO TEMP BATERIA"; case ITEM_XBAR_ICON_STYLE: return "ICONO XBAR"; case ITEM_FPS_STYLE: return "ESTILO FPS"; case ITEM_BATTERY_STYLE: return "ESTILO BATERIA"; case ITEM_BATTERY_TEMP_STYLE: return "ESTILO TEMP BATERIA"; case ITEM_CLOCK_STYLE: return "ESTILO RELOJ"; case ITEM_DATE_STYLE: return "ESTILO FECHA"; case ITEM_CPU_STYLE: return "ESTILO CPU"; case ITEM_BUS_STYLE: return "ESTILO BUS"; case ITEM_GPU_STYLE: return "ESTILO GPU"; case ITEM_XBAR_STYLE: return "ESTILO XBAR"; case ITEM_RAM_STYLE: return "ESTILO RAM"; case ITEM_APP_ID_STYLE: return "ESTILO APP ID"; case ITEM_EXPORT_CONFIG: return "EXPORTAR CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPORTAR CONFIG"; case ITEM_PER_GAME_PROFILE: return "PERFIL POR JUEGO"; case ITEM_SAVE_GAME_PROFILE: return "GUARDAR PERFIL JUEGO"; case ITEM_LOAD_GAME_PROFILE: return "CARGAR PERFIL JUEGO"; case ITEM_BACKUP_PROFILES: return "COPIA TODOS PERFILES"; case ITEM_RESTORE_PROFILES: return "RESTAURAR PERFILES"; default: return ""; }
+        case LANG_FR:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD TEMP BATTERIE"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "ICONE TEMP BATTERIE"; case ITEM_XBAR_ICON: return "ICONE XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "ICONE TEMP BATTERIE"; case ITEM_XBAR_ICON_STYLE: return "ICONE XBAR"; case ITEM_FPS_STYLE: return "STYLE FPS"; case ITEM_BATTERY_STYLE: return "STYLE BATTERIE"; case ITEM_BATTERY_TEMP_STYLE: return "STYLE TEMP BATTERIE"; case ITEM_CLOCK_STYLE: return "STYLE HORLOGE"; case ITEM_DATE_STYLE: return "STYLE DATE"; case ITEM_CPU_STYLE: return "STYLE CPU"; case ITEM_BUS_STYLE: return "STYLE BUS"; case ITEM_GPU_STYLE: return "STYLE GPU"; case ITEM_XBAR_STYLE: return "STYLE XBAR"; case ITEM_RAM_STYLE: return "STYLE RAM"; case ITEM_APP_ID_STYLE: return "STYLE APP ID"; case ITEM_EXPORT_CONFIG: return "EXPORTER CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPORTER CONFIG"; case ITEM_PER_GAME_PROFILE: return "PROFIL PAR JEU"; case ITEM_SAVE_GAME_PROFILE: return "SAUVER PROFIL JEU"; case ITEM_LOAD_GAME_PROFILE: return "CHARGER PROFIL JEU"; case ITEM_BACKUP_PROFILES: return "SAUVER TOUS PROFILS"; case ITEM_RESTORE_PROFILES: return "RESTAURER PROFILS"; default: return ""; }
+        case LANG_DE:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "AKKU TEMP HUD"; case ITEM_XBAR_HUD: return "XBAR HUD"; case ITEM_BATTERY_TEMP_ICON: return "AKKU TEMP SYMBOL"; case ITEM_XBAR_ICON: return "XBAR SYMBOL"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "AKKU TEMP SYMBOL"; case ITEM_XBAR_ICON_STYLE: return "XBAR SYMBOL"; case ITEM_FPS_STYLE: return "FPS STIL"; case ITEM_BATTERY_STYLE: return "AKKU STIL"; case ITEM_BATTERY_TEMP_STYLE: return "AKKU TEMP STIL"; case ITEM_CLOCK_STYLE: return "UHR STIL"; case ITEM_DATE_STYLE: return "DATUM STIL"; case ITEM_CPU_STYLE: return "CPU STIL"; case ITEM_BUS_STYLE: return "BUS STIL"; case ITEM_GPU_STYLE: return "GPU STIL"; case ITEM_XBAR_STYLE: return "XBAR STIL"; case ITEM_RAM_STYLE: return "RAM STIL"; case ITEM_APP_ID_STYLE: return "APP ID STIL"; case ITEM_EXPORT_CONFIG: return "CONFIG EXPORT"; case ITEM_IMPORT_CONFIG: return "CONFIG IMPORT"; case ITEM_PER_GAME_PROFILE: return "PROFIL PRO SPIEL"; case ITEM_SAVE_GAME_PROFILE: return "SPIEL PROFIL SPEICHERN"; case ITEM_LOAD_GAME_PROFILE: return "SPIEL PROFIL LADEN"; case ITEM_BACKUP_PROFILES: return "ALLE PROFILE SICHERN"; case ITEM_RESTORE_PROFILES: return "PROFILE WIEDERHERSTELLEN"; default: return ""; }
+        case LANG_IT:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD TEMP BATTERIA"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "ICONA TEMP BATTERIA"; case ITEM_XBAR_ICON: return "ICONA XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "ICONA TEMP BATTERIA"; case ITEM_XBAR_ICON_STYLE: return "ICONA XBAR"; case ITEM_FPS_STYLE: return "STILE FPS"; case ITEM_BATTERY_STYLE: return "STILE BATTERIA"; case ITEM_BATTERY_TEMP_STYLE: return "STILE TEMP BATTERIA"; case ITEM_CLOCK_STYLE: return "STILE OROLOGIO"; case ITEM_DATE_STYLE: return "STILE DATA"; case ITEM_CPU_STYLE: return "STILE CPU"; case ITEM_BUS_STYLE: return "STILE BUS"; case ITEM_GPU_STYLE: return "STILE GPU"; case ITEM_XBAR_STYLE: return "STILE XBAR"; case ITEM_RAM_STYLE: return "STILE RAM"; case ITEM_APP_ID_STYLE: return "STILE APP ID"; case ITEM_EXPORT_CONFIG: return "ESPORTA CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPORTA CONFIG"; case ITEM_PER_GAME_PROFILE: return "PROFILO PER GIOCO"; case ITEM_SAVE_GAME_PROFILE: return "SALVA PROFILO GIOCO"; case ITEM_LOAD_GAME_PROFILE: return "CARICA PROFILO GIOCO"; case ITEM_BACKUP_PROFILES: return "BACKUP PROFILI"; case ITEM_RESTORE_PROFILES: return "RIPRISTINA PROFILI"; default: return ""; }
+        case LANG_PT:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD TEMP BATERIA"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "ICONE TEMP BATERIA"; case ITEM_XBAR_ICON: return "ICONE XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "ICONE TEMP BATERIA"; case ITEM_XBAR_ICON_STYLE: return "ICONE XBAR"; case ITEM_FPS_STYLE: return "ESTILO FPS"; case ITEM_BATTERY_STYLE: return "ESTILO BATERIA"; case ITEM_BATTERY_TEMP_STYLE: return "ESTILO TEMP BATERIA"; case ITEM_CLOCK_STYLE: return "ESTILO RELOGIO"; case ITEM_DATE_STYLE: return "ESTILO DATA"; case ITEM_CPU_STYLE: return "ESTILO CPU"; case ITEM_BUS_STYLE: return "ESTILO BUS"; case ITEM_GPU_STYLE: return "ESTILO GPU"; case ITEM_XBAR_STYLE: return "ESTILO XBAR"; case ITEM_RAM_STYLE: return "ESTILO RAM"; case ITEM_APP_ID_STYLE: return "ESTILO APP ID"; case ITEM_EXPORT_CONFIG: return "EXPORTAR CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPORTAR CONFIG"; case ITEM_PER_GAME_PROFILE: return "PERFIL POR JOGO"; case ITEM_SAVE_GAME_PROFILE: return "SALVAR PERFIL JOGO"; case ITEM_LOAD_GAME_PROFILE: return "CARREGAR PERFIL JOGO"; case ITEM_BACKUP_PROFILES: return "BACKUP PERFIS"; case ITEM_RESTORE_PROFILES: return "RESTAURAR PERFIS"; default: return ""; }
+        case LANG_NL:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "ACCU TEMP HUD"; case ITEM_XBAR_HUD: return "XBAR HUD"; case ITEM_BATTERY_TEMP_ICON: return "ACCU TEMP ICOON"; case ITEM_XBAR_ICON: return "XBAR ICOON"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "ACCU TEMP ICOON"; case ITEM_XBAR_ICON_STYLE: return "XBAR ICOON"; case ITEM_FPS_STYLE: return "FPS STIJL"; case ITEM_BATTERY_STYLE: return "ACCU STIJL"; case ITEM_BATTERY_TEMP_STYLE: return "ACCU TEMP STIJL"; case ITEM_CLOCK_STYLE: return "KLOK STIJL"; case ITEM_DATE_STYLE: return "DATUM STIJL"; case ITEM_CPU_STYLE: return "CPU STIJL"; case ITEM_BUS_STYLE: return "BUS STIJL"; case ITEM_GPU_STYLE: return "GPU STIJL"; case ITEM_XBAR_STYLE: return "XBAR STIJL"; case ITEM_RAM_STYLE: return "RAM STIJL"; case ITEM_APP_ID_STYLE: return "APP ID STIJL"; case ITEM_EXPORT_CONFIG: return "CONFIG EXPORT"; case ITEM_IMPORT_CONFIG: return "CONFIG IMPORT"; case ITEM_PER_GAME_PROFILE: return "PROFIEL PER GAME"; case ITEM_SAVE_GAME_PROFILE: return "GAME PROFIEL OPSLAAN"; case ITEM_LOAD_GAME_PROFILE: return "GAME PROFIEL LADEN"; case ITEM_BACKUP_PROFILES: return "BACKUP ALLE PROFIELEN"; case ITEM_RESTORE_PROFILES: return "PROFIELEN HERSTELLEN"; default: return ""; }
+        case LANG_ID:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD SUHU BATERAI"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "IKON SUHU BATERAI"; case ITEM_XBAR_ICON: return "IKON XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "IKON SUHU BATERAI"; case ITEM_XBAR_ICON_STYLE: return "IKON XBAR"; case ITEM_FPS_STYLE: return "GAYA FPS"; case ITEM_BATTERY_STYLE: return "GAYA BATERAI"; case ITEM_BATTERY_TEMP_STYLE: return "GAYA SUHU BATERAI"; case ITEM_CLOCK_STYLE: return "GAYA JAM"; case ITEM_DATE_STYLE: return "GAYA TANGGAL"; case ITEM_CPU_STYLE: return "GAYA CPU"; case ITEM_BUS_STYLE: return "GAYA BUS"; case ITEM_GPU_STYLE: return "GAYA GPU"; case ITEM_XBAR_STYLE: return "GAYA XBAR"; case ITEM_RAM_STYLE: return "GAYA RAM"; case ITEM_APP_ID_STYLE: return "GAYA APP ID"; case ITEM_EXPORT_CONFIG: return "EKSPOR CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPOR CONFIG"; case ITEM_PER_GAME_PROFILE: return "PROFIL PER GAME"; case ITEM_SAVE_GAME_PROFILE: return "SIMPAN PROFIL GAME"; case ITEM_LOAD_GAME_PROFILE: return "MUAT PROFIL GAME"; case ITEM_BACKUP_PROFILES: return "BACKUP SEMUA PROFIL"; case ITEM_RESTORE_PROFILES: return "PULIHKAN PROFIL"; default: return ""; }
+        case LANG_TR:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "PIL SICAKLIK HUD"; case ITEM_XBAR_HUD: return "XBAR HUD"; case ITEM_BATTERY_TEMP_ICON: return "PIL SICAKLIK SIMGESI"; case ITEM_XBAR_ICON: return "XBAR SIMGESI"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "PIL SICAKLIK SIMGESI"; case ITEM_XBAR_ICON_STYLE: return "XBAR SIMGESI"; case ITEM_FPS_STYLE: return "FPS STILI"; case ITEM_BATTERY_STYLE: return "PIL STILI"; case ITEM_BATTERY_TEMP_STYLE: return "PIL SICAKLIK STILI"; case ITEM_CLOCK_STYLE: return "SAAT STILI"; case ITEM_DATE_STYLE: return "TARIH STILI"; case ITEM_CPU_STYLE: return "CPU STILI"; case ITEM_BUS_STYLE: return "BUS STILI"; case ITEM_GPU_STYLE: return "GPU STILI"; case ITEM_XBAR_STYLE: return "XBAR STILI"; case ITEM_RAM_STYLE: return "RAM STILI"; case ITEM_APP_ID_STYLE: return "APP ID STILI"; case ITEM_EXPORT_CONFIG: return "CONFIG DISA AKTAR"; case ITEM_IMPORT_CONFIG: return "CONFIG ICE AKTAR"; case ITEM_PER_GAME_PROFILE: return "OYUNA OZEL PROFIL"; case ITEM_SAVE_GAME_PROFILE: return "OYUN PROFILI KAYDET"; case ITEM_LOAD_GAME_PROFILE: return "OYUN PROFILI YUKLE"; case ITEM_BACKUP_PROFILES: return "TUM PROFILLERI YEDEKLE"; case ITEM_RESTORE_PROFILES: return "PROFILLERI GERI YUKLE"; default: return ""; }
+        case LANG_PL:
+            switch (item) { case ITEM_BATTERY_TEMP_HUD: return "HUD TEMP BATERII"; case ITEM_XBAR_HUD: return "HUD XBAR"; case ITEM_BATTERY_TEMP_ICON: return "IKONA TEMP BATERII"; case ITEM_XBAR_ICON: return "IKONA XBAR"; case ITEM_BATTERY_TEMP_ICON_STYLE: return "IKONA TEMP BATERII"; case ITEM_XBAR_ICON_STYLE: return "IKONA XBAR"; case ITEM_FPS_STYLE: return "STYL FPS"; case ITEM_BATTERY_STYLE: return "STYL BATERII"; case ITEM_BATTERY_TEMP_STYLE: return "STYL TEMP BATERII"; case ITEM_CLOCK_STYLE: return "STYL ZEGARA"; case ITEM_DATE_STYLE: return "STYL DATY"; case ITEM_CPU_STYLE: return "STYL CPU"; case ITEM_BUS_STYLE: return "STYL BUS"; case ITEM_GPU_STYLE: return "STYL GPU"; case ITEM_XBAR_STYLE: return "STYL XBAR"; case ITEM_RAM_STYLE: return "STYL RAM"; case ITEM_APP_ID_STYLE: return "STYL APP ID"; case ITEM_EXPORT_CONFIG: return "EKSPORT CONFIG"; case ITEM_IMPORT_CONFIG: return "IMPORT CONFIG"; case ITEM_PER_GAME_PROFILE: return "PROFIL NA GRE"; case ITEM_SAVE_GAME_PROFILE: return "ZAPISZ PROFIL GRY"; case ITEM_LOAD_GAME_PROFILE: return "WCZYTAJ PROFIL GRY"; case ITEM_BACKUP_PROFILES: return "KOPIA PROFILI"; case ITEM_RESTORE_PROFILES: return "PRZYWROC PROFILE"; default: return ""; }
+        case LANG_EN:
+        default:
+            return "";
+    }
+}
+
 static const char *translated_menu_label_for_language(int lang, int item) {
+    const char *extra = translated_extra_menu_label(lang, item);
+    if (extra && extra[0]) return extra;
+
     switch (lang) {
         case LANG_ES:
             switch (item) {
@@ -7980,7 +8126,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     force_stacked = 0;
 
     fps_w = (show_fps && fps_display_style != FPS_STYLE_ICON_ONLY) ? text_width(fps_text, scale) : 0;
-    battery_text_w = (show_battery && battery_display_style != BATTERY_STYLE_ICON_ONLY && battery_display_style != BATTERY_STYLE_BAR_ONLY) ? text_width(battery_text, scale) : 0;
+    battery_text_w = (show_battery && battery_display_style != BATTERY_STYLE_ICON_ONLY) ? text_width(battery_text, scale) : 0;
     battery_temp_w = (show_battery_temp && overlay_style_has_text(battery_temp_display_style)) ? text_width(battery_temp_draw_text, scale) : 0;
     time_w = (show_time && clock_display_style != CLOCK_STYLE_ICON_ONLY) ? text_width(time_text, scale) : 0;
     date_w = (show_date && overlay_style_has_text(date_display_style)) ? text_width(date_draw_text, scale) : 0;
@@ -7994,7 +8140,7 @@ static void draw_hud(unsigned int *pixels, int pitch, int screen_w, int screen_h
     fps_icon_w = (show_fps && fps_display_style != FPS_STYLE_NUMBER_ONLY && fps_display_style != FPS_STYLE_LABEL_NUMBER) ? (9 * icon_scale) : 0;
     fps_icon_h = 7 * icon_scale;
 
-    battery_icon_w = (show_battery && battery_display_style != BATTERY_STYLE_PERCENT_ONLY) ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
+    battery_icon_w = (show_battery && (battery_display_style == BATTERY_STYLE_ICON_PERCENT || battery_display_style == BATTERY_STYLE_ICON_ONLY)) ? ((13 * icon_scale) + (2 * icon_scale)) : 0;
     battery_icon_h = 7 * icon_scale;
 
     clock_icon_w = (show_time && clock_display_style != CLOCK_STYLE_TIME_ONLY && clock_display_style != CLOCK_STYLE_DATE_TIME) ? (7 * icon_scale) : 0;
