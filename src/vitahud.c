@@ -8644,6 +8644,7 @@ int module_start(SceSize args, void *argp) {
 
     return SCE_KERNEL_START_SUCCESS;
 }
+void _start() __attribute__ ((weak, alias ("module_start")));
 
 int module_stop(SceSize args, void *argp) {
     (void)args;
