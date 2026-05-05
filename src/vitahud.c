@@ -2528,10 +2528,10 @@ static void build_time_text(char *out) {
     int is_pm = 0;
     sceRtcGetCurrentClockLocalTime(&time);
     if (clock_display_style == CLOCK_STYLE_DATE_TIME) {
-        pos = append_2digit_number(out, pos, time.month);
-        out[pos++] = '/';
-        pos = append_2digit_number(out, pos, time.day);
+        pos = append_text(out, pos, "TIME");
         out[pos++] = ' ';
+        /* LABEL + VALUE, no date prefix. */
+        /* Keep clock as time-only value. */
     }
     if (use_24h_time || hud_layout == LAYOUT_COMPACT || hud_layout == LAYOUT_ICONS) {
         put_2digits(&out[pos], time.hour); pos += 2; out[pos++] = ':';
@@ -4333,56 +4333,56 @@ static const char *overlay_style_name_current(int id) { return overlay_style_nam
 static const char *clock_style_name_for_language(int lang, int id) {
     switch (lang) {
         case LANG_ES:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO HORA";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO VALOR";
             if (id == CLOCK_STYLE_ICON_ONLY) return "SOLO ICONO";
-            if (id == CLOCK_STYLE_DATE_TIME) return "FECHA + HORA";
-            return "ICONO + HORA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "ETIQUETA + VALOR";
+            return "ICONO + VALOR";
         case LANG_FR:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "HEURE SEULE";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "VALEUR SEULE";
             if (id == CLOCK_STYLE_ICON_ONLY) return "ICONE SEULE";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATE + HEURE";
-            return "ICONE + HEURE";
+            if (id == CLOCK_STYLE_DATE_TIME) return "LIBELLE + VALEUR";
+            return "ICONE + VALEUR";
         case LANG_DE:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "NUR ZEIT";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "NUR WERT";
             if (id == CLOCK_STYLE_ICON_ONLY) return "NUR SYMBOL";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATUM + ZEIT";
-            return "SYMBOL + ZEIT";
+            if (id == CLOCK_STYLE_DATE_TIME) return "LABEL + WERT";
+            return "SYMBOL + WERT";
         case LANG_IT:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO ORA";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SOLO VALORE";
             if (id == CLOCK_STYLE_ICON_ONLY) return "SOLO ICONA";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + ORA";
-            return "ICONA + ORA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "ETICHETTA + VALORE";
+            return "ICONA + VALORE";
         case LANG_PT:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "SO HORA";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SO VALOR";
             if (id == CLOCK_STYLE_ICON_ONLY) return "SO ICONE";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + HORA";
-            return "ICONE + HORA";
+            if (id == CLOCK_STYLE_DATE_TIME) return "ROTULO + VALOR";
+            return "ICONE + VALOR";
         case LANG_NL:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "ALLEEN TIJD";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "ALLEEN WAARDE";
             if (id == CLOCK_STYLE_ICON_ONLY) return "ALLEEN ICOON";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATUM + TIJD";
-            return "ICOON + TIJD";
+            if (id == CLOCK_STYLE_DATE_TIME) return "LABEL + WAARDE";
+            return "ICOON + WAARDE";
         case LANG_ID:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "WAKTU SAJA";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "NILAI SAJA";
             if (id == CLOCK_STYLE_ICON_ONLY) return "IKON SAJA";
-            if (id == CLOCK_STYLE_DATE_TIME) return "TANGGAL + WAKTU";
-            return "IKON + WAKTU";
+            if (id == CLOCK_STYLE_DATE_TIME) return "LABEL + NILAI";
+            return "IKON + NILAI";
         case LANG_TR:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "SADECE SAAT";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "SADECE DEGER";
             if (id == CLOCK_STYLE_ICON_ONLY) return "SADECE SIMGE";
-            if (id == CLOCK_STYLE_DATE_TIME) return "TARIH + SAAT";
-            return "SIMGE + SAAT";
+            if (id == CLOCK_STYLE_DATE_TIME) return "ETIKET + DEGER";
+            return "SIMGE + DEGER";
         case LANG_PL:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "TYLKO CZAS";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "TYLKO WARTOSC";
             if (id == CLOCK_STYLE_ICON_ONLY) return "TYLKO IKONA";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATA + CZAS";
-            return "IKONA + CZAS";
+            if (id == CLOCK_STYLE_DATE_TIME) return "ETYKIETA + WARTOSC";
+            return "IKONA + WARTOSC";
         case LANG_EN:
         default:
-            if (id == CLOCK_STYLE_TIME_ONLY) return "TIME ONLY";
+            if (id == CLOCK_STYLE_TIME_ONLY) return "VALUE ONLY";
             if (id == CLOCK_STYLE_ICON_ONLY) return "ICON ONLY";
-            if (id == CLOCK_STYLE_DATE_TIME) return "DATE + TIME";
-            return "ICON + TIME";
+            if (id == CLOCK_STYLE_DATE_TIME) return "LABEL + VALUE";
+            return "ICON + VALUE";
     }
 }
 static int overlay_style_has_icon(int id) { return id == OVERLAY_STYLE_ICON_VALUE || id == OVERLAY_STYLE_ICON_ONLY; }
