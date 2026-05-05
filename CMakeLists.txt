@@ -21,7 +21,7 @@ add_executable(vitahud
 )
 
 target_link_libraries(vitahud
-  "$ENV{VITASDK}/arm-vita-eabi/lib/libtaihen_stub.a"
+  taihen_stub
   SceLibKernel_stub
   SceKernelThreadMgr_stub
   SceCtrl_stub
