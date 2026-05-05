@@ -6521,7 +6521,15 @@ static const char *menu_label(int item) {
         case ITEM_MENU_OPACITY: return "MENU OPACITY";
         case ITEM_FPS_STYLE: return "FPS STYLE";
         case ITEM_BATTERY_STYLE: return "BATTERY STYLE";
+        case ITEM_BATTERY_TEMP_STYLE: return "BATTERY TEMP STYLE";
         case ITEM_CLOCK_STYLE: return "CLOCK STYLE";
+        case ITEM_DATE_STYLE: return "DATE STYLE";
+        case ITEM_CPU_STYLE: return "CPU STYLE";
+        case ITEM_BUS_STYLE: return "BUS STYLE";
+        case ITEM_GPU_STYLE: return "GPU STYLE";
+        case ITEM_XBAR_STYLE: return "XBAR STYLE";
+        case ITEM_RAM_STYLE: return "RAM STYLE";
+        case ITEM_APP_ID_STYLE: return "APP ID STYLE";
         case ITEM_SAVE_PROFILE: return "SAVE PROFILE";
         case ITEM_LOAD_PROFILE: return "LOAD PROFILE";
         case ITEM_BACKUP_PROFILES: return "BACKUP ALL PROFILES";
@@ -7680,6 +7688,17 @@ static int cycle_worker_thread(SceSize args, void *argp) {
         load_game_profile_for_app(pergame_auto_load_app, 0);
     } else if (action == 4) {
         load_game_profile_for_app(pergame_auto_load_app, 1);
+    } else if (action == 5) {
+        int keep_cycle_profile_enabled = cycle_profile_enabled;
+        int keep_cycle_profile_combo_mode = cycle_profile_combo_mode;
+
+        load_profile();
+
+        /* Cycling profiles must never disable the combo that is doing the cycling.
+         * Profiles still save/load all normal options when LOAD PROFILE is used manually.
+         */
+        cycle_profile_enabled = keep_cycle_profile_enabled;
+        cycle_profile_combo_mode = keep_cycle_profile_combo_mode;
     }
 
     cycle_worker_action = 0;
@@ -7748,7 +7767,7 @@ static void handle_input(void) {
         if (profile_cycle_down && !last_profile_cycle_down && !cycle_worker_busy) {
             profile_id++;
             if (profile_id >= PROFILE_COUNT) profile_id = 0;
-            start_cycle_worker(1);
+            start_cycle_worker(5);
         }
 
         if (theme_cycle_down && !last_theme_cycle_down && !cycle_worker_busy) {
